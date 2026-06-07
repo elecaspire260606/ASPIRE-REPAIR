@@ -605,7 +605,7 @@ function showNormPreview() {
 
 // ── 權限 ──
 function requireAuth(id) {
-  if (sessionStorage.getItem('adminAuth')==='yes') { switchPage(id); }
+  if (sessionStorage.getItem('adminToken')) { switchPage(id); }
   else { pendingPage = id; showLock(); }
 }
 function showLock() {
@@ -617,17 +617,31 @@ function showLock() {
   document.getElementById('pwErr').textContent='';
   setTimeout(()=>document.getElementById('pwInput').focus(),100);
 }
-function checkPassword() {
+async function checkPassword() {
   const pw = document.getElementById('pwInput').value;
-  if (pw===ADMIN_PASSWORD) {
-    sessionStorage.setItem('adminAuth','yes');
-    document.getElementById('page-lock').style.display='none';
-    document.getElementById('logoutBtn').style.display='flex';
-    switchPage(pendingPage||'mgr'); pendingPage=null;
-  } else {
-    document.getElementById('pwErr').textContent='密碼錯誤，請再試一次';
-    document.getElementById('pwInput').value='';
-    document.getElementById('pwInput').focus();
+  if (!pw) return;
+  const btn = document.querySelector('#page-lock button');
+  if (btn) { btn.textContent='驗證中…'; btn.disabled=true; }
+  try {
+    const r = await fetch(API_URL, {
+      method:'POST',
+      body: JSON.stringify({ action:'auth', password:pw })
+    });
+    const data = await r.json();
+    if (btn) { btn.textContent='確認'; btn.disabled=false; }
+    if (data.success) {
+      sessionStorage.setItem('adminToken', data.token);
+      document.getElementById('page-lock').style.display='none';
+      document.getElementById('logoutBtn').style.display='flex';
+      switchPage(pendingPage||'mgr'); pendingPage=null;
+    } else {
+      document.getElementById('pwErr').textContent='密碼錯誤，請再試一次';
+      document.getElementById('pwInput').value='';
+      document.getElementById('pwInput').focus();
+    }
+  } catch(e) {
+    if (btn) { btn.textContent='確認'; btn.disabled=false; }
+    document.getElementById('pwErr').textContent='網路異常，請重試';
   }
 }
 function logout() {
