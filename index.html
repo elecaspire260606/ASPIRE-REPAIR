@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<!-- saved from url=(0057)file:///C:/Users/bskao/Downloads/repair_system_new_2.html -->
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>設施報修系統 · 渴望會館</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192x192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="渴望報修">
+<meta name="theme-color" content="#E8761A">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', -apple-system, sans-serif; background: #FBF8F4; color: #1a1a1a; min-height: 100vh; }
+
+  /* ── Navigation ── */
+  .nav {
+    background: #E8761A;
+    padding: 0; display: flex; align-items: stretch;
+    box-shadow: 0 2px 12px rgba(232,118,26,0.25);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .nav-brand { color: white; font-size: 15px; font-weight: 700; padding: 14px 18px; letter-spacing: 0.03em; display: flex; align-items: center; gap: 7px; }
+  .nav-tabs { display: flex; margin-left: auto; }
+  .nav-tab { color: rgba(255,255,255,0.75); font-size: 13px; padding: 0 14px; display: flex; align-items: center; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.15s; font-weight: 500; }
+  .nav-tab:hover { color: white; background: rgba(255,255,255,0.12); }
+  .nav-tab.active { color: white; border-bottom-color: white; }
+  .logout-btn { font-size: 12px; color: rgba(255,255,255,0.65); cursor: pointer; padding: 0 14px; display: flex; align-items: center; border-left: 1px solid rgba(255,255,255,0.2); }
+  .logout-btn:hover { color: white; }
+
+  /* ── Pages ── */
+  .page { display: none; padding: 20px 16px; max-width: 700px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── Cards ── */
+  .card { background: white; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); overflow: hidden; margin-bottom: 16px; }
+  .card-header { background: #E8761A; color: white; padding: 13px 18px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 18px; }
+  .section-label { font-size: 11px; font-weight: 700; color: #E8761A; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 13px; }
+  .field { margin-bottom: 15px; }
+  .field label { font-size: 12px; color: #666; display: block; margin-bottom: 5px; font-weight: 500; }
+  .field input, .field select, .field textarea { width: 100%; padding: 10px 13px; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 14px; color: #1a1a1a; background: white; outline: none; transition: border 0.15s; font-family: inherit; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #E8761A; }
+  .field input[readonly] { background: #f8f6f3; color: #777; cursor: default; }
+  .field textarea { resize: vertical; min-height: 82px; }
+  .field .hint { font-size: 11px; color: #bbb; margin-top: 4px; }
+  .divider { height: 1px; background: #f2ede8; margin: 16px 0; }
+
+  /* ── Location type buttons ── */
+  .loc-type-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .loc-type-btn { flex: 1; min-width: 70px; padding: 9px 6px; border: 1.5px solid #e8e8e8; border-radius: 10px; background: white; font-size: 13px; cursor: pointer; color: #666; transition: all 0.15s; text-align: center; font-family: inherit; font-weight: 500; }
+  .loc-type-btn.active { background: #E8761A; color: white; border-color: #E8761A; }
+  .loc-type-btn:hover:not(.active) { border-color: #E8761A; color: #E8761A; }
+
+  /* ── Buttons ── */
+  .btn-primary { width: 100%; padding: 13px; background: #E8761A; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; box-shadow: 0 4px 12px rgba(232,118,26,0.3); }
+  .btn-primary:hover { background: #d06815; }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+
+  /* ── Lock ── */
+  .lock-overlay { display:flex; align-items:center; justify-content:center; min-height:260px; }
+  .lock-box { background:white; border-radius:18px; box-shadow:0 4px 24px rgba(0,0,0,0.1); padding:32px 28px; width:100%; max-width:320px; text-align:center; }
+  .lock-icon { font-size:36px; margin-bottom:12px; }
+  .lock-title { font-size:16px; font-weight:700; color:#1a1a1a; margin-bottom:6px; }
+  .lock-sub { font-size:12px; color:#bbb; margin-bottom:18px; }
+  .lock-input { width:100%; padding:11px 14px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:18px; text-align:center; letter-spacing:0.2em; outline:none; color:#1a1a1a; font-family:inherit; }
+  .lock-input:focus { border-color:#E8761A; }
+  .lock-btn { width:100%; margin-top:12px; padding:12px; background:#E8761A; color:white; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; box-shadow:0 4px 12px rgba(232,118,26,0.3); }
+  .lock-btn:hover { background:#d06815; }
+  .lock-err { font-size:12px; color:#e05252; margin-top:8px; min-height:18px; }
+
+  /* ── Toast ── */
+  .toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:#1a1a1a; color:white; padding:11px 22px; border-radius:10px; font-size:13px; opacity:0; pointer-events:none; transition:opacity 0.3s; z-index:200; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+  .toast.show { opacity:1; }
+
+  /* ── Filters ── */
+  .filter-row { display:flex; gap:8px; margin-bottom:12px; }
+  .filter-btn { flex:1; padding:9px 4px; border:1.5px solid #e8e8e8; border-radius:10px; background:white; font-size:13px; cursor:pointer; color:#666; transition:all 0.15s; font-family:inherit; font-weight:500; }
+  .filter-btn.active { background:#E8761A; color:white; border-color:#E8761A; }
+  .filter-btn:hover:not(.active) { border-color:#E8761A; color:#E8761A; }
+  .dash-select { font-size:12px; padding:6px 10px; border:1.5px solid #e8e8e8; border-radius:8px; color:#444; background:white; outline:none; font-family:inherit; }
+  .dash-select:focus { border-color:#E8761A; }
+
+  /* ── Pagination ── */
+  .pagination { display:flex; justify-content:center; align-items:center; gap:5px; margin-top:14px; flex-wrap:wrap; }
+  .page-btn { padding:7px 12px; border:1.5px solid #e8e8e8; border-radius:8px; background:white; font-size:13px; cursor:pointer; color:#666; transition:all 0.15s; font-family:inherit; }
+  .page-btn.active { background:#E8761A; color:white; border-color:#E8761A; }
+  .page-btn:hover:not(.active):not(:disabled) { border-color:#E8761A; color:#E8761A; }
+  .page-btn:disabled { opacity:0.35; cursor:not-allowed; }
+  .page-ellipsis { font-size:13px; color:#bbb; padding:0 4px; }
+
+  /* ── Case cards ── */
+  .case-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:15px; margin-bottom:11px; }
+  .case-card.is-closed { background:#f8f6f3; }
+  .case-card.is-flagged { background:#f5f5f5; opacity:0.72; }
+  .case-card.is-flagged .case-title,
+  .case-card.is-flagged .case-desc { text-decoration:line-through; color:#bbb; }
+  .case-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+  .case-id { font-size:11px; color:#bbb; font-weight:500; }
+  .case-title { font-size:15px; font-weight:600; color:#1a1a1a; margin:3px 0 4px; }
+  .case-meta { font-size:12px; color:#aaa; margin-bottom:9px; }
+  .case-desc { font-size:13px; color:#555; background:#faf8f5; border-radius:8px; padding:9px 11px; margin-bottom:11px; border-left:3px solid #E8761A; }
+  .badge { font-size:11px; padding:4px 11px; border-radius:20px; font-weight:600; white-space:nowrap; }
+  .badge.pending { background:#FEF0E3; color:#C05E0A; }
+  .badge.done { background:#E6F4EA; color:#2D7A3E; }
+  .badge.flagged { background:#f0f0f0; color:#999; }
+
+  /* ── Mgr fields ── */
+  .mgr-field { margin-bottom:10px; }
+  .mgr-label { font-size:11px; color:#aaa; display:flex; align-items:center; gap:5px; margin-bottom:5px; font-weight:500; }
+  .opt-tag { font-size:10px; color:#bbb; background:#f2f2f2; padding:1px 6px; border-radius:4px; }
+  .tooltip-wrap { position:relative; display:inline-flex; }
+  .tooltip-icon { font-size:12px; color:#ccc; cursor:default; }
+  .tooltip-wrap:hover .tooltip-box { display:block; }
+  .tooltip-box { display:none; position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:#333; color:white; font-size:11px; padding:5px 9px; border-radius:6px; white-space:nowrap; z-index:10; pointer-events:none; }
+  .mgr-field textarea, .mgr-field input[type=text] { width:100%; padding:8px 11px; border:1.5px solid #e8e8e8; border-radius:9px; font-size:13px; outline:none; font-family:inherit; color:#1a1a1a; background:white; }
+  .mgr-field textarea { min-height:62px; resize:vertical; }
+  .mgr-field textarea:focus, .mgr-field input[type=text]:focus { border-color:#E8761A; }
+
+  /* ── Flag buttons ── */
+  .flag-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .flag-btn { padding:5px 12px; border:1.5px solid #ccc; border-radius:20px; background:white; font-size:12px; cursor:pointer; color:#555; transition:all 0.15s; font-family:inherit; font-weight:500; }
+  .flag-btn.active-flag { background:#E8761A; color:white; border-color:#E8761A; font-weight:600; }
+  .flag-btn:hover:not(.active-flag) { border-color:#E8761A; color:#E8761A; }
+
+  .btn-row { display:flex; gap:8px; margin-top:10px; }
+  .btn-save { flex:1; padding:9px; background:#E8761A; color:white; border:none; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-save:hover { background:#d06815; }
+  .btn-close-case { flex:1; padding:9px; background:#2D7A3E; color:white; border:none; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-close-case:hover { background:#246332; }
+  .btn-reopen { flex:1; padding:9px; background:#f0f0f0; color:#666; border:none; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-reopen:hover { background:#e5e5e5; }
+
+  /* ── Dashboard ── */
+  .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
+  .stat-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:16px; text-align:center; }
+  .stat-num { font-size:28px; font-weight:700; }
+  .stat-num.orange { color:#E8761A; }
+  .stat-num.green { color:#2D7A3E; }
+  .stat-num.navy { color:#1a3a5c; }
+  .stat-num.gray { color:#aaa; }
+  .stat-label { font-size:12px; color:#bbb; margin-top:4px; font-weight:500; }
+  .chart-wrap { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:18px; margin-bottom:14px; }
+  .chart-title { font-size:13px; font-weight:700; margin-bottom:14px; color:#1a1a1a; }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:12px; }
+  .bar-label { width:54px; color:#666; text-align:right; flex-shrink:0; }
+  .bar-track { flex:1; background:#f2ede8; border-radius:5px; height:16px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:5px; transition:width 0.5s ease; min-width:4px; }
+  .bar-val { width:28px; color:#444; font-weight:600; }
+
+  /* ── Time filter ── */
+  .time-filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .time-btn { padding:7px 13px; border:1.5px solid #e8e8e8; border-radius:20px; background:white; font-size:12px; cursor:pointer; color:#666; transition:all 0.15s; font-family:inherit; font-weight:500; }
+  .time-btn.active { background:#E8761A; color:white; border-color:#E8761A; }
+  .time-btn:hover:not(.active) { border-color:#E8761A; color:#E8761A; }
+  .custom-range { display:flex; gap:8px; align-items:center; margin-bottom:14px; }
+  .custom-range input { padding:7px 10px; border:1.5px solid #e8e8e8; border-radius:9px; font-size:12px; color:#444; outline:none; font-family:inherit; }
+  .custom-range input:focus { border-color:#E8761A; }
+  .custom-range span { font-size:12px; color:#aaa; }
+
+  /* ── Loc table ── */
+  .loc-entry { margin-bottom:13px; padding-bottom:13px; border-bottom:1px solid #f2ede8; }
+  .loc-entry:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .loc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+  .loc-name { font-size:13px; font-weight:600; color:#1a1a1a; }
+  .loc-area-tag { font-size:11px; color:#bbb; margin-left:6px; }
+  .loc-badges { display:flex; gap:5px; flex-shrink:0; }
+  .lb-p { font-size:11px; padding:2px 8px; border-radius:20px; background:#FEF0E3; color:#C05E0A; font-weight:600; }
+  .lb-d { font-size:11px; padding:2px 8px; border-radius:20px; background:#E6F4EA; color:#2D7A3E; font-weight:600; }
+
+  /* ── Recent ── */
+  .recent-item { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid #f2ede8; font-size:13px; }
+  .recent-item:last-child { border-bottom:none; }
+
+  /* ── Public query ── */
+  .pub-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:14px; margin-bottom:10px; }
+  .pub-card.is-flagged { background:#f5f5f5; opacity:0.65; }
+  .pub-card.is-flagged .pub-title,
+  .pub-card.is-flagged .pub-desc { text-decoration:line-through; color:#bbb; }
+  .pub-title { font-size:14px; font-weight:600; color:#1a1a1a; margin:3px 0 3px; }
+  .pub-meta { font-size:12px; color:#bbb; margin-bottom:8px; }
+  .pub-desc { font-size:13px; color:#666; background:#faf8f5; border-radius:8px; padding:8px 11px; border-left:3px solid #E8761A; }
+  .pub-note { font-size:12px; color:#aaa; margin-top:7px; font-style:italic; }
+
+  .empty-state { text-align:center; color:#ccc; padding:40px 0; font-size:14px; }
+
+  /* ── Photo Upload ── */
+  .photo-upload-area { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .photo-slot { width:80px; height:80px; border:1.5px dashed #e8e8e8; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; overflow:hidden; background:#faf8f5; transition:border 0.15s; flex-shrink:0; }
+  .photo-slot:hover { border-color:#E8761A; }
+  .photo-slot img { width:100%; height:100%; object-fit:cover; border-radius:9px; }
+  .photo-slot .photo-add { font-size:24px; color:#ccc; }
+  .photo-slot .photo-del { position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(0,0,0,0.5); color:white; border-radius:50%; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:1; }
+  .photo-preview-wrap { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .photo-preview-img { width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; }
+
+  /* ── Export Modal ── */
+  .export-range-btn { padding:9px; border:1.5px solid #e8e8e8; border-radius:9px; background:white; font-size:13px; cursor:pointer; color:#666; transition:all 0.15s; font-family:inherit; font-weight:500; width:100%; }
+  .export-range-btn.active-export { background:#1a3a5c; color:white; border-color:#1a3a5c; }
+  .export-range-btn:hover:not(.active-export) { border-color:#1a3a5c; color:#1a3a5c; }
+
+  /* ── Pie Chart ── */
+  .pie-wrap { display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+  .pie-canvas-wrap { position:relative; flex-shrink:0; }
+  .pie-legend { flex:1; min-width:140px; }
+  .pie-legend-item { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; }
+  .pie-legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .pie-legend-label { color:#444; flex:1; }
+  .pie-legend-val { color:#aaa; font-size:12px; }
+  @media (max-width: 480px) { .pie-chart-grid { grid-template-columns: 1fr !important; } }
+  @media (max-width: 480px) {
+    .pie-chart-grid { grid-template-columns: 1fr !important; }
+  }
+  #normPreview { display:none; margin-top:5px; font-size:12px; color:#E8761A; background:#FEF0E3; border-radius:7px; padding:5px 10px; }
+  .dash-filter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">🌟 渴望園區報修系統</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="switchPage(&#39;form&#39;)">報修申請</div>
+    <div class="nav-tab" onclick="switchPage(&#39;query&#39;)">案件查詢</div>
+    <div class="nav-tab" onclick="requireAuth(&#39;mgr&#39;)">修繕管理</div>
+    <div class="nav-tab" onclick="requireAuth(&#39;dash&#39;)">後台統計</div>
+  </div>
+  <div class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">登出</div>
+</nav>
+
+<!-- ── 密碼鎖 ── -->
+<div id="page-lock" class="page" style="display:none;">
+  <div class="lock-overlay">
+    <div class="lock-box">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">後台管理區</div>
+      <div class="lock-sub">請輸入管理密碼才能進入</div>
+      <input class="lock-input" type="password" id="pwInput" placeholder="••••••" maxlength="20" onkeydown="if(event.key===&#39;Enter&#39;) checkPassword()">
+      <button class="lock-btn" onclick="checkPassword()">進入</button>
+      <div class="lock-err" id="pwErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 報修表單 ══ -->
+<div id="page-form" class="page active">
+  <div class="card">
+    <div class="card-header">🔧 設施報修申請</div>
+    <div class="card-body">
+      <div class="section-label">基本資料</div>
+      <div class="field">
+        <label>申請單位 *</label>
+        <div class="loc-type-row" style="flex-wrap:wrap;" id="unit-btn-row">
+          <button class="loc-type-btn" onclick="setUnit(&#39;房務部&#39;,this)">房務部</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;旅館營運&#39;,this)">旅館營運</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;健康休閒&#39;,this)">健康休閒</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;會議組&#39;,this)">會議組</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;餐飲事業&#39;,this)">餐飲事業</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;行政支援&#39;,this)">行政支援</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;園區營繕&#39;,this)">園區營繕</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;雅舍櫃台&#39;,this)">雅舍櫃台</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;研究園櫃台&#39;,this)">研究園櫃台</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;智尊櫃台&#39;,this)">智尊櫃台</button>
+          <button class="loc-type-btn" onclick="setUnit(&#39;其他&#39;,this)">其他</button>
+        </div>
+        <input type="text" id="f-unit" placeholder="請輸入單位名稱" style="display:none;margin-top:8px;">
+      </div>
+      <div class="field"><label>申請人姓名 *</label><input type="text" id="f-name" placeholder="請輸入姓名"></div>
+      <div class="field"><label>報修日期</label><input type="text" id="f-date" readonly=""></div>
+      <div class="divider"></div>
+      <div class="section-label">報修地點</div>
+      <div class="field">
+        <label>區域 *</label>
+        <div class="loc-type-row" style="flex-wrap:wrap;" id="area-btn-row">
+          <button class="loc-type-btn" onclick="setArea('會館',this)">會館</button>
+          <button class="loc-type-btn" onclick="setArea('雅舍',this)">雅舍</button>
+          <button class="loc-type-btn" onclick="setArea('研究園',this)">研究園</button>
+          <button class="loc-type-btn" onclick="setArea('智尊',this)">智尊</button>
+          <button class="loc-type-btn" onclick="setArea('其他',this)">其他</button>
+        </div>
+        <input type="hidden" id="f-area" value="">
+      </div>
+      <div class="field">
+        <label>位置類型 *</label>
+        <div class="loc-type-row" id="loctype-btn-row">
+          <button class="loc-type-btn" id="btn-room" onclick="setLocType(&#39;room&#39;,this)">🚪 客房</button>
+          <button class="loc-type-btn" onclick="setLocType(&#39;restaurant&#39;,this)">🍽️ 餐廳</button>
+          <button class="loc-type-btn" onclick="setLocType(&#39;facility&#39;,this)">🏛️ 設施</button>
+          <button class="loc-type-btn" onclick="setLocType(&#39;other&#39;,this)">📍 公共區域／其他</button>
+        </div>
+        <div id="loc-input-wrap" style="display:none; margin-top:2px;">
+          <input type="text" id="f-location" placeholder="" oninput="showNormPreview()">
+          <div class="hint" id="loc-hint"></div>
+          <div id="normPreview">將儲存為：<span id="normValue"></span></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-label">故障情形</div>
+      <div class="field">
+        <label>故障狀況描述 *</label>
+        <textarea id="f-desc" placeholder="請詳細描述故障狀況…"></textarea>
+      </div>
+      <div class="field">
+        <label>報修照片 <span style="font-size:11px;color:#bbb;font-weight:400;">選填，最多 2 張</span></label>
+        <div class="photo-upload-area" id="report-photo-area">
+          <div class="photo-slot" onclick="triggerPhotoUpload('report',0)" id="report-slot-0"><span class="photo-add">+</span></div>
+          <div class="photo-slot" onclick="triggerPhotoUpload('report',1)" id="report-slot-1"><span class="photo-add">+</span></div>
+        </div>
+        <input type="file" id="report-file-0" accept="image/*" style="display:none" onchange="handlePhotoUpload('report',0,this)">
+        <input type="file" id="report-file-1" accept="image/*" style="display:none" onchange="handlePhotoUpload('report',1,this)">
+      </div>
+      <div class="field">
+        <label>結案通知 Email <span style="font-size:11px;color:#bbb;font-weight:400;">選填，結案時將自動通知</span></label>
+        <input type="email" id="f-email" placeholder="請輸入 Email（選填）">
+      </div>
+      <button class="btn-primary" id="submitBtn" onclick="submitForm()">送出報修申請</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 案件查詢（公開）══ -->
+<div id="page-query" class="page">
+  <!-- 姓名查詢模式 -->
+  <div id="query-name-mode">
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-body" style="padding:16px;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>輸入報修人姓名查詢案件</label>
+          <input type="text" id="query-name-input" placeholder="請輸入您的姓名…" onkeydown="if(event.key==='Enter')searchByName()">
+        </div>
+        <button class="btn-primary" onclick="searchByName()" style="padding:10px;">查詢</button>
+      </div>
+    </div>
+    <div id="query-status-filter" style="display:none;margin-bottom:10px;">
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="filterQueryStatus('待處理',this)">待處理</button>
+        <button class="filter-btn" onclick="filterQueryStatus('已結案',this)">已結案</button>
+      </div>
+    </div>
+    <div id="queryList"><div class="empty-state" style="color:#ccc;">請輸入姓名後查詢</div></div>
+    <div id="queryPagination" class="pagination"></div>
+  </div>
+  <!-- GM 全覽模式（隱藏） -->
+  <div id="query-gm-mode" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:12px;color:#E8761A;font-weight:600;">🔓 主管檢視模式</span>
+      <button onclick="exitGmMode()" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer;">退出</button>
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="filterQuery('待處理',this)">待處理</button>
+      <button class="filter-btn" onclick="filterQuery('已結案',this)">已結案</button>
+    </div>
+    <div class="filter-row" style="flex-wrap:wrap;gap:6px;" id="query-area-row">
+      <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('all',this)">全部</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('會館',this)">會館</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍',this)">雅舍</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('研究園',this)">研究園</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('智尊',this)">智尊</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('其他',this)">其他</button>
+    </div>
+    <div id="queryListGm"><div class="empty-state">載入中…</div></div>
+    <div id="queryPaginationGm" class="pagination"></div>
+  </div>
+</div>
+
+<!-- ══ 修繕管理 ══ -->
+<div id="page-mgr" class="page">
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
+    <button class="filter-btn" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
+  </div>
+  <div class="filter-row" style="flex-wrap:wrap;gap:6px;" id="mgr-area-row">
+    <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;all&#39;,this)">全部</button>
+    <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;會館&#39;,this)">會館</button>
+    <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;雅舍&#39;,this)">雅舍</button>
+    <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;研究園&#39;,this)">研究園</button>
+    <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;智尊&#39;,this)">智尊</button>
+    <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;其他&#39;,this)">其他</button>
+  </div>
+  <div id="caseList"><div class="empty-state">載入中…</div></div>
+  <div id="mgrPagination" class="pagination"></div>
+</div>
+
+<!-- ══ 後台統計 ══ -->
+<div id="page-dash" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <button onclick="openExportModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📊 下載報告</button>
+  </div>
+  <div class="time-filter-row">
+    <button class="time-btn active" onclick="setTimeFilter(&#39;month&#39;,this)">本月</button>
+    <button class="time-btn" onclick="setTimeFilter(&#39;3month&#39;,this)">近三個月</button>
+    <button class="time-btn" onclick="setTimeFilter(&#39;year&#39;,this)">今年</button>
+    <button class="time-btn" onclick="setTimeFilter(&#39;all&#39;,this)">全部</button>
+    <button class="time-btn" onclick="setTimeFilter(&#39;custom&#39;,this)">自訂</button>
+  </div>
+  <div class="time-filter-row" style="margin-bottom:10px;">
+    <button class="time-btn active" onclick="setAreaDashFilter(&#39;all&#39;,this)">全部棟別</button>
+    <button class="time-btn" onclick="setAreaDashFilter(&#39;會館&#39;,this)">會館</button>
+    <button class="time-btn" onclick="setAreaDashFilter(&#39;雅舍&#39;,this)">雅舍</button>
+    <button class="time-btn" onclick="setAreaDashFilter(&#39;研究園&#39;,this)">研究園</button>
+    <button class="time-btn" onclick="setAreaDashFilter(&#39;智尊&#39;,this)">智尊</button>
+    <button class="time-btn" onclick="setAreaDashFilter(&#39;其他&#39;,this)">其他</button>
+  </div>
+  <div id="customRangeWrap" class="custom-range" style="display:none;">
+    <input type="date" id="dateFrom" onchange="renderDashboard()">
+    <span>至</span>
+    <input type="date" id="dateTo" onchange="renderDashboard()">
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
+    <div class="stat-card"><div class="stat-num orange" id="d-pending">—</div><div class="stat-label">待處理</div></div>
+    <div class="stat-card"><div class="stat-num green" id="d-done">—</div><div class="stat-label">已結案</div></div>
+    <div class="stat-card"><div class="stat-num gray" id="d-rate">—</div><div class="stat-label">結案率</div></div>
+  </div>
+  <div class="pie-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div class="chart-wrap" style="margin-bottom:0;">
+      <div class="chart-title">各區域維修比例</div>
+      <div id="areaChart"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:0;">
+      <div class="chart-title">位置類型統計</div>
+      <div id="locTypeChart"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
+    </div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">維修類別比例</div>
+    <div id="caseTypeChart"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">位置病歷表 <span style="font-size:11px;color:#bbb;font-weight:400;">依報修次數排序</span></div>
+    <div style="margin-top:14px;" id="locationTable"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">最近案件</div>
+    <div id="recentList"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ 匯出報告 Modal ══ -->
+<div id="exportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:18px;padding:28px;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:18px;">📊 下載報告</div>
+    <div style="font-size:12px;color:#666;margin-bottom:8px;font-weight:500;">時間區間</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      <button class="export-range-btn active-export" onclick="setExportRange('month',this)">本月</button>
+      <button class="export-range-btn" onclick="setExportRange('3month',this)">近三個月</button>
+      <button class="export-range-btn" onclick="setExportRange('all',this)">全部</button>
+      <button class="export-range-btn" onclick="setExportRange('custom',this)">自訂範圍</button>
+    </div>
+    <div id="exportCustomRange" style="display:none;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="exportDateFrom" style="flex:1;padding:7px 10px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:12px;outline:none;font-family:inherit;">
+        <span style="font-size:12px;color:#aaa;">至</span>
+        <input type="date" id="exportDateTo" style="flex:1;padding:7px 10px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:12px;outline:none;font-family:inherit;">
+      </div>
+    </div>
+    <div style="font-size:12px;color:#666;margin-bottom:8px;font-weight:500;">包含內容</div>
+    <div style="margin-bottom:18px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
+        <input type="checkbox" checked disabled style="width:15px;height:15px;"> 統計摘要
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
+        <input type="checkbox" checked disabled style="width:15px;height:15px;"> 各區域比例
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
+        <input type="checkbox" checked disabled style="width:15px;height:15px;"> 維修類別比例
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
+        <input type="checkbox" checked disabled style="width:15px;height:15px;"> 位置病歷表 Top 10
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
+        <input type="checkbox" id="exportIncludeDetail" style="width:15px;height:15px;accent-color:#E8761A;"> 案件明細清單
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeExportModal()" style="flex:1;padding:11px;background:#f0f0f0;color:#666;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
+      <button onclick="exportExcel()" id="exportBtn" style="flex:2;padding:11px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">下載 Excel</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyDHXpaV6JUrlLynauBCtYrgIw4kYKwDxpuPdSJmZ_7xpzPLczsijgIc2LE_3koJbMj/exec';
+// 密碼驗證已移至後端
+const PAGE_SIZE = 20;
+
+let allCases = [];
+let currentFilter = '待處理';
+let currentQueryFilter = '待處理';
+let currentMgrArea = 'all';
+let currentQueryArea = 'all';
+let currentTimeFilter = 'month';
+let currentAreaDashFilter = 'all';
+let mgrPage = 1;
+let queryPage = 1;
+let locType = '';
+let pendingPage = null;
+
+const AREA_COLORS = { '會館':'#E8761A', '雅舍':'#1a3a5c', '研究園':'#2D7A3E', '智尊':'#8B5CF6', '其他':'#aaa' };
+
+// ── 初始化 ──
+window.onload = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  document.getElementById('f-date').value = `${y}/${m}/${d}`;
+};
+
+// ── 位置類型 ──
+function setUnit(unit, btn) {
+  document.querySelectorAll('#unit-btn-row .loc-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const input = document.getElementById('f-unit');
+  if (unit === '其他') {
+    input.style.display = 'block';
+    input.value = '';
+    input.focus();
+  } else {
+    input.style.display = 'none';
+    input.value = unit;
+  }
+}
+
+function setArea(area, btn) {
+  document.querySelectorAll('#area-btn-row .loc-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('f-area').value = area;
+  const roomBtn = document.getElementById('btn-room');
+  if (area === '研究園' || area === '智尊') {
+    roomBtn.textContent = '🏢 辦公室';
+  } else {
+    roomBtn.textContent = '🚪 客房';
+  }
+  document.querySelectorAll('#loctype-btn-row .loc-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('loc-input-wrap').style.display = 'none';
+  document.getElementById('normPreview').style.display = 'none';
+  locType = '';
+}
+
+function setLocType(type, btn) {
+  locType = type;
+  document.querySelectorAll('#loctype-btn-row .loc-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const wrap = document.getElementById('loc-input-wrap');
+  const input = document.getElementById('f-location');
+  const hint = document.getElementById('loc-hint');
+  wrap.style.display = 'block';
+  document.getElementById('normPreview').style.display = 'none';
+  input.value = '';
+  const areaVal = document.getElementById('f-area').value;
+  const isOffice = (areaVal === '研究園' || areaVal === '智尊');
+  if (type==='room') { input.placeholder= isOffice ? '請輸入辦公室編號，例：A401、B102C' : '請輸入房號，例：502'; hint.textContent= isOffice ? '' : '輸入數字即可，系統會自動標準化'; }
+  else if (type==='restaurant') { input.placeholder='例：中餐廳、咖啡廳、宴會廳…'; hint.textContent=''; }
+  else if (type==='facility') { input.placeholder='例：休閒部、教室、會議室、交誼廳…'; hint.textContent=''; }
+  else { input.placeholder='例：廁所、走廊、停車場、小熊廣場…'; hint.textContent=''; }
+}
+
+// ── 位置標準化 ──
+function normalizeLocation(raw) {
+  if (!raw) return '';
+  raw = String(raw);
+  if (!raw.trim()) return '';
+  let s = raw.trim();
+  s = s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const cnMap = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+  s = s.replace(/[一二三四五六七八九零十百]+/g, m => {
+    let n = 0;
+    if (m.includes('十')) {
+      const parts = m.split('十');
+      const left = parts[0] ? parts[0].split('').reduce((a,c)=>a*10+(cnMap[c]??0),0) : 1;
+      const right = parts[1] ? parts[1].split('').reduce((a,c)=>a*10+(cnMap[c]??0),0) : 0;
+      n = left*10 + right;
+    } else {
+      n = m.split('').reduce((a,c)=>a*10+(cnMap[c]??0),0);
+    }
+    return n>0 ? String(n) : m;
+  });
+  s = s.replace(/(\d+)\s*[樓层F]/g, '$1F');
+  s = s.replace(/走道|廊道|通道/g, '走廊');
+  s = s.replace(/厅/g, '廳');
+  s = s.replace(/(\d+)\s*[號号]\s*[房室間]?/g, '$1');
+  s = s.replace(/(\d+)\s*[室房間]/g, '$1');
+  s = s.replace(/[、，,。.]\s*$/, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+function showNormPreview() {
+  const raw = document.getElementById('f-location').value;
+  const norm = normalizeLocation(raw);
+  const preview = document.getElementById('normPreview');
+  if (norm && norm !== raw.trim()) {
+    document.getElementById('normValue').textContent = norm;
+    preview.style.display = 'block';
+  } else { preview.style.display = 'none'; }
+}
+
+// ── 權限 ──
+function requireAuth(id) {
+  if (sessionStorage.getItem('adminAuth')==='yes') { switchPage(id); }
+  else { pendingPage = id; showLock(); }
+}
+function showLock() {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  const el = document.getElementById('page-lock');
+  el.style.display='block'; el.classList.add('active');
+  document.getElementById('pwInput').value='';
+  document.getElementById('pwErr').textContent='';
+  setTimeout(()=>document.getElementById('pwInput').focus(),100);
+}
+function checkPassword() {
+  const pw = document.getElementById('pwInput').value;
+  if (pw===ADMIN_PASSWORD) {
+    sessionStorage.setItem('adminAuth','yes');
+    document.getElementById('page-lock').style.display='none';
+    document.getElementById('logoutBtn').style.display='flex';
+    switchPage(pendingPage||'mgr'); pendingPage=null;
+  } else {
+    document.getElementById('pwErr').textContent='密碼錯誤，請再試一次';
+    document.getElementById('pwInput').value='';
+    document.getElementById('pwInput').focus();
+  }
+}
+function logout() {
+  sessionStorage.removeItem('adminToken');
+  document.getElementById('logoutBtn').style.display='none';
+  switchPage('form'); showToast('已登出後台');
+}
+
+// ── 頁面切換 ──
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-lock').style.display='none';
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const idx = ['form','query','mgr','dash'].indexOf(id);
+  if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if (['mgr','dash','query'].includes(id)) loadCases();
+}
+
+// ── 送出報修 ──
+async function submitForm() {
+  const unit = document.getElementById('f-unit').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+  const area = document.getElementById('f-area').value;
+  const desc = document.getElementById('f-desc').value.trim();
+  if (!unit) { showToast('請選擇申請單位'); return; }
+  if (!name) { showToast('請填寫申請人姓名'); return; }
+  if (!area) { showToast('請選擇區域'); return; }
+  if (!locType) { showToast('請選擇位置類型'); return; }
+  if (!desc) { showToast('請填寫故障狀況描述'); return; }
+  const now = new Date();
+  const datetime = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const btn = document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='送出中…';
+  try {
+    const isOfficeArea = (area === '研究園' || area === '智尊');
+    const locTypeLabel = locType==='room' ? (isOfficeArea?'辦公室':'客房') : ({restaurant:'餐廳',facility:'設施',other:'公共區域／其他'}[locType]||'');
+    const location = normalizeLocation(document.getElementById('f-location').value.trim());
+    const email = document.getElementById('f-email').value.trim();
+    const reportPhotos = (photoData.report||[]).filter(Boolean);
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action:'submit', unit, name, datetime, area, locationType:locTypeLabel, location, description:desc, email, reportPhotos })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✓ '+data.message);
+      ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
+      photoData.report = [null, null];
+      document.getElementById('report-slot-0').innerHTML = '<span class="photo-add">+</span>';
+      document.getElementById('report-slot-1').innerHTML = '<span class="photo-add">+</span>';
+      document.getElementById('loc-input-wrap').style.display='none';
+      document.getElementById('normPreview').style.display='none';
+      document.querySelectorAll('#unit-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('#area-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('#loctype-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById('btn-room').textContent='🚪 客房';
+      document.getElementById('f-unit').style.display='none';
+      locType='';
+    } else { showToast('錯誤：'+data.message); }
+  } catch(e) { showToast('連線失敗，請檢查網路'); }
+  btn.disabled=false; btn.textContent='送出報修申請';
+}
+
+// ── 載入案件 ──
+async function loadCases() {
+  try {
+    const res = await fetch(API_URL+'?action=getAll');
+    const data = await res.json();
+    if (data.success) {
+      allCases = data.cases.reverse();
+      renderCases(); renderQuery(); renderDashboard();
+    }
+  } catch(e) {
+    document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請檢查連線</div>';
+  }
+}
+
+// ── 修繕管理 ──
+function filterMgrArea(area, btn) {
+  currentMgrArea = area;
+  mgrPage = 1;
+  document.querySelectorAll('#mgr-area-row .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCases();
+}
+
+function filterCases(status, btn) {
+  currentFilter=status; mgrPage=1;
+  document.querySelectorAll('#page-mgr .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderCases();
+}
+
+function renderCases() {
+  const list = document.getElementById('caseList');
+  let filtered = allCases.filter(c=>c.status===currentFilter);
+  if (currentMgrArea!=='all') filtered=filtered.filter(c=>c.area===currentMgrArea);
+  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
+  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
+  if (mgrPage>totalPages) mgrPage=totalPages;
+  const paged = filtered.slice((mgrPage-1)*PAGE_SIZE, mgrPage*PAGE_SIZE);
+
+  list.innerHTML = paged.map(c => {
+    const isFlagged = !!c.flagReason;
+    const cls = isFlagged ? 'case-card is-flagged' : currentFilter==='已結案' ? 'case-card is-closed' : 'case-card';
+    const locDisplay = c.normalizedLocation || c.location || '—';
+    return `<div class="${cls}">
+      <div class="case-top">
+        <div>
+          <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
+          <div class="case-title">${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}</div>
+          <div class="case-meta">${c.unit} · ${c.name}</div>
+        </div>
+        <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
+      </div>
+      <div class="case-desc">${c.description}</div>
+      <div class="mgr-field">
+        <div class="mgr-label">案件類型 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
+        <div class="flag-row" id="ctype-${c.rowIndex}">
+          ${['給排水','電力','消防','空調','弱電','電梯','建物土木','照明','衛浴','其他'].map(f=>`<button class="flag-btn${c.caseType&&c.caseType.startsWith(f)?' active-flag':''}" onclick="toggleCaseType(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
+        </div>
+        <input type="text" id="ctype-other-${c.rowIndex}" placeholder="請描述類型（選填）"
+          style="display:${c.caseType&&c.caseType.startsWith('其他')&&c.caseType.length>2?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
+          value="${c.caseType&&c.caseType.startsWith('其他')?c.caseType.replace('其他：',''):''}">
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">更正位置類型 <span class="opt-tag">選填</span></div>
+        <div class="flag-row" id="ltype-${c.rowIndex}">
+          ${(()=>{
+            const isOffice = (c.area==='研究園'||c.area==='智尊');
+            return ['客房','餐廳','設施','公共區域／其他'].map(f=>{
+              const label = (f==='客房'&&isOffice)?'辦公室':f;
+              const matchVal = (f==='客房'&&isOffice)?'辦公室':f;
+              const isActive = c.correctedLocType === matchVal;
+              const isOriginal = !c.correctedLocType && (c.locationType === matchVal || (f==='客房'&&isOffice&&c.locationType==='辦公室'));
+              const style = isOriginal ? 'opacity:0.4;border-style:dashed;' : '';
+              return `<button class="flag-btn${isActive?' active-flag':''}" style="${style}" onclick="toggleLocType(${c.rowIndex},'${matchVal}',this)" title="${isOriginal?'報修人原始值，點擊確認更正':''}">${label}</button>`;
+            }).join('');
+          })()}
+        </div>
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">
+          標準化位置 <span class="opt-tag">選填</span>
+          <span class="tooltip-wrap"><span class="tooltip-icon">ⓘ</span><span class="tooltip-box">填入後病歷表將優先以此統計，可隨時修改</span></span>
+        </div>
+        <input type="text" id="norm-${c.rowIndex}" value="${c.normalizedLocation||''}" placeholder="例：3F走廊、502（統一名稱）" />
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">結案人 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
+        <div class="flag-row" id="closer-${c.rowIndex}">
+          ${['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','其他'].map(f=>`<button class="flag-btn${(c.closerName||'')===f?' active-flag':''}" onclick="toggleCloser(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
+        </div>
+        <input type="text" id="closer-other-${c.rowIndex}" placeholder="請輸入結案人姓名"
+          style="display:${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'].includes(c.closerName)&&c.closerName?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
+          value="${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'].includes(c.closerName)?c.closerName:''}">
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">維修記錄</div>
+        <textarea id="note-${c.rowIndex}" placeholder="填寫處理情形…">${c.repairNote||''}</textarea>
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">結案照片 <span class="opt-tag">選填，最多 2 張</span></div>
+        <div class="photo-upload-area" id="close-photo-area-${c.rowIndex}">
+          <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',0)" id="close-slot-${c.rowIndex}-0">
+            ${c.closePhotos&&c.closePhotos[0]?`<img src="${c.closePhotos[0]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',0)">×</div>`:'<span class="photo-add">+</span>'}
+          </div>
+          <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',1)" id="close-slot-${c.rowIndex}-1">
+            ${c.closePhotos&&c.closePhotos[1]?`<img src="${c.closePhotos[1]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',1)">×</div>`:'<span class="photo-add">+</span>'}
+          </div>
+        </div>
+        <input type="file" id="close-file-${c.rowIndex}-0" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',0,this)">
+        <input type="file" id="close-file-${c.rowIndex}-1" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',1,this)">
+        ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">標記原因 <span class="opt-tag">選填，標記後不列入病歷表統計</span></div>
+        <div class="flag-row" id="flags-${c.rowIndex}">
+          ${['寫錯','重複報修','測試'].map(f=>`<button class="flag-btn${c.flagReason===f?' active-flag':''}" onclick="toggleFlag(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-save" onclick="updateCase(${c.rowIndex})">儲存</button>
+        ${c.status==='待處理'
+          ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">結案</button>`
+          : `<button class="btn-reopen" onclick="reopenCase(${c.rowIndex})">取消結案</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
+}
+
+function toggleLocType(rowIndex, type, btn) {
+  const btns = document.getElementById('ltype-'+rowIndex).querySelectorAll('.flag-btn');
+  const wasActive = btn.classList.contains('active-flag');
+  btns.forEach(b=>b.classList.remove('active-flag'));
+  if (!wasActive) btn.classList.add('active-flag');
+}
+
+function getSelectedLocType(rowIndex) {
+  const el = document.getElementById('ltype-'+rowIndex);
+  if (!el) return '';
+  const active = el.querySelector('.active-flag');
+  return active ? active.textContent : '';
+}
+
+function toggleCaseType(rowIndex, type, btn) {
+  const btns = document.getElementById('ctype-'+rowIndex).querySelectorAll('.flag-btn');
+  btns.forEach(b=>b.classList.remove('active-flag'));
+  btn.classList.add('active-flag');
+  const otherInput = document.getElementById('ctype-other-'+rowIndex);
+  if (otherInput) otherInput.style.display = type==='其他' ? 'block' : 'none';
+}
+
+function getSelectedCaseType(rowIndex) {
+  const el = document.getElementById('ctype-'+rowIndex);
+  if (!el) return '';
+  const active = el.querySelector('.active-flag');
+  if (!active) return '';
+  const type = active.textContent;
+  if (type === '其他') {
+    const otherInput = document.getElementById('ctype-other-'+rowIndex);
+    const otherVal = otherInput ? otherInput.value.trim() : '';
+    return otherVal ? '其他：' + otherVal : '其他';
+  }
+  return type;
+}
+
+function toggleCloser(rowIndex, name, btn) {
+  const btns = document.getElementById('closer-'+rowIndex).querySelectorAll('.flag-btn');
+  btns.forEach(b=>b.classList.remove('active-flag'));
+  btn.classList.add('active-flag');
+  const otherInput = document.getElementById('closer-other-'+rowIndex);
+  if (otherInput) otherInput.style.display = name==='其他' ? 'block' : 'none';
+}
+
+function getSelectedCloser(rowIndex) {
+  const el = document.getElementById('closer-'+rowIndex);
+  if (!el) return '';
+  const active = el.querySelector('.active-flag');
+  if (!active) return '';
+  const name = active.textContent;
+  if (name === '其他') {
+    const input = document.getElementById('closer-other-'+rowIndex);
+    return input ? input.value.trim() : '';
+  }
+  return name;
+}
+
+function toggleFlag(rowIndex, reason, btn) {
+  const btns = document.getElementById('flags-'+rowIndex).querySelectorAll('.flag-btn');
+  const wasActive = btn.classList.contains('active-flag');
+  btns.forEach(b=>b.classList.remove('active-flag'));
+  if (!wasActive) btn.classList.add('active-flag');
+}
+
+function getSelectedFlag(rowIndex) {
+  const el = document.getElementById('flags-'+rowIndex);
+  if (!el) return '';
+  const active = el.querySelector('.active-flag');
+  return active ? active.textContent : '';
+}
+
+async function updateCase(rowIndex) {
+  const note = document.getElementById('note-'+rowIndex).value;
+  const norm = document.getElementById('norm-'+rowIndex).value;
+  const flag = getSelectedFlag(rowIndex);
+  const caseType = getSelectedCaseType(rowIndex);
+  if (!caseType) { showToast('請選擇案件類型'); return; }
+  const correctedLocType = getSelectedLocType(rowIndex);
+  const closerName = getSelectedCloser(rowIndex);
+  const closePhotos = getClosePhotos(rowIndex);
+  await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
+  showToast('✓ 已儲存'); loadCases();
+}
+async function closeCase(rowIndex) {
+  const note = document.getElementById('note-'+rowIndex).value;
+  const norm = document.getElementById('norm-'+rowIndex).value;
+  const flag = getSelectedFlag(rowIndex);
+  const caseType = getSelectedCaseType(rowIndex);
+  if (!caseType) { showToast('請選擇案件類型'); return; }
+  const correctedLocType = getSelectedLocType(rowIndex);
+  const closerName = getSelectedCloser(rowIndex);
+  if (!closerName) { showToast('請選擇結案人'); return; }
+  const closePhotos = getClosePhotos(rowIndex);
+  await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
+  showToast('✓ 案件已結案'); loadCases();
+}
+async function reopenCase(rowIndex) {
+  await callApi({action:'reopen', rowIndex});
+  showToast('✓ 已取消結案'); loadCases();
+}
+async function callApi(params) {
+  const token = sessionStorage.getItem('adminToken');
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ ...params, token })
+  });
+  return res.json();
+}
+
+// ── 案件查詢（公開）──
+let gmMode = false;
+
+let currentQueryName = '';
+let currentQueryStatusFilter = 'all';
+
+async function searchByName() {
+  const input = document.getElementById('query-name-input').value.trim();
+  if (!input) { showToast('請輸入姓名'); return; }
+  if (input === 'GM123') {
+    enterGmMode();
+    return;
+  }
+  if (!allCases.length) await loadCases();
+  currentQueryName = input;
+  currentQueryStatusFilter = '待處理';
+  document.querySelectorAll('#query-status-filter .filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('#query-status-filter .filter-btn').classList.add('active');
+  document.getElementById('query-status-filter').style.display = 'block';
+  queryPage = 1;
+  renderQueryByName(input);
+}
+
+function filterQueryStatus(status, btn) {
+  currentQueryStatusFilter = status;
+  queryPage = 1;
+  document.querySelectorAll('#query-status-filter .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderQueryByName(currentQueryName);
+}
+
+function enterGmMode() {
+  gmMode = true;
+  document.getElementById('query-name-mode').style.display = 'none';
+  document.getElementById('query-gm-mode').style.display = 'block';
+  renderQueryGm();
+}
+
+function exitGmMode() {
+  gmMode = false;
+  document.getElementById('query-name-mode').style.display = 'block';
+  document.getElementById('query-gm-mode').style.display = 'none';
+  document.getElementById('query-name-input').value = '';
+}
+
+function renderQueryByName(name) {
+  const list = document.getElementById('queryList');
+  let filtered = allCases.filter(c => c.name && String(c.name).trim() === name);
+  if (currentQueryStatusFilter !== 'all') filtered = filtered.filter(c => c.status === currentQueryStatusFilter);
+  if (!filtered.length) { list.innerHTML='<div class="empty-state">查無符合條件的記錄</div>'; document.getElementById('queryPagination').innerHTML=''; return; }
+  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
+  if (queryPage>totalPages) queryPage=totalPages;
+  const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
+  list.innerHTML = paged.map(c => renderPubCard(c)).join('');
+  renderPagination('queryPagination', queryPage, totalPages, p=>{queryPage=p;renderQueryByName(name);});
+}
+
+function filterQueryArea(area, btn) {
+  currentQueryArea = area;
+  queryPage = 1;
+  document.querySelectorAll('#query-area-row .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderQueryGm();
+}
+
+function filterQuery(status, btn) {
+  currentQueryFilter=status; queryPage=1;
+  document.querySelectorAll('#query-gm-mode .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderQueryGm();
+}
+
+function renderQueryGm() {
+  const list = document.getElementById('queryListGm');
+  let filtered = allCases;
+  if (currentQueryFilter!=='all') filtered=filtered.filter(c=>c.status===currentQueryFilter);
+  if (currentQueryArea!=='all') filtered=filtered.filter(c=>c.area===currentQueryArea);
+  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; return; }
+  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
+  if (queryPage>totalPages) queryPage=totalPages;
+  const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
+  list.innerHTML = paged.map(c => renderPubCard(c)).join('');
+  renderPagination('queryPaginationGm', queryPage, totalPages, p=>{queryPage=p;renderQueryGm();});
+}
+
+function renderQuery() {
+  if (gmMode) renderQueryGm();
+}
+
+function renderPubCard(c) {
+  const isFlagged = !!c.flagReason;
+  const locDisplay = c.normalizedLocation||c.location||'—';
+  return `<div class="pub-card${isFlagged?' is-flagged':''}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
+        <div class="pub-title">${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}</div>
+        <div class="pub-meta">${c.unit} · ${c.name}</div>
+      </div>
+      <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
+    </div>
+    <div class="pub-desc">${c.description}</div>
+    ${c.repairNote?`<div class="pub-note">📋 維修記錄：${c.repairNote}</div>`:''}
+    ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
+    ${c.closePhotos&&c.closePhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">結案照片：</div><div class="photo-preview-wrap">${c.closePhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
+  </div>`;
+}
+
+// ── 分頁 ──
+function renderPagination(containerId, current, total, onChange) {
+  const el = document.getElementById(containerId);
+  if (total<=1) { el.innerHTML=''; return; }
+  let html = `<button class="page-btn" ${current===1?'disabled':''} onclick="(${onChange.toString()})(${current-1})">‹</button>`;
+  for (let i=1; i<=total; i++) {
+    if (total>7 && i>2 && i<total-1 && Math.abs(i-current)>1) {
+      if (i===3||i===total-2) html+=`<span class="page-ellipsis">…</span>`;
+      continue;
+    }
+    html+=`<button class="page-btn${i===current?' active':''}" onclick="(${onChange.toString()})(${i})">${i}</button>`;
+  }
+  html+=`<button class="page-btn" ${current===total?'disabled':''} onclick="(${onChange.toString()})(${current+1})">›</button>`;
+  el.innerHTML=html;
+}
+
+// ── 時間篩選 ──
+function setAreaDashFilter(area, btn) {
+  currentAreaDashFilter = area;
+  document.querySelectorAll('.time-filter-row:nth-child(2) .time-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDashboard();
+}
+
+function setTimeFilter(type, btn) {
+  currentTimeFilter=type;
+  document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('customRangeWrap').style.display = type==='custom'?'flex':'none';
+  renderDashboard();
+}
+
+function formatDatetime(raw) {
+  if (!raw) return '';
+  const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  // Try to parse
+  const m = String(raw).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) {
+    const d = new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+    const day = weekdays[d.getDay()];
+    return `${m[1]}/${String(m[2]).padStart(2,'0')}/${String(m[3]).padStart(2,'0')} ${day}`;
+  }
+  // GMT string fallback
+  const d = new Date(raw);
+  if (!isNaN(d)) {
+    const y = d.getFullYear();
+    const mo = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const day = weekdays[d.getDay()];
+    return `${y}/${mo}/${dd} ${day}`;
+  }
+  return raw;
+}
+
+function parseDate(raw) {
+  if (!raw) return null;
+  const m1 = String(raw).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if (m1) return new Date(parseInt(m1[1]), parseInt(m1[2])-1, parseInt(m1[3]));
+  const d = new Date(raw);
+  return isNaN(d) ? null : d;
+}
+
+function getFilteredCases() {
+  const now = new Date();
+  let valid = allCases.filter(c=>!c.flagReason);
+  if (currentAreaDashFilter!=='all') valid = valid.filter(c=>c.area===currentAreaDashFilter);
+  if (currentTimeFilter==='all') return valid;
+  return valid.filter(c=>{
+    const raw = c.datetime||c.date||'';
+    const d = parseDate(raw);
+    if (!d) return true;
+    if (currentTimeFilter==='month') return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
+    if (currentTimeFilter==='3month') return (now-d)<=90*24*60*60*1000;
+    if (currentTimeFilter==='year') return d.getFullYear()===now.getFullYear();
+    if (currentTimeFilter==='custom') {
+      const from=document.getElementById('dateFrom').value;
+      const to=document.getElementById('dateTo').value;
+      if (from&&d<new Date(from)) return false;
+      if (to&&d>new Date(to+'T23:59:59')) return false;
+      return true;
+    }
+    return true;
+  });
+}
+
+// ── 圓餅圖 ──
+function renderPieChart(containerId, counts, colors, total) {
+  const el = document.getElementById(containerId);
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if (!entries.length) { el.innerHTML='<div class="empty-state" style="padding:20px 0;">暫無資料</div>'; return; }
+  const sum = entries.reduce((a,b)=>a+b[1],0);
+  const size = 160;
+  const cx = size/2, cy = size/2, r = 68, innerR = 36;
+  let startAngle = -Math.PI/2;
+  let slices = '';
+  entries.forEach(([label, val]) => {
+    const angle = (val/sum)*Math.PI*2;
+    const endAngle = startAngle + angle;
+    const x1=cx+r*Math.cos(startAngle), y1=cy+r*Math.sin(startAngle);
+    const x2=cx+r*Math.cos(endAngle), y2=cy+r*Math.sin(endAngle);
+    const ix1=cx+innerR*Math.cos(startAngle), iy1=cy+innerR*Math.sin(startAngle);
+    const ix2=cx+innerR*Math.cos(endAngle), iy2=cy+innerR*Math.sin(endAngle);
+    const largeArc = angle > Math.PI ? 1 : 0;
+    const color = colors[label]||'#bbb';
+    slices += `<path d="M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1} Z" fill="${color}" stroke="white" stroke-width="2"/>`;
+    startAngle = endAngle;
+  });
+  const legend = entries.map(([label,val])=>`
+    <div class="pie-legend-item">
+      <div class="pie-legend-dot" style="background:${colors[label]||'#bbb'}"></div>
+      <span class="pie-legend-label">${label}</span>
+      <span class="pie-legend-val">${val}件 ${Math.round(val/sum*100)}%</span>
+    </div>`).join('');
+  el.innerHTML = `<div class="pie-wrap">
+    <div class="pie-canvas-wrap">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${slices}
+        <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="20" font-weight="700" fill="#1a1a1a">${sum}</text>
+        <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="10" fill="#aaa">總案件</text>
+      </svg>
+    </div>
+    <div class="pie-legend">${legend}</div>
+  </div>`;
+}
+
+// ── 後台統計 ──
+function renderDashboard() {
+  const cases = getFilteredCases();
+  const total=cases.length, pending=cases.filter(c=>c.status==='待處理').length, done=cases.filter(c=>c.status==='已結案').length;
+  document.getElementById('d-total').textContent=total;
+  document.getElementById('d-pending').textContent=pending;
+  document.getElementById('d-done').textContent=done;
+  document.getElementById('d-rate').textContent=total>0?Math.round(done/total*100)+'%':'—';
+
+  const areaCounts={};
+  cases.forEach(c=>{areaCounts[c.area]=(areaCounts[c.area]||0)+1;});
+  renderPieChart('areaChart', areaCounts, AREA_COLORS, total);
+
+  const areaF=currentAreaDashFilter;
+  const locCases=areaF==='all'?cases:cases.filter(c=>c.area===areaF);
+  const locMap={};
+  locCases.forEach(c=>{
+    const loc=c.normalizedLocation||normalizeLocation(c.location)||'（未填位置）';
+    const key=c.area+'|'+loc;
+    if(!locMap[key]) locMap[key]={area:c.area,loc,total:0,pending:0,done:0,cases:[]};
+    locMap[key].total++; if(c.status==='待處理') locMap[key].pending++; else locMap[key].done++;
+    locMap[key].cases.push(c);
+  });
+  const locEntries=Object.values(locMap).sort((a,b)=>b.total-a.total);
+  const maxL=Math.max(...locEntries.map(e=>e.total),1);
+  document.getElementById('locationTable').innerHTML=locEntries.length?locEntries.map((e,i)=>{
+    const entryId='loc-detail-'+i;
+    const caseRows=e.cases.map(c=>`
+      <div style="padding:8px 10px;border-bottom:1px solid #f5f0eb;last-child:border-none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
+          <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
+        </div>
+        <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
+        ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:`<div style="font-size:12px;color:#ccc;font-style:italic;">${c.status==='待處理'?'處理進度：（尚未填寫）':''}</div>`}
+      </div>`).join('');
+    return `
+    <div class="loc-entry">
+      <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
+        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1}</span><span class="loc-name">${e.loc}</span>${areaF==='all'?`<span class="loc-area-tag">${e.area}</span>`:''}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="loc-badges">${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 已結案</span>`:''}</div>
+          <span id="arrow-${entryId}" style="font-size:12px;color:#ccc;transition:transform 0.2s;">▼</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+        <div style="flex:1;background:#f2ede8;border-radius:5px;height:10px;overflow:hidden;"><div style="height:100%;border-radius:5px;background:${AREA_COLORS[e.area]||'#aaa'};width:${Math.round(e.total/maxL*100)}%;"></div></div>
+        <span style="font-size:12px;font-weight:600;color:#444;min-width:30px;text-align:right;">${e.total} 次</span>
+      </div>
+      <div id="${entryId}" style="display:none;margin-top:10px;background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">
+        ${caseRows}
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
+
+  const locTypeColors = {'客房':'#E8761A','辦公室':'#E8761A','餐廳':'#3B82F6','設施':'#8B5CF6','公共區域／其他':'#aaa'};
+  const locTypeCounts = {};
+  cases.forEach(c=>{
+    const lt = c.correctedLocType || c.locationType || '';
+    if (lt) locTypeCounts[lt]=(locTypeCounts[lt]||0)+1;
+  });
+  renderPieChart('locTypeChart', locTypeCounts, locTypeColors, total);
+
+  const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物土木':'#10B981','照明':'#F97316','衛浴':'#14B8A6','其他':'#aaa'};
+  const typeCounts = {};
+  cases.forEach(c=>{ if(c.caseType) typeCounts[c.caseType]=(typeCounts[c.caseType]||0)+1; });
+  renderPieChart('caseTypeChart', typeCounts, typeColors, total);
+
+  document.getElementById('recentList').innerHTML=cases.slice(0,8).map(c=>`
+    <div class="recent-item">
+      <div>
+        <div style="font-weight:600;color:#1a1a1a;">${c.area} · ${c.normalizedLocation||normalizeLocation(c.location)||'—'}</div>
+        <div style="font-size:11px;color:#bbb;margin-top:2px;">${c.unit} · ${formatDatetime(c.datetime||c.date)}</div>
+      </div>
+      <span class="badge ${c.status==='待處理'?'pending':'done'}">${c.status}</span>
+    </div>`).join('')||'<div class="empty-state">暫無資料</div>';
+}
+
+function toggleLocDetail(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow-'+id);
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+// ── 匯出報告 ──
+let exportRange = 'month';
+
+function openExportModal() {
+  document.getElementById('exportModal').style.display = 'flex';
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').style.display = 'none';
+}
+
+function setExportRange(range, btn) {
+  exportRange = range;
+  document.querySelectorAll('.export-range-btn').forEach(b => b.classList.remove('active-export'));
+  btn.classList.add('active-export');
+  document.getElementById('exportCustomRange').style.display = range === 'custom' ? 'block' : 'none';
+}
+
+function getExportCases() {
+  const now = new Date();
+  let cases = allCases.filter(c => !c.flagReason);
+  if (exportRange === 'month') {
+    cases = cases.filter(c => {
+      const d = parseExportDate(c.datetime);
+      return d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    });
+  } else if (exportRange === '3month') {
+    cases = cases.filter(c => {
+      const d = parseExportDate(c.datetime);
+      return d && (now - d) <= 90*24*60*60*1000;
+    });
+  } else if (exportRange === 'custom') {
+    const from = document.getElementById('exportDateFrom').value;
+    const to = document.getElementById('exportDateTo').value;
+    cases = cases.filter(c => {
+      const d = parseExportDate(c.datetime);
+      if (!d) return false;
+      if (from && d < new Date(from)) return false;
+      if (to && d > new Date(to + 'T23:59:59')) return false;
+      return true;
+    });
+  }
+  return cases;
+}
+
+function parseExportDate(raw) {
+  if (!raw) return null;
+  const m = String(raw).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+  const d = new Date(raw);
+  return isNaN(d) ? null : d;
+}
+
+function exportExcel() {
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = '產生中…'; btn.disabled = true;
+
+  const cases = getExportCases();
+  const includeDetail = document.getElementById('exportIncludeDetail').checked;
+  const now = new Date();
+  const rangeLabel = {month:'本月', '3month':'近三個月', all:'全部', custom:'自訂'}[exportRange];
+
+  // 統計數據
+  const total = cases.length;
+  const pending = cases.filter(c => c.status === '待處理').length;
+  const done = cases.filter(c => c.status === '已結案').length;
+  const rate = total > 0 ? Math.round(done/total*100) + '%' : '—';
+
+  // 各區域
+  const areaCounts = {};
+  cases.forEach(c => { areaCounts[c.area] = (areaCounts[c.area]||0)+1; });
+
+  // 維修類別
+  const typeCounts = {};
+  cases.forEach(c => { if(c.caseType) typeCounts[c.caseType] = (typeCounts[c.caseType]||0)+1; });
+
+  // 位置病歷 Top10
+  const locMap = {};
+  cases.forEach(c => {
+    const loc = (c.normalizedLocation||c.location||'（未填位置）');
+    const key = c.area + '|' + loc;
+    if (!locMap[key]) locMap[key] = {area:c.area, loc, total:0, pending:0, done:0};
+    locMap[key].total++;
+    if (c.status==='待處理') locMap[key].pending++; else locMap[key].done++;
+  });
+  const top10 = Object.values(locMap).sort((a,b)=>b.total-a.total).slice(0,10);
+
+  // 建立 CSV 內容
+  let csv = '﻿'; // BOM for Excel UTF-8
+
+  // 統計摘要
+  csv += '渴望園區報修系統 - 報告\n';
+  csv += `產生時間,${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}\n`;
+  csv += `時間範圍,${rangeLabel}\n\n`;
+  csv += '【統計摘要】\n';
+  csv += `總案件數,${total}\n`;
+  csv += `待處理,${pending}\n`;
+  csv += `已結案,${done}\n`;
+  csv += `結案率,${rate}\n\n`;
+
+  csv += '【各區域維修比例】\n';
+  csv += '區域,件數,比例\n';
+  Object.entries(areaCounts).sort((a,b)=>b[1]-a[1]).forEach(([area,count])=>{
+    csv += `${area},${count},${total>0?Math.round(count/total*100)+'%':'—'}\n`;
+  });
+  csv += '\n';
+
+  csv += '【維修類別比例】\n';
+  csv += '類別,件數,比例\n';
+  Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).forEach(([type,count])=>{
+    csv += `${type},${count},${total>0?Math.round(count/total*100)+'%':'—'}\n`;
+  });
+  csv += '\n';
+
+  csv += '【位置病歷表 Top 10】\n';
+  csv += '排名,區域,位置,總計,待處理,已結案\n';
+  top10.forEach((e,i)=>{
+    csv += `${i+1},${e.area},${e.loc},${e.total},${e.pending},${e.done}\n`;
+  });
+
+  if (includeDetail) {
+    csv += '\n【案件明細清單】\n';
+    csv += '案件編號,日期時間,申請單位,申請人,區域,位置類型,詳細位置,故障描述,狀態,維修記錄,案件類型,結案人\n';
+    cases.forEach(c => {
+      const row = [c.caseId, c.datetime, c.unit, c.name, c.area, c.locationType, c.location||'', c.description, c.status, c.repairNote||'', c.caseType||'', c.closerName||''];
+      csv += row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
+    });
+  }
+
+  // 下載
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `渴望報修報告_${rangeLabel}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  btn.textContent = '下載 Excel'; btn.disabled = false;
+  closeExportModal();
+  showToast('✓ 報告已下載');
+}
+
+// ── 照片上傳 ──
+const photoData = { report: [null, null], };
+
+function triggerPhotoUpload(prefix, idx) {
+  const fileId = prefix.startsWith('close') ? `close-file-${prefix.slice(6)}-${idx}` : `report-file-${idx}`;
+  document.getElementById(fileId).click();
+}
+
+async function handlePhotoUpload(prefix, idx, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const compressed = await compressImage(file, 600, 0.65);
+  const rowIndex = prefix.startsWith('close') ? prefix.slice(6) : null;
+  const slotId = rowIndex ? `close-slot-${rowIndex}-${idx}` : `report-slot-${idx}`;
+  const slot = document.getElementById(slotId);
+  slot.innerHTML = `<img src="${compressed}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('${prefix}',${idx})">×</div>`;
+
+  if (!prefix.startsWith('close')) {
+    if (!photoData.report) photoData.report = [null, null];
+    photoData.report[idx] = compressed;
+    // report-slot-1 預設已顯示
+  } else {
+    if (!photoData[prefix]) photoData[prefix] = [null, null];
+    photoData[prefix][idx] = compressed;
+    // close-slot 預設已顯示
+  }
+  input.value = '';
+}
+
+function removePhoto(prefix, idx) {
+  const isClose = prefix.startsWith('close');
+  const rowIndex = isClose ? prefix.slice(6) : null;
+  const slotId = isClose ? `close-slot-${rowIndex}-${idx}` : `report-slot-${idx}`;
+  const slot = document.getElementById(slotId);
+  slot.innerHTML = '<span class="photo-add">+</span>';
+  if (photoData[prefix]) photoData[prefix][idx] = null;
+  if (idx === 0) {
+    if (photoData[prefix]) photoData[prefix][1] = null;
+    const slot1Id = isClose ? `close-slot-${rowIndex}-1` : 'report-slot-1';
+    const slot1 = document.getElementById(slot1Id);
+    if (slot1) { slot1.innerHTML = '<span class="photo-add">+</span>'; }
+  }
+}
+
+function compressImage(file, maxSize, quality) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function getClosePhotos(rowIndex) {
+  const key = 'close-' + rowIndex;
+  return photoData[key] ? photoData[key].filter(Boolean) : [];
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW error:', e));
+  });
+}
+</script>
+
+
+</body></html>
