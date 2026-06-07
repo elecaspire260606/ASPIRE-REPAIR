@@ -915,8 +915,14 @@ async function updateCase(rowIndex) {
   const correctedLocType = getSelectedLocType(rowIndex);
   const closerName = getSelectedCloser(rowIndex);
   const closePhotos = getClosePhotos(rowIndex);
-  await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
-  showToast('✓ 已儲存'); loadCases();
+  const btn = document.querySelector(`[onclick="updateCase(${rowIndex})"]`);
+  if (btn) { btn.disabled=true; btn.textContent='儲存中…'; }
+  try {
+    const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
+    if (data && data.success) { showToast('✓ 已儲存'); loadCases(); }
+    else { showToast('❌ 儲存失敗，請重試'); }
+  } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
+  if (btn) { btn.disabled=false; btn.textContent='儲存'; }
 }
 async function closeCase(rowIndex) {
   const note = document.getElementById('note-'+rowIndex).value;
@@ -928,12 +934,24 @@ async function closeCase(rowIndex) {
   const closerName = getSelectedCloser(rowIndex);
   if (!closerName) { showToast('請選擇結案人'); return; }
   const closePhotos = getClosePhotos(rowIndex);
-  await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
-  showToast('✓ 案件已結案'); loadCases();
+  const btn = document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
+  if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
+  try {
+    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
+    if (data && data.success) { showToast('✓ 案件已結案'); loadCases(); }
+    else { showToast('❌ 結案失敗，請重試'); }
+  } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
+  if (btn) { btn.disabled=false; btn.textContent='結案'; }
 }
 async function reopenCase(rowIndex) {
-  await callApi({action:'reopen', rowIndex});
-  showToast('✓ 已取消結案'); loadCases();
+  const btn = document.querySelector(`[onclick="reopenCase(${rowIndex})"]`);
+  if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
+  try {
+    const data = await callApi({action:'reopen', rowIndex});
+    if (data && data.success) { showToast('✓ 已取消結案'); loadCases(); }
+    else { showToast('❌ 操作失敗，請重試'); }
+  } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
+  if (btn) { btn.disabled=false; btn.textContent='取消結案'; }
 }
 async function callApi(params) {
   const token = sessionStorage.getItem('adminToken');
