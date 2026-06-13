@@ -946,7 +946,7 @@ function renderCases() {
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn-save" onclick="updateCase(${c.rowIndex})">儲存</button>
+        <button class="btn-save" onclick="updateCase(${c.rowIndex})">更新案件狀況</button>
         ${c.status==='待處理'
           ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">結案</button>`
           : `<button class="btn-reopen" onclick="reopenCase(${c.rowIndex})">取消結案</button>`}
@@ -1048,18 +1048,17 @@ async function updateCase(rowIndex) {
   const norm = document.getElementById('norm-'+rowIndex).value;
   const flag = getSelectedFlag(rowIndex);
   const caseType = getSelectedCaseType(rowIndex);
-  if (!caseType) { showToast('請選擇案件類型'); return; }
   const correctedLocType = getSelectedLocType(rowIndex);
   const closerName = getSelectedCloser(rowIndex);
   const closePhotos = getClosePhotos(rowIndex);
   const btn = document.querySelector(`[onclick="updateCase(${rowIndex})"]`);
-  if (btn) { btn.disabled=true; btn.textContent='儲存中…'; }
+  if (btn) { btn.disabled=true; btn.textContent='更新中…'; }
   try {
     const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
-    if (data && data.success) { showToast('✓ 已儲存'); loadCases(); }
-    else { showToast('❌ 儲存失敗，請重試'); }
+    if (data && data.success) { showToast('✓ 已更新案件狀況'); loadCases(); }
+    else { showToast('❌ 更新失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
-  if (btn) { btn.disabled=false; btn.textContent='儲存'; }
+  if (btn) { btn.disabled=false; btn.textContent='更新案件狀況'; }
 }
 async function closeCase(rowIndex) {
   const note = document.getElementById('note-'+rowIndex).value;
