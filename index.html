@@ -433,7 +433,7 @@
     <button class="time-btn" onclick="setTimeFilter(&#39;all&#39;,this)">全部</button>
     <button class="time-btn" onclick="setTimeFilter(&#39;custom&#39;,this)">自訂</button>
   </div>
-  <div class="time-filter-row" style="margin-bottom:10px;">
+  <div class="time-filter-row dash-area-row" style="margin-bottom:10px;">
     <button class="time-btn active" onclick="setAreaDashFilter(&#39;all&#39;,this)">全部棟別</button>
     <button class="time-btn" onclick="setAreaDashFilter(&#39;會館&#39;,this)">會館</button>
     <button class="time-btn" onclick="setAreaDashFilter(&#39;雅舍&#39;,this)">雅舍</button>
@@ -1224,14 +1224,14 @@ function renderPagination(containerId, current, total, onChange) {
 // ── 時間篩選 ──
 function setAreaDashFilter(area, btn) {
   currentAreaDashFilter = area;
-  document.querySelectorAll('.time-filter-row:nth-child(2) .time-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.dash-area-row .time-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderDashboard();
 }
 
 function setTimeFilter(type, btn) {
   currentTimeFilter=type;
-  document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.time-filter-row:not(.dash-area-row) .time-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('customRangeWrap').style.display = type==='custom'?'flex':'none';
   renderDashboard();
