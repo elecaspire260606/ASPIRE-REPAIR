@@ -908,7 +908,7 @@ function renderCases() {
       <div class="mgr-field">
         <div class="mgr-label">案件類型 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
         <div class="flag-row" id="ctype-${c.rowIndex}">
-          ${['給排水','電力','消防','空調','弱電','電梯','建物土木','照明','衛浴','其他'].map(f=>`<button class="flag-btn${c.caseType&&c.caseType.startsWith(f)?' active-flag':''}" onclick="toggleCaseType(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
+          ${['給排水','電力','消防','空調','弱電','電梯','建物土木','照明','衛浴','庶務','其他'].map(f=>`<button class="flag-btn${c.caseType&&c.caseType.startsWith(f)?' active-flag':''}" onclick="toggleCaseType(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
         </div>
         <input type="text" id="ctype-other-${c.rowIndex}" placeholder="請描述類型（選填）"
           style="display:${c.caseType&&c.caseType.startsWith('其他')&&c.caseType.length>2?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
@@ -1497,7 +1497,7 @@ function renderDashboard() {
   });
   renderPieChart('locTypeChart', locTypeCounts, locTypeColors, total);
 
-  const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物土木':'#10B981','照明':'#F97316','衛浴':'#14B8A6','其他':'#aaa'};
+  const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物土木':'#10B981','照明':'#F97316','衛浴':'#14B8A6','庶務':'#A78BFA','其他':'#aaa'};
   const typeCounts = {};
   cases.forEach(c=>{ if(c.caseType) typeCounts[c.caseType]=(typeCounts[c.caseType]||0)+1; });
   renderPieChart('caseTypeChart', typeCounts, typeColors, total);
