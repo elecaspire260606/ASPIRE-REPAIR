@@ -194,7 +194,8 @@
   .pub-title { font-size:14px; font-weight:600; color:#1a1a1a; margin:3px 0 3px; }
   .pub-meta { font-size:12px; color:#bbb; margin-bottom:8px; }
   .pub-desc { font-size:13px; color:#666; background:#faf8f5; border-radius:8px; padding:8px 11px; border-left:3px solid #E8761A; }
-  .pub-note { font-size:12px; color:#aaa; margin-top:7px; font-style:italic; }
+  .pub-note { font-size:13px; color:#246332; margin-top:11px; background:#EEF7F0; border-radius:8px; padding:10px 12px; border-left:3px solid #2D7A3E; line-height:1.5; }
+  .pub-note-label { font-size:11px; color:#2D7A3E; font-weight:700; margin-bottom:3px; display:flex; align-items:center; gap:5px; }
 
   .empty-state { text-align:center; color:#ccc; padding:40px 0; font-size:14px; }
 
@@ -1108,7 +1109,7 @@ function renderPubCard(c) {
       <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
     </div>
     <div class="pub-desc">${c.description}</div>
-    ${c.repairNote?`<div class="pub-note">📋 維修記錄：${c.repairNote}</div>`:''}
+    ${c.repairNote?`<div class="pub-note"><div class="pub-note-label">✅ 處理結果</div>${c.repairNote}</div>`:''}
     ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
     ${c.closePhotos&&c.closePhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">結案照片：</div><div class="photo-preview-wrap">${c.closePhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
   </div>`;
