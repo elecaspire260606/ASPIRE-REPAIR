@@ -246,6 +246,7 @@
   <img src="slime.png" alt="slime" class="stats-slime">
   <div class="stats-item">今日報修　<b id="statTodayCount">0</b>　件</div>
   <div class="stats-item">最後報修　<span class="val" id="statLastTime">無</span></div>
+  <div class="stats-item"><span class="val" id="statLastLocation"></span></div>
   <div class="stats-refresh" id="statsRefreshBtn" onclick="refreshStats()" title="重新整理">↻</div>
 </div>
 
@@ -541,10 +542,13 @@ function updateStatsBar() {
   document.getElementById('statTodayCount').textContent = todayCases.length;
   if (todayCases.length === 0) {
     document.getElementById('statLastTime').textContent = '無';
+    document.getElementById('statLastLocation').textContent = '';
   } else {
     // allCases 已是新到舊排序，取第一筆今日案件的時間部分
-    const parts = todayCases[0].datetime.split(' ');
-    document.getElementById('statLastTime').textContent = parts[1] || todayCases[0].datetime;
+    const latest = todayCases[0];
+    const parts = latest.datetime.split(' ');
+    document.getElementById('statLastTime').textContent = parts[1] || latest.datetime;
+    document.getElementById('statLastLocation').textContent = `${latest.area} · ${latest.locationType}`;
   }
 }
 
