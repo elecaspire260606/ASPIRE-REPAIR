@@ -429,7 +429,10 @@
 
 <!-- ══ 後台統計 ══ -->
 <div id="page-dash" class="page">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <button onclick="downloadBackup()" style="padding:8px 16px;background:#2D7A3E;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">💾 下載備份</button>
+    <button onclick="document.getElementById('backupFileInput').click()" style="padding:8px 16px;background:#8B5CF6;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📥 備份匯入</button>
+    <input type="file" id="backupFileInput" accept="application/json" style="display:none;" onchange="importBackup(this.files[0])">
     <button onclick="openExportModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📊 下載報告</button>
   </div>
   <div class="time-filter-row">
@@ -548,6 +551,7 @@ let selectedBuilding = '';
 let pendingPage = null;
 
 const AREA_COLORS = { '會館':'#E8761A', '雅舍':'#1a3a5c', '雅舍一棟':'#1a3a5c', '雅舍二棟':'#2e5a8c', '雅舍三棟':'#5b8ab8', '研究園':'#2D7A3E', '智尊':'#8B5CF6', '其他':'#aaa' };
+function effArea(c) { return c.correctedArea || c.area; }
 function areaMatchesFilter(caseArea, filterArea) {
   if (filterArea === '雅舍') return caseArea === '雅舍' || caseArea.startsWith('雅舍');
   return caseArea === filterArea;
@@ -854,7 +858,7 @@ function filterCases(status, btn) {
 function renderCases() {
   const list = document.getElementById('caseList');
   let filtered = allCases.filter(c=>c.status===currentFilter);
-  if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(c.area,currentMgrArea));
+  if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentMgrArea));
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (mgrPage>totalPages) mgrPage=totalPages;
@@ -909,6 +913,17 @@ function renderCases() {
         <input type="text" id="ctype-other-${c.rowIndex}" placeholder="請描述類型（選填）"
           style="display:${c.caseType&&c.caseType.startsWith('其他')&&c.caseType.length>2?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
           value="${c.caseType&&c.caseType.startsWith('其他')?c.caseType.replace('其他：',''):''}">
+      </div>
+      <div class="mgr-field">
+        <div class="mgr-label">更正區域 <span class="opt-tag">選填</span></div>
+        <div class="flag-row" id="carea-${c.rowIndex}">
+          ${['會館','雅舍一棟','雅舍二棟','雅舍三棟','研究園','智尊','其他'].map(f=>{
+            const isActive = c.correctedArea === f;
+            const isOriginal = !c.correctedArea && c.area === f;
+            const style = isOriginal ? 'opacity:0.4;border-style:dashed;' : '';
+            return `<button class="flag-btn${isActive?' active-flag':''}" style="${style}" onclick="toggleArea(${c.rowIndex},'${f}',this)" title="${isOriginal?'報修人原始值，點擊確認更正':''}">${f}</button>`;
+          }).join('')}
+        </div>
       </div>
       <div class="mgr-field">
         <div class="mgr-label">更正位置類型 <span class="opt-tag">選填</span></div>
@@ -993,6 +1008,20 @@ function toggleCardEdit(rowIndex) {
   }
 }
 
+function toggleArea(rowIndex, area, btn) {
+  const btns = document.getElementById('carea-'+rowIndex).querySelectorAll('.flag-btn');
+  const wasActive = btn.classList.contains('active-flag');
+  btns.forEach(b=>b.classList.remove('active-flag'));
+  if (!wasActive) btn.classList.add('active-flag');
+}
+
+function getSelectedArea(rowIndex) {
+  const el = document.getElementById('carea-'+rowIndex);
+  if (!el) return '';
+  const active = el.querySelector('.active-flag');
+  return active ? active.textContent : '';
+}
+
 function toggleLocType(rowIndex, type, btn) {
   const btns = document.getElementById('ltype-'+rowIndex).querySelectorAll('.flag-btn');
   const wasActive = btn.classList.contains('active-flag');
@@ -1070,12 +1099,13 @@ async function updateCase(rowIndex) {
   const flag = getSelectedFlag(rowIndex);
   const caseType = getSelectedCaseType(rowIndex);
   const correctedLocType = getSelectedLocType(rowIndex);
+  const correctedArea = getSelectedArea(rowIndex);
   const closerName = getSelectedCloser(rowIndex);
   const closePhotos = getClosePhotos(rowIndex);
   const btn = document.querySelector(`[onclick="updateCase(${rowIndex})"]`);
   if (btn) { btn.disabled=true; btn.textContent='更新中…'; }
   try {
-    const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
+    const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos});
     if (data && data.success) { showToast('✓ 已更新案件狀況'); loadCases(); }
     else { showToast('❌ 更新失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
@@ -1088,13 +1118,14 @@ async function closeCase(rowIndex) {
   const caseType = getSelectedCaseType(rowIndex);
   if (!caseType) { showToast('請選擇案件類型'); return; }
   const correctedLocType = getSelectedLocType(rowIndex);
+  const correctedArea = getSelectedArea(rowIndex);
   const closerName = getSelectedCloser(rowIndex);
   if (!closerName) { showToast('請選擇結案人'); return; }
   const closePhotos = getClosePhotos(rowIndex);
   const btn = document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
-    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, closerName, closePhotos});
+    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos});
     if (data && data.success) { showToast('✓ 案件已結案'); loadCases(); }
     else { showToast('❌ 結案失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
@@ -1194,7 +1225,7 @@ function renderQueryGm() {
   const list = document.getElementById('queryListGm');
   let filtered = allCases;
   if (currentQueryFilter!=='all') filtered=filtered.filter(c=>c.status===currentQueryFilter);
-  if (currentQueryArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(c.area,currentQueryArea));
+  if (currentQueryArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentQueryArea));
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (queryPage>totalPages) queryPage=totalPages;
@@ -1291,7 +1322,7 @@ function parseDate(raw) {
 function getFilteredCases() {
   const now = new Date();
   let valid = allCases.filter(c=>!c.flagReason);
-  if (currentAreaDashFilter!=='all') valid = valid.filter(c=>areaMatchesFilter(c.area,currentAreaDashFilter));
+  if (currentAreaDashFilter!=='all') valid = valid.filter(c=>areaMatchesFilter(effArea(c),currentAreaDashFilter));
   if (currentTimeFilter==='all') return valid;
   return valid.filter(c=>{
     const raw = c.datetime||c.date||'';
@@ -1350,6 +1381,58 @@ function renderPieChart(containerId, counts, colors, total) {
   </div>`;
 }
 
+// ── 備份下載／匯入 ──
+function downloadBackup() {
+  if (!allCases || !allCases.length) { showToast('沒有可備份的資料'); return; }
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    count: allCases.length,
+    cases: allCases
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date();
+  const stamp = `${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `渴望園區報修系統_備份_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ 備份已下載');
+}
+
+async function importBackup(file) {
+  if (!file) return;
+  if (!confirm('匯入備份將會把檔案內的所有案件還原到系統，可能與現有資料合併或覆蓋，確定要繼續嗎？')) {
+    document.getElementById('backupFileInput').value = '';
+    return;
+  }
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    const cases = Array.isArray(payload) ? payload : payload.cases;
+    if (!Array.isArray(cases) || !cases.length) { showToast('備份檔案格式錯誤或無資料'); return; }
+    showToast('匯入中，請稍候…');
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action:'import', cases, token: sessionStorage.getItem('adminToken') })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const skipMsg = data.skipped ? `，略過重複 ${data.skipped} 筆` : '';
+      showToast('✓ 匯入完成，新增 '+data.imported+' 筆'+skipMsg);
+      await loadCases();
+    } else {
+      showToast('匯入失敗：'+(data.message||'未知錯誤'));
+    }
+  } catch(e) {
+    showToast('匯入失敗，檔案格式錯誤或連線問題');
+  }
+  document.getElementById('backupFileInput').value = '';
+}
+
 // ── 後台統計 ──
 function renderDashboard() {
   const cases = getFilteredCases();
@@ -1360,11 +1443,11 @@ function renderDashboard() {
   document.getElementById('d-rate').textContent=total>0?Math.round(done/total*100)+'%':'—';
 
   const areaCounts={};
-  cases.forEach(c=>{areaCounts[c.area]=(areaCounts[c.area]||0)+1;});
+  cases.forEach(c=>{areaCounts[effArea(c)]=(areaCounts[effArea(c)]||0)+1;});
   renderPieChart('areaChart', areaCounts, AREA_COLORS, total);
 
   const areaF=currentAreaDashFilter;
-  const locCases=areaF==='all'?cases:cases.filter(c=>areaMatchesFilter(c.area,areaF));
+  const locCases=areaF==='all'?cases:cases.filter(c=>areaMatchesFilter(effArea(c),areaF));
   const locMap={};
   locCases.forEach(c=>{
     const loc=c.normalizedLocation||normalizeLocation(c.location)||'（未填位置）';
@@ -1506,7 +1589,7 @@ function exportExcel() {
 
   // 各區域
   const areaCounts = {};
-  cases.forEach(c => { areaCounts[c.area] = (areaCounts[c.area]||0)+1; });
+  cases.forEach(c => { areaCounts[effArea(c)] = (areaCounts[effArea(c)]||0)+1; });
 
   // 維修類別
   const typeCounts = {};
@@ -1560,7 +1643,7 @@ function exportExcel() {
     csv += '\n【案件明細清單】\n';
     csv += '案件編號,日期時間,申請單位,申請人,區域,位置類型,詳細位置,故障描述,狀態,維修記錄,案件類型,結案人\n';
     cases.forEach(c => {
-      const row = [c.caseId, c.datetime, c.unit, c.name, c.area, c.locationType, c.location||'', c.description, c.status, c.repairNote||'', c.caseType||'', c.closerName||''];
+      const row = [c.caseId, c.datetime, c.unit, c.name, effArea(c), c.locationType, c.location||'', c.description, c.status, c.repairNote||'', c.caseType||'', c.closerName||''];
       csv += row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
     });
   }
