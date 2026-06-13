@@ -183,7 +183,7 @@
   .loc-entry:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
   .loc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
   .loc-name { font-size:13px; font-weight:600; color:#1a1a1a; }
-  .loc-area-tag { font-size:11px; color:#bbb; margin-left:6px; }
+  .loc-area-tag { font-size:11px; color:#888; margin-left:6px; }
   .loc-badges { display:flex; gap:5px; flex-shrink:0; }
   .lb-p { font-size:11px; padding:2px 8px; border-radius:20px; background:#FEF0E3; color:#C05E0A; font-weight:600; }
   .lb-d { font-size:11px; padding:2px 8px; border-radius:20px; background:#E6F4EA; color:#2D7A3E; font-weight:600; }
@@ -1457,6 +1457,7 @@ function renderDashboard() {
     locMap[key].cases.push(c);
   });
   const locEntries=Object.values(locMap).sort((a,b)=>b.total-a.total);
+  const multiArea = new Set(locEntries.map(e=>e.area)).size > 1;
   const maxL=Math.max(...locEntries.map(e=>e.total),1);
   document.getElementById('locationTable').innerHTML=locEntries.length?locEntries.map((e,i)=>{
     const entryId='loc-detail-'+i;
@@ -1472,7 +1473,7 @@ function renderDashboard() {
     return `
     <div class="loc-entry">
       <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
-        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1}</span><span class="loc-name">${e.loc}</span>${areaF==='all'?`<span class="loc-area-tag">${e.area}</span>`:''}</div>
+        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1}</span><span class="loc-name">${e.loc}</span>${multiArea?`<span class="loc-area-tag">${e.area}</span>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px;">
           <div class="loc-badges">${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 已結案</span>`:''}</div>
           <span id="arrow-${entryId}" style="font-size:12px;color:#ccc;transition:transform 0.2s;">▼</span>
