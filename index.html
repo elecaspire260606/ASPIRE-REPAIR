@@ -547,7 +547,11 @@ let locType = '';
 let selectedBuilding = '';
 let pendingPage = null;
 
-const AREA_COLORS = { '會館':'#E8761A', '雅舍':'#1a3a5c', '研究園':'#2D7A3E', '智尊':'#8B5CF6', '其他':'#aaa' };
+const AREA_COLORS = { '會館':'#E8761A', '雅舍':'#1a3a5c', '雅舍一棟':'#1a3a5c', '雅舍二棟':'#2e5a8c', '雅舍三棟':'#5b8ab8', '研究園':'#2D7A3E', '智尊':'#8B5CF6', '其他':'#aaa' };
+function areaMatchesFilter(caseArea, filterArea) {
+  if (filterArea === '雅舍') return caseArea === '雅舍' || caseArea.startsWith('雅舍');
+  return caseArea === filterArea;
+}
 
 // ── 初始化 ──
 window.onload = () => {
@@ -771,19 +775,25 @@ async function submitForm() {
   if (!area) { showToast('請選擇區域'); return; }
   if (!locType) { showToast('請選擇位置類型'); return; }
   if (!desc) { showToast('請填寫故障狀況描述'); return; }
+  if (area === '雅舍' && !selectedBuilding) { showToast('請選擇雅舍棟別'); return; }
+  if (locType === 'restaurant' || locType === 'facility') {
+    const locVal = document.getElementById('f-location').value.trim();
+    if (!locVal) { showToast(locType==='restaurant' ? '請選擇或輸入餐廳位置' : '請選擇或輸入設施位置'); return; }
+  }
   const now = new Date();
   const datetime = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const btn = document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='送出中…';
   try {
+    const submitArea = selectedBuilding ? (area + selectedBuilding) : area;
     const isOfficeArea = (area === '研究園' || area === '智尊');
     const locTypeLabel = locType==='room' ? (isOfficeArea?'辦公室':'客房') : ({restaurant:'餐廳',facility:'設施',other:'公共區域／其他'}[locType]||'');
-    const location = (selectedBuilding ? selectedBuilding+' ' : '') + normalizeLocation(document.getElementById('f-location').value.trim());
+    const location = normalizeLocation(document.getElementById('f-location').value.trim());
     const email = document.getElementById('f-email').value.trim();
     const reportPhotos = (photoData.report||[]).filter(Boolean);
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action:'submit', unit, name, datetime, area, locationType:locTypeLabel, location, description:desc, email, reportPhotos })
+      body: JSON.stringify({ action:'submit', unit, name, datetime, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos })
     });
     const data = await res.json();
     if (data.success) {
@@ -844,7 +854,7 @@ function filterCases(status, btn) {
 function renderCases() {
   const list = document.getElementById('caseList');
   let filtered = allCases.filter(c=>c.status===currentFilter);
-  if (currentMgrArea!=='all') filtered=filtered.filter(c=>c.area===currentMgrArea);
+  if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(c.area,currentMgrArea));
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (mgrPage>totalPages) mgrPage=totalPages;
@@ -1184,7 +1194,7 @@ function renderQueryGm() {
   const list = document.getElementById('queryListGm');
   let filtered = allCases;
   if (currentQueryFilter!=='all') filtered=filtered.filter(c=>c.status===currentQueryFilter);
-  if (currentQueryArea!=='all') filtered=filtered.filter(c=>c.area===currentQueryArea);
+  if (currentQueryArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(c.area,currentQueryArea));
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (queryPage>totalPages) queryPage=totalPages;
@@ -1281,7 +1291,7 @@ function parseDate(raw) {
 function getFilteredCases() {
   const now = new Date();
   let valid = allCases.filter(c=>!c.flagReason);
-  if (currentAreaDashFilter!=='all') valid = valid.filter(c=>c.area===currentAreaDashFilter);
+  if (currentAreaDashFilter!=='all') valid = valid.filter(c=>areaMatchesFilter(c.area,currentAreaDashFilter));
   if (currentTimeFilter==='all') return valid;
   return valid.filter(c=>{
     const raw = c.datetime||c.date||'';
@@ -1354,7 +1364,7 @@ function renderDashboard() {
   renderPieChart('areaChart', areaCounts, AREA_COLORS, total);
 
   const areaF=currentAreaDashFilter;
-  const locCases=areaF==='all'?cases:cases.filter(c=>c.area===areaF);
+  const locCases=areaF==='all'?cases:cases.filter(c=>areaMatchesFilter(c.area,areaF));
   const locMap={};
   locCases.forEach(c=>{
     const loc=c.normalizedLocation||normalizeLocation(c.location)||'（未填位置）';
