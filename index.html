@@ -329,6 +329,11 @@
             <button type="button" class="loc-type-btn" onclick="setRestaurant('渴望中餐廳',this)">渴望中餐廳</button>
             <button type="button" class="loc-type-btn" onclick="setRestaurant('雅園廳',this)">雅園廳</button>
           </div>
+          <div class="loc-type-row" id="facility-quick-row" style="display:none; margin-bottom:8px;">
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('休閒中心',this)">休閒中心</button>
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('泳池',this)">泳池</button>
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('教室',this)">教室</button>
+          </div>
           <input type="text" id="f-location" placeholder="" oninput="showNormPreview()">
           <div class="hint" id="loc-hint"></div>
           <div id="normPreview">將儲存為：<span id="normValue"></span></div>
@@ -639,6 +644,9 @@ function setLocType(type, btn) {
   const restRow = document.getElementById('restaurant-quick-row');
   restRow.style.display = (type==='restaurant') ? 'flex' : 'none';
   restRow.querySelectorAll('.loc-type-btn').forEach(b=>b.classList.remove('active'));
+  const facRow = document.getElementById('facility-quick-row');
+  facRow.style.display = (type==='facility') ? 'flex' : 'none';
+  facRow.querySelectorAll('.loc-type-btn').forEach(b=>b.classList.remove('active'));
   if (type==='room') { input.placeholder= isOffice ? '請輸入辦公室編號，例：A401、B102C' : '請輸入房號，例：502'; hint.textContent= isOffice ? '' : '輸入數字即可，系統會自動標準化'; }
   else if (type==='restaurant') { input.placeholder='例：中餐廳、咖啡廳、宴會廳…，或點選下方按鈕'; hint.textContent=''; }
   else if (type==='facility') { input.placeholder='例：休閒部、教室、會議室、交誼廳…'; hint.textContent=''; }
@@ -646,7 +654,7 @@ function setLocType(type, btn) {
 }
 
 function setRestaurant(name, btn) {
-  document.querySelectorAll('#restaurant-quick-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#restaurant-quick-row .loc-type-btn, #facility-quick-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const input = document.getElementById('f-location');
   input.value = name;
@@ -790,6 +798,8 @@ async function submitForm() {
       document.querySelectorAll('#loctype-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('#restaurant-quick-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
       document.getElementById('restaurant-quick-row').style.display='none';
+      document.querySelectorAll('#facility-quick-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById('facility-quick-row').style.display='none';
       document.getElementById('yashe-building-row').style.display='none';
       document.querySelectorAll('#yashe-building-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
       selectedBuilding = '';
