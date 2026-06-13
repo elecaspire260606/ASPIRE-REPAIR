@@ -109,6 +109,12 @@
   .case-card.is-flagged { background:#f5f5f5; opacity:0.72; }
   .case-card.is-flagged .case-title,
   .case-card.is-flagged .case-desc { text-decoration:line-through; color:#bbb; }
+  .case-collapsed { cursor:pointer; border-radius:10px; transition:background 0.15s; margin:-4px; padding:4px; }
+  .case-collapsed:hover { background:#faf8f5; }
+  .case-tap-hint { font-size:11px; color:#ccc; text-align:center; margin-top:10px; padding-top:8px; border-top:1px dashed #f0ece6; }
+  .case-expand-header { display:flex; justify-content:space-between; align-items:flex-start; cursor:pointer; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #f2ede8; transition:opacity 0.15s; }
+  .case-expand-header:hover { opacity:0.6; }
+  .collapse-hint { font-size:11px; color:#bbb; white-space:nowrap; padding-top:2px; }
   .case-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
   .case-id { font-size:11px; color:#bbb; font-weight:500; }
   .case-title { font-size:15px; font-weight:600; color:#1a1a1a; margin:3px 0 4px; }
@@ -302,6 +308,11 @@
           <button class="loc-type-btn" onclick="setArea('其他',this)">其他</button>
         </div>
         <input type="hidden" id="f-area" value="">
+        <div class="loc-type-row" id="yashe-building-row" style="display:none; margin-top:8px;">
+          <button type="button" class="loc-type-btn" onclick="setBuilding('一棟',this)">一棟</button>
+          <button type="button" class="loc-type-btn" onclick="setBuilding('二棟',this)">二棟</button>
+          <button type="button" class="loc-type-btn" onclick="setBuilding('三棟',this)">三棟</button>
+        </div>
       </div>
       <div class="field">
         <label>位置類型 *</label>
@@ -312,6 +323,12 @@
           <button class="loc-type-btn" onclick="setLocType(&#39;other&#39;,this)">📍 公共區域／其他</button>
         </div>
         <div id="loc-input-wrap" style="display:none; margin-top:2px;">
+          <div class="loc-type-row" id="restaurant-quick-row" style="display:none; margin-bottom:8px;">
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('饗渴望',this)">饗渴望</button>
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('綠灣餐廳',this)">綠灣餐廳</button>
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('渴望中餐廳',this)">渴望中餐廳</button>
+            <button type="button" class="loc-type-btn" onclick="setRestaurant('雅園廳',this)">雅園廳</button>
+          </div>
           <input type="text" id="f-location" placeholder="" oninput="showNormPreview()">
           <div class="hint" id="loc-hint"></div>
           <div id="normPreview">將儲存為：<span id="normValue"></span></div>
@@ -521,6 +538,7 @@ let currentAreaDashFilter = 'all';
 let mgrPage = 1;
 let queryPage = 1;
 let locType = '';
+let selectedBuilding = '';
 let pendingPage = null;
 
 const AREA_COLORS = { '會館':'#E8761A', '雅舍':'#1a3a5c', '研究園':'#2D7A3E', '智尊':'#8B5CF6', '其他':'#aaa' };
@@ -589,6 +607,21 @@ function setArea(area, btn) {
   document.getElementById('loc-input-wrap').style.display = 'none';
   document.getElementById('normPreview').style.display = 'none';
   locType = '';
+
+  const buildingRow = document.getElementById('yashe-building-row');
+  if (area === '雅舍') {
+    buildingRow.style.display = 'flex';
+  } else {
+    buildingRow.style.display = 'none';
+  }
+  buildingRow.querySelectorAll('.loc-type-btn').forEach(b=>b.classList.remove('active'));
+  selectedBuilding = '';
+}
+
+function setBuilding(name, btn) {
+  document.querySelectorAll('#yashe-building-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedBuilding = name;
 }
 
 function setLocType(type, btn) {
@@ -603,10 +636,21 @@ function setLocType(type, btn) {
   input.value = '';
   const areaVal = document.getElementById('f-area').value;
   const isOffice = (areaVal === '研究園' || areaVal === '智尊');
+  const restRow = document.getElementById('restaurant-quick-row');
+  restRow.style.display = (type==='restaurant') ? 'flex' : 'none';
+  restRow.querySelectorAll('.loc-type-btn').forEach(b=>b.classList.remove('active'));
   if (type==='room') { input.placeholder= isOffice ? '請輸入辦公室編號，例：A401、B102C' : '請輸入房號，例：502'; hint.textContent= isOffice ? '' : '輸入數字即可，系統會自動標準化'; }
-  else if (type==='restaurant') { input.placeholder='例：中餐廳、咖啡廳、宴會廳…'; hint.textContent=''; }
+  else if (type==='restaurant') { input.placeholder='例：中餐廳、咖啡廳、宴會廳…，或點選下方按鈕'; hint.textContent=''; }
   else if (type==='facility') { input.placeholder='例：休閒部、教室、會議室、交誼廳…'; hint.textContent=''; }
   else { input.placeholder='例：廁所、走廊、停車場、小熊廣場…'; hint.textContent=''; }
+}
+
+function setRestaurant(name, btn) {
+  document.querySelectorAll('#restaurant-quick-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const input = document.getElementById('f-location');
+  input.value = name;
+  showNormPreview();
 }
 
 // ── 位置標準化 ──
@@ -725,7 +769,7 @@ async function submitForm() {
   try {
     const isOfficeArea = (area === '研究園' || area === '智尊');
     const locTypeLabel = locType==='room' ? (isOfficeArea?'辦公室':'客房') : ({restaurant:'餐廳',facility:'設施',other:'公共區域／其他'}[locType]||'');
-    const location = normalizeLocation(document.getElementById('f-location').value.trim());
+    const location = (selectedBuilding ? selectedBuilding+' ' : '') + normalizeLocation(document.getElementById('f-location').value.trim());
     const email = document.getElementById('f-email').value.trim();
     const reportPhotos = (photoData.report||[]).filter(Boolean);
     const res = await fetch(API_URL, {
@@ -744,6 +788,11 @@ async function submitForm() {
       document.querySelectorAll('#unit-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('#area-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('#loctype-btn-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('#restaurant-quick-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById('restaurant-quick-row').style.display='none';
+      document.getElementById('yashe-building-row').style.display='none';
+      document.querySelectorAll('#yashe-building-row .loc-type-btn').forEach(b=>b.classList.remove('active'));
+      selectedBuilding = '';
       document.getElementById('btn-room').textContent='🚪 客房';
       document.getElementById('f-unit').style.display='none';
       locType='';
@@ -794,15 +843,42 @@ function renderCases() {
     const isFlagged = !!c.flagReason;
     const cls = isFlagged ? 'case-card is-flagged' : currentFilter==='已結案' ? 'case-card is-closed' : 'case-card';
     const locDisplay = c.normalizedLocation || c.location || '—';
-    return `<div class="${cls}">
-      <div class="case-top">
-        <div>
-          <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
-          <div class="case-title">${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}</div>
-          <div class="case-meta">${c.unit} · ${c.name}</div>
+    const titleHtml = `${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
+    const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>`;
+    const photosHtml = `
+      ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="event.stopPropagation();window.open('${url}')">`).join('')}</div>`:''}
+      ${c.closePhotos&&c.closePhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">結案照片：</div><div class="photo-preview-wrap">${c.closePhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="event.stopPropagation();window.open('${url}')">`).join('')}</div>`:''}
+    `;
+
+    const collapsedView = `
+      <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
+        <div class="case-top">
+          <div>
+            <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
+            <div class="case-title">${titleHtml}</div>
+            <div class="case-meta">${c.unit} · ${c.name}</div>
+          </div>
+          ${badgeHtml}
         </div>
-        <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
-      </div>
+        <div class="case-desc">${c.description}</div>
+        ${c.repairNote?`<div class="pub-note"><div class="pub-note-label">✅ 處理結果</div>${c.repairNote}</div>`:''}
+        ${photosHtml}
+        <div class="case-tap-hint">點擊展開修繕作業 ▾</div>
+      </div>`;
+
+    const expandedView = `
+      <div class="case-expanded" id="expanded-${c.rowIndex}" style="display:none">
+        <div class="case-expand-header" onclick="toggleCardEdit(${c.rowIndex})">
+          <div>
+            <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
+            <div class="case-title">${titleHtml}</div>
+            <div class="case-meta">${c.unit} · ${c.name}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            ${badgeHtml}
+            <span class="collapse-hint">收合 ▴</span>
+          </div>
+        </div>
       <div class="case-desc">${c.description}</div>
       <div class="mgr-field">
         <div class="mgr-label">案件類型 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
@@ -875,10 +951,25 @@ function renderCases() {
           ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">結案</button>`
           : `<button class="btn-reopen" onclick="reopenCase(${c.rowIndex})">取消結案</button>`}
       </div>
-    </div>`;
+      </div>`;
+
+    return `<div class="${cls}">${collapsedView}${expandedView}</div>`;
   }).join('');
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
+}
+
+function toggleCardEdit(rowIndex) {
+  const collapsed = document.getElementById('collapsed-'+rowIndex);
+  const expanded = document.getElementById('expanded-'+rowIndex);
+  if (!collapsed || !expanded) return;
+  if (expanded.style.display === 'none') {
+    collapsed.style.display = 'none';
+    expanded.style.display = 'block';
+  } else {
+    collapsed.style.display = 'block';
+    expanded.style.display = 'none';
+  }
 }
 
 function toggleLocType(rowIndex, type, btn) {
