@@ -30,6 +30,17 @@
   .logout-btn { font-size: 12px; color: rgba(255,255,255,0.65); cursor: pointer; padding: 0 14px; display: flex; align-items: center; border-left: 1px solid rgba(255,255,255,0.2); }
   .logout-btn:hover { color: white; }
 
+  /* ── Stats bar ── */
+  .stats-bar { background: #FFFFFF; border-bottom: 1px solid #f2ede8; padding: 9px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: sticky; top: 41px; z-index: 49; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+  .stats-slime { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+  .stats-item { display: flex; align-items: baseline; gap: 5px; font-size: 12px; color: #999; }
+  .stats-item b { font-size: 15px; color: #E8761A; font-weight: 700; }
+  .stats-item span.val { font-size: 13px; color: #1a1a1a; font-weight: 600; }
+  .stats-refresh { margin-left: auto; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid #f0ece6; background: white; color: #E8761A; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+  .stats-refresh:hover { background: #FEF0E3; border-color: #E8761A; }
+  .stats-refresh.spinning { animation: spin 0.7s linear; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
   /* ── Pages ── */
   .page { display: none; padding: 20px 16px; max-width: 700px; margin: 0 auto; }
   .page.active { display: block; }
@@ -230,6 +241,13 @@
   </div>
   <div class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">登出</div>
 </nav>
+
+<div class="stats-bar">
+  <img src="slime.png" alt="slime" class="stats-slime">
+  <div class="stats-item">今日報修　<b id="statTodayCount">0</b>　件</div>
+  <div class="stats-item">最後報修　<span class="val" id="statLastTime">無</span></div>
+  <div class="stats-refresh" id="statsRefreshBtn" onclick="refreshStats()" title="重新整理">↻</div>
+</div>
 
 <!-- ── 密碼鎖 ── -->
 <div id="page-lock" class="page" style="display:none;">
@@ -512,7 +530,30 @@ window.onload = () => {
   const m = String(now.getMonth()+1).padStart(2,'0');
   const d = String(now.getDate()).padStart(2,'0');
   document.getElementById('f-date').value = `${y}/${m}/${d}`;
+  loadCases();
 };
+
+// ── 上方統計列 ──
+function updateStatsBar() {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
+  const todayCases = allCases.filter(c => c.datetime && c.datetime.startsWith(todayStr));
+  document.getElementById('statTodayCount').textContent = todayCases.length;
+  if (todayCases.length === 0) {
+    document.getElementById('statLastTime').textContent = '無';
+  } else {
+    // allCases 已是新到舊排序，取第一筆今日案件的時間部分
+    const parts = todayCases[0].datetime.split(' ');
+    document.getElementById('statLastTime').textContent = parts[1] || todayCases[0].datetime;
+  }
+}
+
+async function refreshStats() {
+  const btn = document.getElementById('statsRefreshBtn');
+  btn.classList.add('spinning');
+  await loadCases();
+  setTimeout(()=>btn.classList.remove('spinning'), 700);
+}
 
 // ── 位置類型 ──
 function setUnit(unit, btn) {
@@ -713,7 +754,7 @@ async function loadCases() {
     const data = await res.json();
     if (data.success) {
       allCases = data.cases.reverse();
-      renderCases(); renderQuery(); renderDashboard();
+      renderCases(); renderQuery(); renderDashboard(); updateStatsBar();
     }
   } catch(e) {
     document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請檢查連線</div>';
