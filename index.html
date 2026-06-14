@@ -1743,7 +1743,14 @@ function triggerPhotoUpload(prefix, idx) {
 async function handlePhotoUpload(prefix, idx, input) {
   const file = input.files[0];
   if (!file) return;
-  const compressed = await compressImage(file, 600, 0.65);
+  let compressed;
+  try {
+    compressed = await compressImage(file, 600, 0.65);
+  } catch(e) {
+    showToast('照片檔案過大，請選擇較小的照片或詳述故障狀況即可');
+    input.value = '';
+    return;
+  }
   const rowIndex = prefix.startsWith('close') ? prefix.slice(6) : null;
   const slotId = rowIndex ? `close-slot-${rowIndex}-${idx}` : `report-slot-${idx}`;
   const slot = document.getElementById(slotId);
@@ -1790,11 +1797,21 @@ function removePhoto(prefix, idx) {
 }
 
 function compressImage(file, maxSize, quality) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
+    // 原始檔案過大時直接提示，避免瀏覽器處理超大圖片卡死
+    const MAX_RAW_MB = 15;
+    if (file.size > MAX_RAW_MB * 1024 * 1024) {
+      reject(new Error('FILE_TOO_LARGE'));
+      return;
+    }
     const reader = new FileReader();
+    const timeout = setTimeout(() => reject(new Error('TIMEOUT')), 15000);
+    reader.onerror = () => { clearTimeout(timeout); reject(new Error('READ_ERROR')); };
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => { clearTimeout(timeout); reject(new Error('IMAGE_ERROR')); };
       img.onload = () => {
+        clearTimeout(timeout);
         let w = img.width, h = img.height;
         if (w > maxSize || h > maxSize) {
           if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
