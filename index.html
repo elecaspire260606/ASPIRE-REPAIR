@@ -530,6 +530,16 @@
   </div>
 </div>
 
+<div id="drillModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)closeDrillModal()">
+  <div style="background:white;border-radius:18px;padding:22px;width:92%;max-width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div id="drillTitle" style="font-size:16px;font-weight:700;color:#1a1a1a;"></div>
+      <span onclick="closeDrillModal()" style="cursor:pointer;font-size:20px;color:#bbb;line-height:1;">×</span>
+    </div>
+    <div id="drillBody"></div>
+  </div>
+</div>
+
 
 
 <script>
@@ -1343,7 +1353,7 @@ function getFilteredCases() {
 }
 
 // ── 圓餅圖 ──
-function renderPieChart(containerId, counts, colors, total) {
+function renderPieChart(containerId, counts, colors, total, clickHandler) {
   const el = document.getElementById(containerId);
   const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   if (!entries.length) { el.innerHTML='<div class="empty-state" style="padding:20px 0;">暫無資料</div>'; return; }
@@ -1361,11 +1371,12 @@ function renderPieChart(containerId, counts, colors, total) {
     const ix2=cx+innerR*Math.cos(endAngle), iy2=cy+innerR*Math.sin(endAngle);
     const largeArc = angle > Math.PI ? 1 : 0;
     const color = colors[label]||'#bbb';
-    slices += `<path d="M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1} Z" fill="${color}" stroke="white" stroke-width="2"/>`;
+    const clickAttr = clickHandler ? ` style="cursor:pointer;" onclick="${clickHandler}('${label}')"` : '';
+    slices += `<path d="M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1} Z" fill="${color}" stroke="white" stroke-width="2"${clickAttr}/>`;
     startAngle = endAngle;
   });
   const legend = entries.map(([label,val])=>`
-    <div class="pie-legend-item">
+    <div class="pie-legend-item"${clickHandler?` style="cursor:pointer;" onclick="${clickHandler}('${label}')"`:''}>
       <div class="pie-legend-dot" style="background:${colors[label]||'#bbb'}"></div>
       <span class="pie-legend-label">${label}</span>
       <span class="pie-legend-val">${val}件 ${Math.round(val/sum*100)}%</span>
@@ -1434,8 +1445,10 @@ async function importBackup(file) {
 }
 
 // ── 後台統計 ──
+let dashboardCases = [];
 function renderDashboard() {
   const cases = getFilteredCases();
+  dashboardCases = cases;
   const total=cases.length, pending=cases.filter(c=>c.status==='待處理').length, done=cases.filter(c=>c.status==='已結案').length;
   document.getElementById('d-total').textContent=total;
   document.getElementById('d-pending').textContent=pending;
@@ -1444,7 +1457,7 @@ function renderDashboard() {
 
   const areaCounts={};
   cases.forEach(c=>{areaCounts[effArea(c)]=(areaCounts[effArea(c)]||0)+1;});
-  renderPieChart('areaChart', areaCounts, AREA_COLORS, total);
+  renderPieChart('areaChart', areaCounts, AREA_COLORS, total, 'drillByArea');
 
   const areaF=currentAreaDashFilter;
   const locCases=areaF==='all'?cases:cases.filter(c=>areaMatchesFilter(effArea(c),areaF));
@@ -1495,12 +1508,12 @@ function renderDashboard() {
     const lt = c.correctedLocType || c.locationType || '';
     if (lt) locTypeCounts[lt]=(locTypeCounts[lt]||0)+1;
   });
-  renderPieChart('locTypeChart', locTypeCounts, locTypeColors, total);
+  renderPieChart('locTypeChart', locTypeCounts, locTypeColors, total, 'drillByLocType');
 
   const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物土木':'#10B981','照明':'#F97316','衛浴':'#14B8A6','庶務':'#A78BFA','其他':'#aaa'};
   const typeCounts = {};
   cases.forEach(c=>{ if(c.caseType) typeCounts[c.caseType]=(typeCounts[c.caseType]||0)+1; });
-  renderPieChart('caseTypeChart', typeCounts, typeColors, total);
+  renderPieChart('caseTypeChart', typeCounts, typeColors, total, 'drillByCaseType');
 
   document.getElementById('recentList').innerHTML=cases.slice(0,8).map(c=>`
     <div class="recent-item">
@@ -1510,6 +1523,62 @@ function renderDashboard() {
       </div>
       <span class="badge ${c.status==='待處理'?'pending':'done'}">${c.status}</span>
     </div>`).join('')||'<div class="empty-state">暫無資料</div>';
+}
+
+// ── 鑽取詳情 modal ──
+function renderDrillCaseRows(cases) {
+  return cases.map(c=>`
+    <div style="padding:8px 10px;border-bottom:1px solid #f5f0eb;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
+        <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
+      </div>
+      <div style="font-size:12px;color:#999;margin-bottom:2px;">${effArea(c)} · ${c.normalizedLocation||normalizeLocation(c.location)||c.location||'—'}</div>
+      <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
+      ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:''}
+    </div>`).join('');
+}
+
+let drillModalCases = [];
+const DRILL_LIMIT = 30;
+
+function renderDrillBody(showAll) {
+  const cases = drillModalCases;
+  if (!cases.length) return '<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
+  const shown = showAll ? cases : cases.slice(0, DRILL_LIMIT);
+  let html = `<div style="background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">${renderDrillCaseRows(shown)}</div>`;
+  if (!showAll && cases.length > DRILL_LIMIT) {
+    html += `<div style="text-align:center;margin-top:10px;">
+      <button onclick="document.getElementById('drillBody').innerHTML=renderDrillBody(true)" style="padding:8px 16px;background:#f0f0f0;color:#666;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">顯示全部 ${cases.length} 件</button>
+    </div>`;
+  }
+  return html;
+}
+
+function openDrillModal(title, cases) {
+  document.getElementById('drillTitle').textContent = `${title}（共 ${cases.length} 件）`;
+  drillModalCases = cases;
+  document.getElementById('drillBody').innerHTML = renderDrillBody(false);
+  document.getElementById('drillModal').style.display = 'flex';
+}
+
+function closeDrillModal() {
+  document.getElementById('drillModal').style.display = 'none';
+}
+
+function drillByArea(label) {
+  const matched = dashboardCases.filter(c=>effArea(c)===label);
+  openDrillModal(`📍 ${label}`, matched);
+}
+
+function drillByLocType(label) {
+  const matched = dashboardCases.filter(c=>(c.correctedLocType||c.locationType||'')===label);
+  openDrillModal(`🏷️ ${label}`, matched);
+}
+
+function drillByCaseType(label) {
+  const matched = dashboardCases.filter(c=>c.caseType===label);
+  openDrillModal(`🔧 ${label}`, matched);
 }
 
 function toggleLocDetail(id) {
