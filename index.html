@@ -153,7 +153,10 @@
 
   /* ── Dashboard ── */
   .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px; }
-  .stat-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:16px; text-align:center; }
+  .stat-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:16px; text-align:center; position:relative; overflow:hidden; border-left:4px solid transparent; }
+  .stat-card.tint-navy { background:linear-gradient(135deg,#fbfcfe 0%,#eef3f8 100%); border-left-color:#1a3a5c; }
+  .stat-card.tint-red { background:linear-gradient(135deg,#fffbfa 0%,#fdecea 100%); border-left-color:#E0524D; }
+  .stat-card.tint-green { background:linear-gradient(135deg,#fafdfb 0%,#e9f5ed 100%); border-left-color:#2D7A3E; }
   .stat-num { font-size:28px; font-weight:700; }
   .stat-num.orange { color:#E8761A; }
   .stat-num.green { color:#2D7A3E; }
@@ -162,20 +165,28 @@
   .stat-num.red { color:#E0524D; }
   .stat-card.rate-card {
     background: linear-gradient(135deg, #E8761A 0%, #F4A24A 100%);
-    box-shadow: 0 4px 16px rgba(232,118,26,0.3);
-    position: relative;
-    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(232,118,26,0.35);
+    border-left: none;
+    transform: scale(1.03);
   }
   .stat-card.rate-card::before {
     content: '';
     position: absolute;
-    top: -20px; right: -20px;
-    width: 80px; height: 80px;
+    top: -30px; right: -30px;
+    width: 100px; height: 100px;
     background: rgba(255,255,255,0.15);
     border-radius: 50%;
   }
-  .stat-card.rate-card .stat-num { color: white; position: relative; z-index: 1; }
-  .stat-card.rate-card .stat-label { color: rgba(255,255,255,0.9); position: relative; z-index: 1; }
+  .stat-card.rate-card::after {
+    content: '';
+    position: absolute;
+    bottom: -25px; left: -25px;
+    width: 70px; height: 70px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+  }
+  .stat-card.rate-card .stat-num { color: white; position: relative; z-index: 1; font-size: 34px; }
+  .stat-card.rate-card .stat-label { color: rgba(255,255,255,0.9); position: relative; z-index: 1; font-weight:600; }
   .stat-label { font-size:12px; color:#bbb; margin-top:4px; font-weight:500; }
   .chart-wrap { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:18px; margin-bottom:14px; }
   .chart-title { font-size:13px; font-weight:700; margin-bottom:14px; color:#1a1a1a; }
@@ -473,9 +484,9 @@
     <input type="date" id="dateTo" onchange="renderDashboard()">
   </div>
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
-    <div class="stat-card"><div class="stat-num red" id="d-pending">—</div><div class="stat-label">待處理</div></div>
-    <div class="stat-card"><div class="stat-num green" id="d-done">—</div><div class="stat-label">已結案</div></div>
+    <div class="stat-card tint-navy"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
+    <div class="stat-card tint-red"><div class="stat-num red" id="d-pending">—</div><div class="stat-label">待處理</div></div>
+    <div class="stat-card tint-green"><div class="stat-num green" id="d-done">—</div><div class="stat-label">已結案</div></div>
     <div class="stat-card rate-card"><div class="stat-num" id="d-rate">—</div><div class="stat-label">結案率</div></div>
   </div>
   <div class="pie-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
