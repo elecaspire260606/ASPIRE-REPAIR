@@ -476,7 +476,14 @@
     <div id="caseTypeChart"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
   </div>
   <div class="chart-wrap">
-    <div class="chart-title">位置病歷表 <span style="font-size:11px;color:#bbb;font-weight:400;">依報修次數排序</span></div>
+    <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>位置病歷表 <span style="font-size:11px;color:#bbb;font-weight:400;">依報修次數排序</span></div>
+      <div id="locPagerNav" style="display:none;align-items:center;gap:8px;font-weight:400;">
+        <button id="locPrevBtn" onclick="locPagerGo(-1)" style="border:none;background:#f5f0eb;color:#888;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">‹</button>
+        <span id="locPagerLabel" style="font-size:12px;color:#aaa;min-width:50px;text-align:center;"></span>
+        <button id="locNextBtn" onclick="locPagerGo(1)" style="border:none;background:#f5f0eb;color:#888;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">›</button>
+      </div>
+    </div>
     <div style="margin-top:14px;" id="locationTable"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
   </div>
   <div class="chart-wrap">
@@ -1446,6 +1453,75 @@ async function importBackup(file) {
 
 // ── 後台統計 ──
 let dashboardCases = [];
+const LOC_PAGE_SIZE = 15;
+let locPagerEntries = [];
+let locPagerPage = 0;
+let locPagerMultiArea = false;
+let locPagerMaxL = 1;
+
+function renderLocEntries(entries, idOffset, multiArea, maxL) {
+  return entries.map((e,i)=>{
+    const entryId='loc-detail-'+(i+idOffset);
+    const caseRows=e.cases.map(c=>`
+      <div style="padding:8px 10px;border-bottom:1px solid #f5f0eb;last-child:border-none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+          <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
+          <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
+        </div>
+        <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
+        ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:`<div style="font-size:12px;color:#ccc;font-style:italic;">${c.status==='待處理'?'處理進度：（尚未填寫）':''}</div>`}
+      </div>`).join('');
+    return `
+    <div class="loc-entry">
+      <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
+        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1+idOffset}</span><span class="loc-name">${e.loc}</span>${multiArea?`<span class="loc-area-tag">${e.area}</span>`:''}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="loc-badges">${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 已結案</span>`:''}</div>
+          <span id="arrow-${entryId}" style="font-size:12px;color:#ccc;transition:transform 0.2s;">▼</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+        <div style="flex:1;background:#f2ede8;border-radius:5px;height:10px;overflow:hidden;"><div style="height:100%;border-radius:5px;background:${AREA_COLORS[e.area]||'#aaa'};width:${Math.round(e.total/maxL*100)}%;"></div></div>
+        <span style="font-size:12px;font-weight:600;color:#444;min-width:30px;text-align:right;">${e.total} 次</span>
+      </div>
+      <div id="${entryId}" style="display:none;margin-top:10px;background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">
+        ${caseRows}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLocPage() {
+  const el = document.getElementById('locationTable');
+  const nav = document.getElementById('locPagerNav');
+  if (!locPagerEntries.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
+    nav.style.display = 'none';
+    return;
+  }
+  const totalPages = Math.ceil(locPagerEntries.length / LOC_PAGE_SIZE);
+  if (locPagerPage >= totalPages) locPagerPage = totalPages - 1;
+  if (locPagerPage < 0) locPagerPage = 0;
+  const start = locPagerPage * LOC_PAGE_SIZE;
+  const pageEntries = locPagerEntries.slice(start, start + LOC_PAGE_SIZE);
+  el.innerHTML = renderLocEntries(pageEntries, start, locPagerMultiArea, locPagerMaxL);
+  if (totalPages > 1) {
+    nav.style.display = 'flex';
+    document.getElementById('locPagerLabel').textContent = `${locPagerPage+1} / ${totalPages}`;
+    document.getElementById('locPrevBtn').disabled = locPagerPage === 0;
+    document.getElementById('locPrevBtn').style.opacity = locPagerPage === 0 ? '0.4' : '1';
+    document.getElementById('locNextBtn').disabled = locPagerPage === totalPages-1;
+    document.getElementById('locNextBtn').style.opacity = locPagerPage === totalPages-1 ? '0.4' : '1';
+  } else {
+    nav.style.display = 'none';
+  }
+}
+
+function locPagerGo(dir) {
+  locPagerPage += dir;
+  renderLocPage();
+}
+
 function renderDashboard() {
   const cases = getFilteredCases();
   dashboardCases = cases;
@@ -1470,37 +1546,11 @@ function renderDashboard() {
     locMap[key].cases.push(c);
   });
   const locEntries=Object.values(locMap).sort((a,b)=>b.total-a.total);
-  const multiArea = new Set(locEntries.map(e=>e.area)).size > 1;
-  const maxL=Math.max(...locEntries.map(e=>e.total),1);
-  document.getElementById('locationTable').innerHTML=locEntries.length?locEntries.map((e,i)=>{
-    const entryId='loc-detail-'+i;
-    const caseRows=e.cases.map(c=>`
-      <div style="padding:8px 10px;border-bottom:1px solid #f5f0eb;last-child:border-none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
-          <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
-        </div>
-        <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
-        ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:`<div style="font-size:12px;color:#ccc;font-style:italic;">${c.status==='待處理'?'處理進度：（尚未填寫）':''}</div>`}
-      </div>`).join('');
-    return `
-    <div class="loc-entry">
-      <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
-        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1}</span><span class="loc-name">${e.loc}</span>${multiArea?`<span class="loc-area-tag">${e.area}</span>`:''}</div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div class="loc-badges">${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 已結案</span>`:''}</div>
-          <span id="arrow-${entryId}" style="font-size:12px;color:#ccc;transition:transform 0.2s;">▼</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
-        <div style="flex:1;background:#f2ede8;border-radius:5px;height:10px;overflow:hidden;"><div style="height:100%;border-radius:5px;background:${AREA_COLORS[e.area]||'#aaa'};width:${Math.round(e.total/maxL*100)}%;"></div></div>
-        <span style="font-size:12px;font-weight:600;color:#444;min-width:30px;text-align:right;">${e.total} 次</span>
-      </div>
-      <div id="${entryId}" style="display:none;margin-top:10px;background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">
-        ${caseRows}
-      </div>
-    </div>`;
-  }).join(''):'<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
+  locPagerMultiArea = new Set(locEntries.map(e=>e.area)).size > 1;
+  locPagerMaxL=Math.max(...locEntries.map(e=>e.total),1);
+  locPagerEntries = locEntries;
+  locPagerPage = 0;
+  renderLocPage();
 
   const locTypeColors = {'客房':'#E8761A','辦公室':'#E8761A','餐廳':'#3B82F6','設施':'#8B5CF6','公共區域／其他':'#aaa'};
   const locTypeCounts = {};
