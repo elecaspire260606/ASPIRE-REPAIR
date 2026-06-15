@@ -478,10 +478,10 @@
   <div class="chart-wrap">
     <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;">
       <div>位置病歷表 <span style="font-size:11px;color:#bbb;font-weight:400;">依報修次數排序</span></div>
-      <div id="locPagerNav" style="display:none;align-items:center;gap:8px;font-weight:400;">
-        <button id="locPrevBtn" onclick="locPagerGo(-1)" style="border:none;background:#f5f0eb;color:#888;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">‹</button>
-        <span id="locPagerLabel" style="font-size:12px;color:#aaa;min-width:50px;text-align:center;"></span>
-        <button id="locNextBtn" onclick="locPagerGo(1)" style="border:none;background:#f5f0eb;color:#888;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">›</button>
+      <div id="locPagerNav" style="display:none;align-items:center;gap:10px;font-weight:400;">
+        <button id="locPrevBtn" onclick="locPagerGo(-1)" style="border:none;background:#E8761A;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(232,118,26,0.35);">‹</button>
+        <span id="locPagerLabel" style="font-size:13px;font-weight:700;color:#666;min-width:54px;text-align:center;"></span>
+        <button id="locNextBtn" onclick="locPagerGo(1)" style="border:none;background:#E8761A;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(232,118,26,0.35);">›</button>
       </div>
     </div>
     <div style="margin-top:14px;" id="locationTable"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
@@ -876,6 +876,13 @@ function renderCases() {
   const list = document.getElementById('caseList');
   let filtered = allCases.filter(c=>c.status===currentFilter);
   if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentMgrArea));
+  if (currentFilter==='已結案') {
+    filtered = [...filtered].sort((a,b)=>{
+      const da = new Date(String(a.closeDatetime||a.datetime||'').replace(/-/g,'/'));
+      const db = new Date(String(b.closeDatetime||b.datetime||'').replace(/-/g,'/'));
+      return (isNaN(db)?0:db) - (isNaN(da)?0:da);
+    });
+  }
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (mgrPage>totalPages) mgrPage=totalPages;
@@ -891,12 +898,14 @@ function renderCases() {
       ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="event.stopPropagation();window.open('${url}')">`).join('')}</div>`:''}
       ${c.closePhotos&&c.closePhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">結案照片：</div><div class="photo-preview-wrap">${c.closePhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="event.stopPropagation();window.open('${url}')">`).join('')}</div>`:''}
     `;
+    const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
 
     const collapsedView = `
       <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
         <div class="case-top">
           <div>
-            <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
+            <div class="case-id">${c.caseId}</div>
+            <div style="margin:4px 0;">${timeBadges}</div>
             <div class="case-title">${titleHtml}</div>
             <div class="case-meta">${c.unit} · ${c.name}</div>
           </div>
@@ -912,7 +921,8 @@ function renderCases() {
       <div class="case-expanded" id="expanded-${c.rowIndex}" style="display:none">
         <div class="case-expand-header" onclick="toggleCardEdit(${c.rowIndex})">
           <div>
-            <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
+            <div class="case-id">${c.caseId}</div>
+            <div style="margin:4px 0;">${timeBadges}</div>
             <div class="case-title">${titleHtml}</div>
             <div class="case-meta">${c.unit} · ${c.name}</div>
           </div>
@@ -1328,6 +1338,11 @@ function formatDatetime(raw) {
   return raw;
 }
 
+function dateBadge(label, dateStr, bg, color) {
+  if (!dateStr) return '';
+  return `<span style="display:inline-flex;align-items:center;gap:4px;background:${bg};color:${color};font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;margin-right:6px;">${label} ${formatDatetime(dateStr)}</span>`;
+}
+
 function parseDate(raw) {
   if (!raw) return null;
   const m1 = String(raw).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
@@ -1509,9 +1524,11 @@ function renderLocPage() {
     nav.style.display = 'flex';
     document.getElementById('locPagerLabel').textContent = `${locPagerPage+1} / ${totalPages}`;
     document.getElementById('locPrevBtn').disabled = locPagerPage === 0;
-    document.getElementById('locPrevBtn').style.opacity = locPagerPage === 0 ? '0.4' : '1';
+    document.getElementById('locPrevBtn').style.background = locPagerPage === 0 ? '#e0e0e0' : '#E8761A';
+    document.getElementById('locPrevBtn').style.boxShadow = locPagerPage === 0 ? 'none' : '0 2px 6px rgba(232,118,26,0.35)';
     document.getElementById('locNextBtn').disabled = locPagerPage === totalPages-1;
-    document.getElementById('locNextBtn').style.opacity = locPagerPage === totalPages-1 ? '0.4' : '1';
+    document.getElementById('locNextBtn').style.background = locPagerPage === totalPages-1 ? '#e0e0e0' : '#E8761A';
+    document.getElementById('locNextBtn').style.boxShadow = locPagerPage === totalPages-1 ? 'none' : '0 2px 6px rgba(232,118,26,0.35)';
   } else {
     nav.style.display = 'none';
   }
