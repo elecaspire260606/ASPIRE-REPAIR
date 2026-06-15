@@ -908,8 +908,13 @@ function renderCases() {
     const toTs = (c) => {
       const raw = c.closeDatetime || c.datetime || c.date || '';
       if (!raw) return 0;
-      const s = String(raw).trim().replace(/-/g,'/');
-      const d = new Date(s);
+      const s = String(raw).trim();
+      // ISO 格式 (含 T 或 Z) 直接解析，不做斜線替換
+      if (/T.*Z?$|^\d{4}-\d{2}-\d{2}T/.test(s)) {
+        const d = new Date(s);
+        return isNaN(d) ? 0 : d.getTime();
+      }
+      const d = new Date(s.replace(/-/g,'/'));
       return isNaN(d) ? 0 : d.getTime();
     };
     filtered = [...filtered].sort((a,b)=> toTs(b) - toTs(a));
