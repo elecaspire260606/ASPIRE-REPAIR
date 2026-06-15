@@ -121,6 +121,8 @@
   .case-meta { font-size:12px; color:#aaa; margin-bottom:9px; }
   .case-desc { font-size:13px; color:#555; background:#faf8f5; border-radius:8px; padding:9px 11px; margin-bottom:11px; border-left:3px solid #E8761A; }
   .badge { font-size:11px; padding:4px 11px; border-radius:20px; font-weight:600; white-space:nowrap; }
+  .ppt-btn { font-size:11px; padding:5px 10px; border-radius:8px; font-weight:600; white-space:nowrap; background:#4A90D9; color:white; border:none; cursor:pointer; font-family:inherit; }
+  .ppt-btn:disabled { opacity:0.6; cursor:default; }
   .badge.pending { background:#FEF0E3; color:#C05E0A; }
   .badge.done { background:#E6F4EA; color:#2D7A3E; }
   .badge.flagged { background:#f0f0f0; color:#999; }
@@ -936,6 +938,8 @@ function renderCases() {
     `;
     const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
 
+    const reportBtnHtml = (c.status==='已結案' && !isFlagged) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
+
     const collapsedView = `
       <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
         <div class="case-top">
@@ -945,7 +949,10 @@ function renderCases() {
             <div class="case-title">${titleHtml}</div>
             <div class="case-meta">${c.unit} · ${c.name}</div>
           </div>
-          ${badgeHtml}
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            ${badgeHtml}
+            ${reportBtnHtml}
+          </div>
         </div>
         <div class="case-desc">${c.description}</div>
         ${c.repairNote?`<div class="pub-note"><div class="pub-note-label">✅ 處理結果</div>${c.repairNote}</div>`:''}
@@ -964,6 +971,7 @@ function renderCases() {
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
             ${badgeHtml}
+            ${reportBtnHtml}
             <span class="collapse-hint">收合 ▴</span>
           </div>
         </div>
@@ -1869,6 +1877,29 @@ async function handlePhotoUpload(prefix, idx, input) {
     // close-slot 預設已顯示
   }
   input.value = '';
+}
+
+async function generateReport(rowIndex, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '生成中…';
+  try {
+    const data = await callApi({action:'generateReport', rowIndex});
+    if (data.success) {
+      const a = document.createElement('a');
+      a.href = data.url;
+      a.download = data.fileName || 'report.pptx';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('✓ 報告已生成');
+    } else {
+      showToast('生成失敗：'+(data.message||'未知錯誤'));
+    }
+  } catch(e) { showToast('生成失敗，請檢查網路'); }
+  btn.disabled = false;
+  btn.textContent = originalText;
 }
 
 async function deleteReportPhoto(rowIndex, idx) {
