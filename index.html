@@ -159,6 +159,23 @@
   .stat-num.green { color:#2D7A3E; }
   .stat-num.navy { color:#1a3a5c; }
   .stat-num.gray { color:#aaa; }
+  .stat-num.red { color:#E0524D; }
+  .stat-card.rate-card {
+    background: linear-gradient(135deg, #E8761A 0%, #F4A24A 100%);
+    box-shadow: 0 4px 16px rgba(232,118,26,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card.rate-card::before {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 80px; height: 80px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+  }
+  .stat-card.rate-card .stat-num { color: white; position: relative; z-index: 1; }
+  .stat-card.rate-card .stat-label { color: rgba(255,255,255,0.9); position: relative; z-index: 1; }
   .stat-label { font-size:12px; color:#bbb; margin-top:4px; font-weight:500; }
   .chart-wrap { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:18px; margin-bottom:14px; }
   .chart-title { font-size:13px; font-weight:700; margin-bottom:14px; color:#1a1a1a; }
@@ -457,9 +474,9 @@
   </div>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
-    <div class="stat-card"><div class="stat-num orange" id="d-pending">—</div><div class="stat-label">待處理</div></div>
+    <div class="stat-card"><div class="stat-num red" id="d-pending">—</div><div class="stat-label">待處理</div></div>
     <div class="stat-card"><div class="stat-num green" id="d-done">—</div><div class="stat-label">已結案</div></div>
-    <div class="stat-card"><div class="stat-num gray" id="d-rate">—</div><div class="stat-label">結案率</div></div>
+    <div class="stat-card rate-card"><div class="stat-num" id="d-rate">—</div><div class="stat-label">結案率</div></div>
   </div>
   <div class="pie-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
     <div class="chart-wrap" style="margin-bottom:0;">
