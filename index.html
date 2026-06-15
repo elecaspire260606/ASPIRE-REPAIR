@@ -905,11 +905,14 @@ function renderCases() {
   let filtered = allCases.filter(c=>c.status===currentFilter);
   if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentMgrArea));
   if (currentFilter==='已結案') {
-    filtered = [...filtered].sort((a,b)=>{
-      const da = new Date(String(a.closeDatetime||a.datetime||'').replace(/-/g,'/'));
-      const db = new Date(String(b.closeDatetime||b.datetime||'').replace(/-/g,'/'));
-      return (isNaN(db)?0:db) - (isNaN(da)?0:da);
-    });
+    const toTs = (c) => {
+      const raw = c.closeDatetime || c.datetime || c.date || '';
+      if (!raw) return 0;
+      const s = String(raw).trim().replace(/-/g,'/');
+      const d = new Date(s);
+      return isNaN(d) ? 0 : d.getTime();
+    };
+    filtered = [...filtered].sort((a,b)=> toTs(b) - toTs(a));
   }
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
