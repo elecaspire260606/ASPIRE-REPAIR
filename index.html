@@ -1655,8 +1655,9 @@ function renderDashboard() {
 
   const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物土木':'#10B981','照明':'#F97316','衛浴':'#14B8A6','庶務':'#A78BFA','其他':'#aaa'};
   const typeCounts = {};
-  cases.forEach(c=>{ if(c.caseType) typeCounts[c.caseType]=(typeCounts[c.caseType]||0)+1; });
-  renderPieChart('caseTypeChart', typeCounts, typeColors, total, 'drillByCaseType');
+  const closedForType = cases.filter(c=>c.status==='已結案');
+  closedForType.forEach(c=>{ if(c.caseType) typeCounts[c.caseType]=(typeCounts[c.caseType]||0)+1; });
+  renderPieChart('caseTypeChart', typeCounts, typeColors, closedForType.length, 'drillByCaseType');
 
   // 結案人比例圖（限定密碼 py5678 才顯示）
   const closerChartWrap = document.getElementById('closerChartWrap');
@@ -1735,7 +1736,7 @@ function drillByLocType(label) {
 }
 
 function drillByCaseType(label) {
-  const matched = dashboardCases.filter(c=>c.caseType===label);
+  const matched = dashboardCases.filter(c=>c.status==='已結案' && c.caseType===label);
   openDrillModal(`🔧 ${label}`, matched);
 }
 
@@ -1824,9 +1825,9 @@ function exportExcel() {
   const areaCounts = {};
   cases.forEach(c => { areaCounts[effArea(c)] = (areaCounts[effArea(c)]||0)+1; });
 
-  // 維修類別
+  // 維修類別（只計算已結案案件）
   const typeCounts = {};
-  cases.forEach(c => { if(c.caseType) typeCounts[c.caseType] = (typeCounts[c.caseType]||0)+1; });
+  cases.filter(c=>c.status==='已結案').forEach(c => { if(c.caseType) typeCounts[c.caseType] = (typeCounts[c.caseType]||0)+1; });
 
   // 位置病歷 Top10
   const locMap = {};
