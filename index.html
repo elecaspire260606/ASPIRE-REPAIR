@@ -445,6 +445,10 @@
     <button class="filter-btn active" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
     <button class="filter-btn" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
   </div>
+  <div style="position:relative;margin-bottom:10px;">
+    <input type="text" id="mgrSearchInput" placeholder="搜尋案件編號、地點、描述、申請人…" oninput="onMgrSearchInput()" style="width:100%;padding:11px 38px 11px 14px;border:1.5px solid #e8e8e8;border-radius:12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+    <span id="mgrSearchClear" onclick="clearMgrSearch()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#bbb;cursor:pointer;font-size:16px;">×</span>
+  </div>
   <div class="filter-row" style="flex-wrap:wrap;gap:6px;" id="mgr-area-row">
     <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;all&#39;,this)">全部</button>
     <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;會館&#39;,this)">會館</button>
@@ -504,6 +508,10 @@
   <div class="chart-wrap">
     <div class="chart-title">維修類別比例</div>
     <div id="caseTypeChart"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
+  </div>
+  <div class="chart-wrap" id="closerChartWrap" style="display:none;">
+    <div class="chart-title">結案人案件比例 <span style="font-size:11px;color:#bbb;font-weight:400;">權限限定</span></div>
+    <div id="closerChart"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
   </div>
   <div class="chart-wrap">
     <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -888,6 +896,20 @@ async function loadCases() {
 }
 
 // ── 修繕管理 ──
+function onMgrSearchInput() {
+  const val = document.getElementById('mgrSearchInput').value;
+  document.getElementById('mgrSearchClear').style.display = val ? 'block' : 'none';
+  mgrPage = 1;
+  renderCases();
+}
+
+function clearMgrSearch() {
+  document.getElementById('mgrSearchInput').value = '';
+  document.getElementById('mgrSearchClear').style.display = 'none';
+  mgrPage = 1;
+  renderCases();
+}
+
 function filterMgrArea(area, btn) {
   currentMgrArea = area;
   mgrPage = 1;
@@ -906,6 +928,16 @@ function renderCases() {
   const list = document.getElementById('caseList');
   let filtered = allCases.filter(c=>c.status===currentFilter);
   if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentMgrArea));
+  const mgrSearchKeyword = (document.getElementById('mgrSearchInput')?.value || '').trim().toLowerCase();
+  if (mgrSearchKeyword) {
+    filtered = filtered.filter(c => {
+      const haystack = [
+        c.caseId, c.area, effArea(c), c.location, c.normalizedLocation,
+        c.description, c.name, c.unit, c.locationType, c.caseType, c.repairNote
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(mgrSearchKeyword);
+    });
+  }
   if (currentFilter==='已結案') {
     const toTs = (c) => {
       const raw = c.closeDatetime || c.datetime || c.date || '';
@@ -1626,6 +1658,21 @@ function renderDashboard() {
   cases.forEach(c=>{ if(c.caseType) typeCounts[c.caseType]=(typeCounts[c.caseType]||0)+1; });
   renderPieChart('caseTypeChart', typeCounts, typeColors, total, 'drillByCaseType');
 
+  // 結案人比例圖（限定密碼 py5678 才顯示）
+  const closerChartWrap = document.getElementById('closerChartWrap');
+  if (sessionStorage.getItem('adminToken') === 'py5678') {
+    closerChartWrap.style.display = '';
+    const closerColors = {};
+    const palette = ['#E8761A','#1a3a5c','#2D7A3E','#8B5CF6','#EC4899','#06B6D4','#F59E0B','#14B8A6'];
+    const closedCases = cases.filter(c=>c.status==='已結案' && c.closerName);
+    const closerCounts = {};
+    closedCases.forEach(c=>{ closerCounts[c.closerName]=(closerCounts[c.closerName]||0)+1; });
+    Object.keys(closerCounts).forEach((name,i)=>{ closerColors[name]=palette[i%palette.length]; });
+    renderPieChart('closerChart', closerCounts, closerColors, closedCases.length, 'drillByCloser');
+  } else {
+    closerChartWrap.style.display = 'none';
+  }
+
   document.getElementById('recentList').innerHTML=cases.slice(0,8).map(c=>`
     <div class="recent-item">
       <div>
@@ -1690,6 +1737,11 @@ function drillByLocType(label) {
 function drillByCaseType(label) {
   const matched = dashboardCases.filter(c=>c.caseType===label);
   openDrillModal(`🔧 ${label}`, matched);
+}
+
+function drillByCloser(label) {
+  const matched = dashboardCases.filter(c=>c.closerName===label);
+  openDrillModal(`👤 ${label}`, matched);
 }
 
 function toggleLocDetail(id) {
