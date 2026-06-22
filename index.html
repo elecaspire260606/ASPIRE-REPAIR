@@ -104,11 +104,20 @@
   .page-ellipsis { font-size:13px; color:#bbb; padding:0 4px; }
 
   /* ── Case cards ── */
-  .case-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:15px; margin-bottom:11px; }
+  .case-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:15px; margin-bottom:11px; position:relative; }
   .case-card.is-closed { background:#f8f6f3; }
   .case-card.is-flagged { background:#f5f5f5; opacity:0.72; }
   .case-card.is-flagged .case-title,
   .case-card.is-flagged .case-desc { text-decoration:line-through; color:#bbb; }
+  .flag-stamp {
+    position:absolute; top:16px; right:16px;
+    border:3px solid #C0392B; border-radius:6px;
+    color:#C0392B; font-size:15px; font-weight:900;
+    padding:4px 10px; letter-spacing:3px;
+    transform:rotate(-12deg); transform-origin:center;
+    opacity:0.75; pointer-events:none; white-space:nowrap;
+    font-family:inherit; line-height:1.4;
+  }
   .case-collapsed { cursor:pointer; border-radius:10px; transition:background 0.15s; margin:-4px; padding:4px; }
   .case-collapsed:hover { background:#faf8f5; }
   .case-tap-hint { font-size:11px; color:#ccc; text-align:center; margin-top:10px; padding-top:8px; border-top:1px dashed #f0ece6; }
@@ -978,8 +987,11 @@ function renderCases() {
 
     const reportBtnHtml = (c.status==='已結案' && !isFlagged) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
 
+    const stampHtml = isFlagged ? `<div class="flag-stamp">${c.flagReason||'已標記'}</div>` : '';
+
     const collapsedView = `
       <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
+        ${stampHtml}
         <div class="case-top">
           <div>
             <div class="case-id">${c.caseId}</div>
