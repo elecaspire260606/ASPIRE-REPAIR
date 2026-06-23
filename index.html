@@ -1072,7 +1072,12 @@ function renderCases() {
       <div class="mgr-field">
         <div class="mgr-label">結案人 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
         <div class="flag-row" id="closer-${c.rowIndex}">
-          ${['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','其他'].map(f=>`<button class="flag-btn${(c.closerName||'')===f?' active-flag':''}" onclick="toggleCloser(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
+          ${['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','其他'].map(f=>{
+            const fixedNames = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'];
+            const savedNames = (c.closerName||'').split('、');
+            const isActive = savedNames.includes(f) || (f==='其他' && c.closerName && c.closerName.split('、').some(n=>!fixedNames.includes(n)));
+            return `<button class="flag-btn${isActive?' active-flag':''}" data-closer="${f}" onclick="toggleCloser(${c.rowIndex},'${f}',this)">${f}</button>`;
+          }).join('')}
         </div>
         <input type="text" id="closer-other-${c.rowIndex}" placeholder="請輸入結案人姓名"
           style="display:${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'].includes(c.closerName)&&c.closerName?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
@@ -1180,24 +1185,29 @@ function getSelectedCaseType(rowIndex) {
 }
 
 function toggleCloser(rowIndex, name, btn) {
-  const btns = document.getElementById('closer-'+rowIndex).querySelectorAll('.flag-btn');
-  btns.forEach(b=>b.classList.remove('active-flag'));
-  btn.classList.add('active-flag');
+  btn.classList.toggle('active-flag');
   const otherInput = document.getElementById('closer-other-'+rowIndex);
-  if (otherInput) otherInput.style.display = name==='其他' ? 'block' : 'none';
+  if (otherInput) {
+    const otherBtn = document.getElementById('closer-'+rowIndex).querySelector('[data-closer="其他"]');
+    otherInput.style.display = (otherBtn && otherBtn.classList.contains('active-flag')) ? 'block' : 'none';
+  }
 }
 
 function getSelectedCloser(rowIndex) {
   const el = document.getElementById('closer-'+rowIndex);
   if (!el) return '';
-  const active = el.querySelector('.active-flag');
-  if (!active) return '';
-  const name = active.textContent;
-  if (name === '其他') {
-    const input = document.getElementById('closer-other-'+rowIndex);
-    return input ? input.value.trim() : '';
-  }
-  return name;
+  const fixedNames = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'];
+  const selected = [];
+  el.querySelectorAll('.flag-btn.active-flag').forEach(b => {
+    if (b.textContent === '其他') {
+      const input = document.getElementById('closer-other-'+rowIndex);
+      const val = input ? input.value.trim() : '';
+      if (val) selected.push(val);
+    } else {
+      selected.push(b.textContent);
+    }
+  });
+  return selected.join('、');
 }
 
 function toggleFlag(rowIndex, reason, btn) {
