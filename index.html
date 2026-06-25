@@ -274,6 +274,7 @@
   #normPreview { display:none; margin-top:5px; font-size:12px; color:#E8761A; background:#FEF0E3; border-radius:7px; padding:5px 10px; }
   .dash-filter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -1843,86 +1844,197 @@ function exportExcel() {
   const now = new Date();
   const rangeLabel = {month:'本月', '3month':'近三個月', all:'全部', custom:'自訂'}[exportRange];
 
-  // 統計數據
   const total = cases.length;
   const pending = cases.filter(c => c.status === '待處理').length;
   const done = cases.filter(c => c.status === '已結案').length;
-  const rate = total > 0 ? Math.round(done/total*100) + '%' : '—';
+  const rate = total > 0 ? Math.round(done/total*100) : 0;
 
-  // 各區域
-  const areaCounts = {};
-  cases.forEach(c => { areaCounts[effArea(c)] = (areaCounts[effArea(c)]||0)+1; });
+  // 各棟統計
+  const areaMap = {};
+  cases.forEach(c => {
+    const a = effArea(c);
+    if (!areaMap[a]) areaMap[a] = {total:0, done:0, pending:0};
+    areaMap[a].total++;
+    if (c.status==='已結案') areaMap[a].done++; else areaMap[a].pending++;
+  });
 
-  // 維修類別（只計算已結案案件）
+  // 維修類別（已結案）
   const typeCounts = {};
-  cases.filter(c=>c.status==='已結案').forEach(c => { const ct=normalizeCaseType(c.caseType); if(ct) typeCounts[ct] = (typeCounts[ct]||0)+1; });
+  cases.filter(c=>c.status==='已結案').forEach(c => {
+    const ct = normalizeCaseType(c.caseType);
+    if (ct) typeCounts[ct] = (typeCounts[ct]||0)+1;
+  });
 
   // 位置病歷 Top10
   const locMap = {};
   cases.forEach(c => {
     const loc = (c.normalizedLocation||c.location||'（未填位置）');
-    const key = c.area + '|' + loc;
-    if (!locMap[key]) locMap[key] = {area:c.area, loc, total:0, pending:0, done:0};
+    const key = effArea(c) + '|' + loc;
+    if (!locMap[key]) locMap[key] = {area:effArea(c), loc, total:0, pending:0, done:0};
     locMap[key].total++;
     if (c.status==='待處理') locMap[key].pending++; else locMap[key].done++;
   });
   const top10 = Object.values(locMap).sort((a,b)=>b.total-a.total).slice(0,10);
 
-  // 建立 CSV 內容
-  let csv = '﻿'; // BOM for Excel UTF-8
+  // 建立 XLSX
+  const XLSX = window.XLSX;
+  const wb = XLSX.utils.book_new();
+  const ws_data = [];
 
-  // 統計摘要
-  csv += '渴望園區報修系統 - 報告\n';
-  csv += `產生時間,${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}\n`;
-  csv += `時間範圍,${rangeLabel}\n\n`;
-  csv += '【統計摘要】\n';
-  csv += `總案件數,${total}\n`;
-  csv += `待處理,${pending}\n`;
-  csv += `已結案,${done}\n`;
-  csv += `結案率,${rate}\n\n`;
+  const C_ORANGE = 'FFE8761A';
+  const C_NAVY   = 'FF1A3A5C';
+  const C_GREEN  = 'FF2D7A3E';
+  const C_RED    = 'FFC0392B';
+  const C_WHITE  = 'FFFFFFFF';
+  const C_LIGHT  = 'FFFFF8F3';
+  const C_LGRAY  = 'FFF5F5F5';
+  const C_LGREEN = 'FFE6F4EA';
+  const C_LRED   = 'FFFDECEA';
 
-  csv += '【各區域維修比例】\n';
-  csv += '區域,件數,比例\n';
-  Object.entries(areaCounts).sort((a,b)=>b[1]-a[1]).forEach(([area,count])=>{
-    csv += `${area},${count},${total>0?Math.round(count/total*100)+'%':'—'}\n`;
+  const style = (v, opts={}) => {
+    const cell = {v, t: typeof v === 'number' ? 'n' : 's'};
+    const s = {};
+    if (opts.bold || opts.bg || opts.color || opts.sz || opts.align || opts.border) {
+      s.font = {bold:!!opts.bold, color:{rgb: opts.color||'FF000000'}, sz:opts.sz||11, name:'Arial'};
+      s.fill = {fgColor:{rgb: opts.bg||'FF000000'}, patternType: opts.bg ? 'solid' : 'none'};
+      s.alignment = {horizontal: opts.align||'left', vertical:'center', wrapText:!!opts.wrap};
+      if (opts.border) s.border = {
+        top:{style:'thin',color:{rgb:'FFD0D0D0'}},
+        bottom:{style:'thin',color:{rgb:'FFD0D0D0'}},
+        left:{style:'thin',color:{rgb:'FFD0D0D0'}},
+        right:{style:'thin',color:{rgb:'FFD0D0D0'}}
+      };
+    }
+    if (opts.numFmt) s.numFmt = opts.numFmt;
+    if (Object.keys(s).length) cell.s = s;
+    return cell;
+  };
+
+  const empty = (bg) => style('', {bg});
+  const row = (...cells) => cells;
+
+  // ── 標題區 ──
+  ws_data.push(row(style('渴望園區報修系統 — 統計報告', {bold:true, sz:16, color:C_WHITE, bg:C_NAVY, align:'center'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+  ws_data.push(row(style(`時間範圍：${rangeLabel}　　產生時間：${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`, {sz:11, color:'FF888888', bg:C_LGRAY, align:'center'}), empty(C_LGRAY), empty(C_LGRAY), empty(C_LGRAY)));
+  ws_data.push(row(empty(), empty(), empty(), empty()));
+
+  // ── 總案件數 ──
+  ws_data.push(row(style('📊  總覽', {bold:true, sz:13, color:C_WHITE, bg:C_ORANGE, align:'left'}), empty(C_ORANGE), empty(C_ORANGE), empty(C_ORANGE)));
+  ws_data.push(row(
+    style('總案件數', {bold:true, sz:11, bg:C_LIGHT, border:true, align:'center'}),
+    style('待處理', {bold:true, sz:11, bg:C_LRED, border:true, align:'center'}),
+    style('已結案', {bold:true, sz:11, bg:C_LGREEN, border:true, align:'center'}),
+    style('結案率', {bold:true, sz:11, bg:C_LGREEN, border:true, align:'center'}),
+  ));
+  ws_data.push(row(
+    style(total, {bold:true, sz:22, color:C_ORANGE, bg:C_LIGHT, border:true, align:'center'}),
+    style(pending, {bold:true, sz:22, color:C_RED, bg:C_LRED, border:true, align:'center'}),
+    style(done, {bold:true, sz:22, color:C_GREEN, bg:C_LGREEN, border:true, align:'center'}),
+    style(rate+'%', {bold:true, sz:22, color:C_GREEN, bg:C_LGREEN, border:true, align:'center'}),
+  ));
+  ws_data.push(row(empty(), empty(), empty(), empty()));
+
+  // ── 各棟數量＋結案率 ──
+  ws_data.push(row(style('🏢  各棟數量與結案率', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+  ws_data.push(row(
+    style('區域', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('總件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('已結案', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('結案率', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+  ));
+  Object.entries(areaMap).sort((a,b)=>b[1].total-a[1].total).forEach(([area, stat]) => {
+    const aRate = stat.total > 0 ? Math.round(stat.done/stat.total*100) : 0;
+    const rateBg = aRate >= 80 ? C_LGREEN : aRate >= 50 ? 'FFFFF9E6' : C_LRED;
+    const rateColor = aRate >= 80 ? C_GREEN : aRate >= 50 ? 'FFB7770D' : C_RED;
+    ws_data.push(row(
+      style(area, {bold:true, sz:11, border:true, align:'left'}),
+      style(stat.total, {sz:11, border:true, align:'center'}),
+      style(stat.done, {sz:11, color:C_GREEN, border:true, align:'center'}),
+      style(aRate+'%', {bold:true, sz:11, color:rateColor, bg:rateBg, border:true, align:'center'}),
+    ));
   });
-  csv += '\n';
+  ws_data.push(row(empty(), empty(), empty(), empty()));
 
-  csv += '【維修類別比例】\n';
-  csv += '類別,件數,比例\n';
-  Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).forEach(([type,count])=>{
-    csv += `${type},${count},${total>0?Math.round(count/total*100)+'%':'—'}\n`;
+  // ── 維修類別 ──
+  ws_data.push(row(style('🔧  維修類別（已結案）', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+  ws_data.push(row(
+    style('類別', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('佔比', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    empty(C_LGRAY),
+  ));
+  const doneTotal = done || 1;
+  Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).forEach(([type, count]) => {
+    const pct = Math.round(count/doneTotal*100);
+    ws_data.push(row(
+      style(type, {sz:11, border:true, align:'left'}),
+      style(count, {sz:11, border:true, align:'center'}),
+      style(pct+'%', {sz:11, color:C_NAVY, border:true, align:'center'}),
+      empty(),
+    ));
   });
-  csv += '\n';
+  ws_data.push(row(empty(), empty(), empty(), empty()));
 
-  csv += '【位置病歷表 Top 10】\n';
-  csv += '排名,區域,位置,總計,待處理,已結案\n';
-  top10.forEach((e,i)=>{
-    csv += `${i+1},${e.area},${e.loc},${e.total},${e.pending},${e.done}\n`;
+  // ── 位置病歷 Top 10 ──
+  ws_data.push(row(style('📍  位置病歷 Top 10', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+  ws_data.push(row(
+    style('排名', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('區域 · 位置', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('總件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('狀態（待/結）', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+  ));
+  top10.forEach((e,i) => {
+    ws_data.push(row(
+      style(i+1, {bold:true, sz:11, color:C_ORANGE, border:true, align:'center'}),
+      style(e.area+' · '+e.loc, {sz:11, border:true, align:'left'}),
+      style(e.total, {bold:true, sz:11, border:true, align:'center'}),
+      style(`${e.pending} 待 / ${e.done} 結`, {sz:11, border:true, align:'center'}),
+    ));
   });
 
+  // ── 案件明細 ──
   if (includeDetail) {
-    csv += '\n【案件明細清單】\n';
-    csv += '案件編號,日期時間,申請單位,申請人,區域,位置類型,詳細位置,故障描述,狀態,維修記錄,案件類型,結案人\n';
+    ws_data.push(row(empty(), empty(), empty(), empty()));
+    ws_data.push(row(style('📋  案件明細清單', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+    const headers = ['案件編號','日期時間','申請單位','申請人','區域','位置類型','詳細位置','故障描述','狀態','維修記錄','案件類型','結案人'];
+    ws_data.push(headers.map(h => style(h, {bold:true, sz:10, bg:C_LGRAY, border:true, align:'center'})));
     cases.forEach(c => {
-      const row = [c.caseId, c.datetime, c.unit, c.name, effArea(c), c.locationType, c.location||'', c.description, c.status, c.repairNote||'', normalizeCaseType(c.caseType)||'', c.closerName||''];
-      csv += row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
+      const statusBg = c.status==='已結案' ? C_LGREEN : C_LRED;
+      const vals = [c.caseId, c.datetime, c.unit, c.name, effArea(c), c.locationType, c.location||'', c.description, c.status, c.repairNote||'', normalizeCaseType(c.caseType)||'', c.closerName||''];
+      ws_data.push(vals.map((v,i) => style(v, {sz:10, border:true, bg: i===8 ? statusBg : undefined})));
     });
   }
 
-  // 下載
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `渴望報修報告_${rangeLabel}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+  // 合併標題行（A~D）
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:3}},
+    {s:{r:1,c:0}, e:{r:1,c:3}},
+  ];
+
+  // 欄寬
+  ws['!cols'] = [
+    {wch:28}, {wch:12}, {wch:12}, {wch:14}
+  ];
+
+  // 列高
+  ws['!rows'] = ws_data.map((_, i) => {
+    if (i===5) return {hpt:36}; // 總覽數字列
+    if ([0,3,7,9+Object.keys(areaMap).length+2, 10+Object.keys(areaMap).length+Object.keys(typeCounts).length+2].includes(i)) return {hpt:28};
+    return {hpt:20};
+  });
+
+  XLSX.utils.book_append_sheet(wb, ws, '報修統計報告');
+
+  const fileName = `渴望報修報告_${rangeLabel}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+  XLSX.writeFile(wb, fileName);
 
   btn.textContent = '下載 Excel'; btn.disabled = false;
   closeExportModal();
   showToast('✓ 報告已下載');
 }
+
 
 // ── 照片上傳 ──
 const photoData = { report: [null, null], };
