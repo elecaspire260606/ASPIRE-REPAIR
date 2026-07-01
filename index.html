@@ -1878,7 +1878,12 @@ function exportExcel() {
   const cases = getExportCases();
   const includeDetail = document.getElementById('exportIncludeDetail').checked;
   const now = new Date();
-  const rangeLabel = {month:'本月', '3month':'近三個月', all:'全部', custom:'自訂'}[exportRange];
+  const rangeLabel = {month:'本月', '3month':'近三個月', all:'全部'}[exportRange] || (() => {
+    const from = document.getElementById('exportDateFrom').value;
+    const to = document.getElementById('exportDateTo').value;
+    const fmt = s => s ? s.replace(/-/g,'/') : '';
+    return from || to ? `${fmt(from)} ～ ${fmt(to)}` : '自訂';
+  })();
 
   const total = cases.length;
   const pending = cases.filter(c => c.status === '待處理').length;
@@ -2043,15 +2048,25 @@ function exportExcel() {
 
   const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-  // 合併標題行（A~D）
-  ws['!merges'] = [
-    {s:{r:0,c:0}, e:{r:0,c:3}},
-    {s:{r:1,c:0}, e:{r:1,c:3}},
+  // 合併：標題2列 + 所有區段標題（深色橫幅列）
+  const merges = [
+    {s:{r:0,c:0}, e:{r:0,c:3}},  // 主標題
+    {s:{r:1,c:0}, e:{r:1,c:3}},  // 時間範圍
   ];
+  // 掃描所有以 style(...) 開頭、且 bg=C_NAVY 或 C_ORANGE 的列做合併
+  ws_data.forEach((r, ri) => {
+    if (ri < 2) return;
+    const cell = r[0];
+    if (cell && cell.s && cell.s.fill && cell.s.fill.fgColor &&
+        (cell.s.fill.fgColor.rgb === C_NAVY || cell.s.fill.fgColor.rgb === C_ORANGE)) {
+      merges.push({s:{r:ri,c:0}, e:{r:ri,c:3}});
+    }
+  });
+  ws['!merges'] = merges;
 
   // 欄寬
   ws['!cols'] = [
-    {wch:28}, {wch:12}, {wch:12}, {wch:14}
+    {wch:22}, {wch:10}, {wch:10}, {wch:10}
   ];
 
   // 列高
