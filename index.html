@@ -1215,7 +1215,43 @@ function toggleFlag(rowIndex, reason, btn) {
   const btns = document.getElementById('flags-'+rowIndex).querySelectorAll('.flag-btn');
   const wasActive = btn.classList.contains('active-flag');
   btns.forEach(b=>b.classList.remove('active-flag'));
-  if (!wasActive) btn.classList.add('active-flag');
+  if (!wasActive) {
+    btn.classList.add('active-flag');
+    if (reason === '重複報修') {
+      autoCloseAsDuplicate(rowIndex);
+    }
+  }
+}
+
+async function autoCloseAsDuplicate(rowIndex) {
+  if (!confirm('確定標記為重複報修並自動結案？此案件將移至已結案，不列入統計。')) {
+    // 取消勾選
+    const btns = document.getElementById('flags-'+rowIndex)?.querySelectorAll('.flag-btn');
+    if (btns) btns.forEach(b=>b.classList.remove('active-flag'));
+    return;
+  }
+  try {
+    const data = await callApi({
+      action: 'close',
+      rowIndex,
+      repairNote: '',
+      normalizedLocation: '',
+      flagReason: '重複報修',
+      caseType: '',
+      correctedLocType: '',
+      correctedArea: '',
+      closerName: '',
+      closePhotos: []
+    });
+    if (data.success) {
+      showToast('✓ 已標記重複報修並結案');
+      await loadCases();
+    } else {
+      showToast('操作失敗：'+(data.message||'未知錯誤'));
+    }
+  } catch(e) {
+    showToast('操作失敗，請檢查網路');
+  }
 }
 
 function getSelectedFlag(rowIndex) {
