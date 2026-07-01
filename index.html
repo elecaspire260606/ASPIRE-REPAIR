@@ -851,9 +851,10 @@ async function submitForm() {
   if (!locType) { showToast('請選擇位置類型'); return; }
   if (!desc) { showToast('請填寫故障狀況描述'); return; }
   if (area === '雅舍' && !selectedBuilding) { showToast('請選擇雅舍棟別'); return; }
+  const locVal = document.getElementById('f-location').value.trim();
+  if (!locVal) { showToast('請填寫詳細地點後再送出'); return; }
   if (locType === 'restaurant' || locType === 'facility') {
-    const locVal = document.getElementById('f-location').value.trim();
-    if (!locVal) { showToast(locType==='restaurant' ? '請選擇或輸入餐廳位置' : '請選擇或輸入設施位置'); return; }
+    // 快速按鈕帶入的也算，上面已確認 locVal 有值
   }
   const now = new Date();
   const datetime = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -1217,15 +1218,14 @@ function toggleFlag(rowIndex, reason, btn) {
   btns.forEach(b=>b.classList.remove('active-flag'));
   if (!wasActive) {
     btn.classList.add('active-flag');
-    if (reason === '重複報修') {
-      autoCloseAsDuplicate(rowIndex);
-    }
+    autoCloseAsFlagged(rowIndex, reason);
   }
 }
 
-async function autoCloseAsDuplicate(rowIndex) {
-  if (!confirm('確定標記為重複報修並自動結案？此案件將移至已結案，不列入統計。')) {
-    // 取消勾選
+async function autoCloseAsFlagged(rowIndex, reason) {
+  const labels = {重複報修:'重複報修', 寫錯:'填寫錯誤', 測試:'測試案件'};
+  const label = labels[reason] || reason;
+  if (!confirm(`確定標記為「${label}」並自動結案？此案件將移至已結案，不列入統計。`)) {
     const btns = document.getElementById('flags-'+rowIndex)?.querySelectorAll('.flag-btn');
     if (btns) btns.forEach(b=>b.classList.remove('active-flag'));
     return;
@@ -1236,7 +1236,7 @@ async function autoCloseAsDuplicate(rowIndex) {
       rowIndex,
       repairNote: '',
       normalizedLocation: '',
-      flagReason: '重複報修',
+      flagReason: reason,
       caseType: '',
       correctedLocType: '',
       correctedArea: '',
@@ -1244,7 +1244,7 @@ async function autoCloseAsDuplicate(rowIndex) {
       closePhotos: []
     });
     if (data.success) {
-      showToast('✓ 已標記重複報修並結案');
+      showToast(`✓ 已標記「${label}」並結案`);
       await loadCases();
     } else {
       showToast('操作失敗：'+(data.message||'未知錯誤'));
