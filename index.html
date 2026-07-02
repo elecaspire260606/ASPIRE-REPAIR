@@ -572,7 +572,7 @@
         <input type="checkbox" checked disabled style="width:15px;height:15px;"> 維修類別比例
       </label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
-        <input type="checkbox" checked disabled style="width:15px;height:15px;"> 位置病歷表 Top 10
+        <input type="checkbox" checked disabled style="width:15px;height:15px;"> 前10名未結案件（依等待天數）
       </label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
         <input type="checkbox" id="exportIncludeDetail" style="width:15px;height:15px;accent-color:#E8761A;"> 案件明細清單
@@ -1906,17 +1906,6 @@ function exportExcel() {
     if (ct) typeCounts[ct] = (typeCounts[ct]||0)+1;
   });
 
-  // 位置病歷 Top10
-  const locMap = {};
-  cases.forEach(c => {
-    const loc = (c.normalizedLocation||c.location||'（未填位置）');
-    const key = effArea(c) + '|' + loc;
-    if (!locMap[key]) locMap[key] = {area:effArea(c), loc, total:0, pending:0, done:0};
-    locMap[key].total++;
-    if (c.status==='待處理') locMap[key].pending++; else locMap[key].done++;
-  });
-  const top10 = Object.values(locMap).sort((a,b)=>b.total-a.total).slice(0,10);
-
   // 建立 XLSX
   const XLSX = window.XLSX;
   const wb = XLSX.utils.book_new();
@@ -1976,11 +1965,12 @@ function exportExcel() {
   ws_data.push(row(empty(), empty(), empty(), empty()));
 
   // ── 各棟數量＋結案率 ──
-  ws_data.push(row(style('🏢  各棟數量與結案率', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+  ws_data.push(row(style('🏢  各棟數量與結案率', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
   ws_data.push(row(
     style('區域', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
     style('總件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
     style('已結案', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('待處理', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
     style('結案率', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
   ));
   Object.entries(areaMap).sort((a,b)=>b[1].total-a[1].total).forEach(([area, stat]) => {
@@ -1991,10 +1981,11 @@ function exportExcel() {
       style(area, {bold:true, sz:11, border:true, align:'left'}),
       style(stat.total, {sz:11, border:true, align:'center'}),
       style(stat.done, {sz:11, color:C_GREEN, border:true, align:'center'}),
+      style(stat.pending, {sz:11, color:stat.pending>0?C_RED:'FF999999', border:true, align:'center'}),
       style(aRate+'%', {bold:true, sz:11, color:rateColor, bg:rateBg, border:true, align:'center'}),
     ));
   });
-  ws_data.push(row(empty(), empty(), empty(), empty()));
+  ws_data.push(row(empty(), empty(), empty(), empty(), empty()));
 
   // ── 維修類別 ──
   ws_data.push(row(style('🔧  維修類別（已結案）', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
@@ -2016,27 +2007,42 @@ function exportExcel() {
   });
   ws_data.push(row(empty(), empty(), empty(), empty()));
 
-  // ── 位置病歷 Top 10 ──
-  ws_data.push(row(style('📍  位置病歷 Top 10', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+  // ── 前10名未結案件（依等待天數） ──
+  const exportNow = new Date();
+  const pendingTop10 = allCases
+    .filter(c => c.status === '待處理' && !c.flagReason)
+    .map(c => {
+      const d = parseDate(c.datetime || c.date);
+      const days = d ? Math.floor((exportNow - d) / 86400000) : 0;
+      return { ...c, waitDays: days };
+    })
+    .sort((a,b) => b.waitDays - a.waitDays)
+    .slice(0, 10);
+
+  ws_data.push(row(style('⏰  前10名未結案件（依等待天數）', {bold:true, sz:13, color:C_WHITE, bg:C_RED, align:'left'}), empty(C_RED), empty(C_RED), empty(C_RED), empty(C_RED)));
   ws_data.push(row(
     style('排名', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
     style('區域 · 位置', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('總件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('狀態（待/結）', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('等待天數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('報修日期', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
+    style('故障描述', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
   ));
-  top10.forEach((e,i) => {
+  pendingTop10.forEach((c,i) => {
+    const dayColor = c.waitDays >= 7 ? C_RED : c.waitDays >= 3 ? 'FFB7770D' : C_NAVY;
+    const dayBg = c.waitDays >= 7 ? C_LRED : c.waitDays >= 3 ? 'FFFFF9E6' : undefined;
     ws_data.push(row(
       style(i+1, {bold:true, sz:11, color:C_ORANGE, border:true, align:'center'}),
-      style(e.area+' · '+e.loc, {sz:11, border:true, align:'left'}),
-      style(e.total, {bold:true, sz:11, border:true, align:'center'}),
-      style(`${e.pending} 待 / ${e.done} 結`, {sz:11, border:true, align:'center'}),
+      style(effArea(c)+' · '+(c.normalizedLocation||c.location||''), {sz:11, border:true, align:'left'}),
+      style(c.waitDays+'天', {bold:true, sz:11, color:dayColor, bg:dayBg, border:true, align:'center'}),
+      style(c.datetime||c.date||'', {sz:11, border:true, align:'center'}),
+      style(c.description||'', {sz:11, border:true, align:'left', wrap:true}),
     ));
   });
 
   // ── 案件明細 ──
   if (includeDetail) {
-    ws_data.push(row(empty(), empty(), empty(), empty()));
-    ws_data.push(row(style('📋  案件明細清單', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
+    ws_data.push(row(empty(), empty(), empty(), empty(), empty()));
+    ws_data.push(row(style('📋  案件明細清單', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
     const headers = ['案件編號','日期時間','申請單位','申請人','區域','位置類型','詳細位置','故障描述','狀態','維修記錄','案件類型','結案人'];
     ws_data.push(headers.map(h => style(h, {bold:true, sz:10, bg:C_LGRAY, border:true, align:'center'})));
     cases.forEach(c => {
@@ -2050,8 +2056,8 @@ function exportExcel() {
 
   // 合併：標題2列 + 所有區段標題（深色橫幅列）
   const merges = [
-    {s:{r:0,c:0}, e:{r:0,c:3}},  // 主標題
-    {s:{r:1,c:0}, e:{r:1,c:3}},  // 時間範圍
+    {s:{r:0,c:0}, e:{r:0,c:4}},  // 主標題
+    {s:{r:1,c:0}, e:{r:1,c:4}},  // 時間範圍
   ];
   // 掃描所有以 style(...) 開頭、且 bg=C_NAVY 或 C_ORANGE 的列做合併
   ws_data.forEach((r, ri) => {
@@ -2059,14 +2065,14 @@ function exportExcel() {
     const cell = r[0];
     if (cell && cell.s && cell.s.fill && cell.s.fill.fgColor &&
         (cell.s.fill.fgColor.rgb === C_NAVY || cell.s.fill.fgColor.rgb === C_ORANGE)) {
-      merges.push({s:{r:ri,c:0}, e:{r:ri,c:3}});
+      merges.push({s:{r:ri,c:0}, e:{r:ri,c:4}});
     }
   });
   ws['!merges'] = merges;
 
   // 欄寬
   ws['!cols'] = [
-    {wch:22}, {wch:10}, {wch:10}, {wch:10}
+    {wch:22}, {wch:10}, {wch:10}, {wch:10}, {wch:10}
   ];
 
   // 列高
