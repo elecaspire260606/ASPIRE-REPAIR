@@ -869,7 +869,7 @@ async function submitForm() {
     const reportPhotos = (photoData.report||[]).filter(Boolean);
     const res = await fetch(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action:'submit', unit, name, datetime, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos })
+      body: JSON.stringify({ action:'submit', unit, name, datetime, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, deviceFingerprint: getDeviceFingerprint() })
     });
     const data = await res.json();
     if (data.success) {
@@ -1241,7 +1241,8 @@ async function autoCloseAsFlagged(rowIndex, reason) {
       correctedLocType: '',
       correctedArea: '',
       closerName: '',
-      closePhotos: []
+      closePhotos: [],
+      closeFingerprint: getDeviceFingerprint()
     });
     if (data.success) {
       showToast(`✓ 已標記「${label}」並結案`);
@@ -1293,7 +1294,7 @@ async function closeCase(rowIndex) {
   const btn = document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
-    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos});
+    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos, closeFingerprint: getDeviceFingerprint()});
     if (data && data.success) { showToast('✓ 案件已結案'); loadCases(); }
     else { showToast('❌ 結案失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
@@ -1553,6 +1554,21 @@ function renderPieChart(containerId, counts, colors, total, clickHandler) {
     </div>
     <div class="pie-legend">${legend}</div>
   </div>`;
+}
+
+// ── 裝置指紋 ──
+function getDeviceFingerprint() {
+  const ua = navigator.userAgent;
+  const lang = navigator.language || '';
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const screen = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const raw = [ua, lang, tz, screen].join('|');
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'FP' + Math.abs(hash).toString(16).toUpperCase().padStart(8,'0');
 }
 
 // ── 備份下載／匯入 ──
