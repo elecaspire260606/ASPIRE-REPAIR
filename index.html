@@ -479,12 +479,21 @@
     <input type="file" id="backupFileInput" accept="application/json" style="display:none;" onchange="importBackup(this.files[0])">
     <button onclick="openExportModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📊 下載報告</button>
   </div>
-  <div class="time-filter-row">
-    <button class="time-btn active" onclick="setTimeFilter(&#39;month&#39;,this)">本月</button>
-    <button class="time-btn" onclick="setTimeFilter(&#39;3month&#39;,this)">近三個月</button>
-    <button class="time-btn" onclick="setTimeFilter(&#39;year&#39;,this)">今年</button>
-    <button class="time-btn" onclick="setTimeFilter(&#39;all&#39;,this)">全部</button>
-    <button class="time-btn" onclick="setTimeFilter(&#39;custom&#39;,this)">自訂</button>
+  <div class="time-filter-row" id="month-filter-row">
+    <button class="time-btn" id="time-btn-1" onclick="setTimeFilter('m1',this)">1月</button>
+    <button class="time-btn" id="time-btn-2" onclick="setTimeFilter('m2',this)">2月</button>
+    <button class="time-btn" id="time-btn-3" onclick="setTimeFilter('m3',this)">3月</button>
+    <button class="time-btn" id="time-btn-4" onclick="setTimeFilter('m4',this)">4月</button>
+    <button class="time-btn" id="time-btn-5" onclick="setTimeFilter('m5',this)">5月</button>
+    <button class="time-btn" id="time-btn-6" onclick="setTimeFilter('m6',this)">6月</button>
+    <button class="time-btn" id="time-btn-7" onclick="setTimeFilter('m7',this)">7月</button>
+    <button class="time-btn" id="time-btn-8" onclick="setTimeFilter('m8',this)">8月</button>
+    <button class="time-btn" id="time-btn-9" onclick="setTimeFilter('m9',this)">9月</button>
+    <button class="time-btn" id="time-btn-10" onclick="setTimeFilter('m10',this)">10月</button>
+    <button class="time-btn" id="time-btn-11" onclick="setTimeFilter('m11',this)">11月</button>
+    <button class="time-btn" id="time-btn-12" onclick="setTimeFilter('m12',this)">12月</button>
+    <button class="time-btn" id="time-btn-all" onclick="setTimeFilter('all',this)">全部</button>
+    <button class="time-btn" id="time-btn-custom" onclick="setTimeFilter('custom',this)">自訂</button>
   </div>
   <div class="time-filter-row dash-area-row" style="margin-bottom:10px;">
     <button class="time-btn active" onclick="setAreaDashFilter(&#39;all&#39;,this)">全部棟別</button>
@@ -607,7 +616,8 @@ let currentFilter = '待處理';
 let currentQueryFilter = '待處理';
 let currentMgrArea = 'all';
 let currentQueryArea = 'all';
-let currentTimeFilter = 'month';
+const _nowMonth = new Date().getMonth() + 1;
+let currentTimeFilter = 'm' + _nowMonth;
 let currentAreaDashFilter = 'all';
 let mgrPage = 1;
 let queryPage = 1;
@@ -635,6 +645,7 @@ window.onload = () => {
   const m = String(now.getMonth()+1).padStart(2,'0');
   const d = String(now.getDate()).padStart(2,'0');
   document.getElementById('f-date').value = `${y}/${m}/${d}`;
+  initTimeFilterBtn();
   loadCases();
 };
 
@@ -1452,10 +1463,16 @@ function setAreaDashFilter(area, btn) {
 
 function setTimeFilter(type, btn) {
   currentTimeFilter=type;
-  document.querySelectorAll('.time-filter-row:not(.dash-area-row) .time-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#month-filter-row .time-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('customRangeWrap').style.display = type==='custom'?'flex':'none';
   renderDashboard();
+}
+
+function initTimeFilterBtn() {
+  const m = new Date().getMonth() + 1;
+  const btn = document.getElementById('time-btn-' + m);
+  if (btn) btn.classList.add('active');
 }
 
 function formatDatetime(raw) {
@@ -1502,9 +1519,11 @@ function getFilteredCases() {
     const raw = c.datetime||c.date||'';
     const d = parseDate(raw);
     if (!d) return true;
-    if (currentTimeFilter==='month') return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
-    if (currentTimeFilter==='3month') return (now-d)<=90*24*60*60*1000;
-    if (currentTimeFilter==='year') return d.getFullYear()===now.getFullYear();
+    const mMatch = currentTimeFilter.match(/^m(\d+)$/);
+    if (mMatch) {
+      const m = parseInt(mMatch[1]);
+      return d.getFullYear()===now.getFullYear() && d.getMonth()+1===m;
+    }
     if (currentTimeFilter==='custom') {
       const from=document.getElementById('dateFrom').value;
       const to=document.getElementById('dateTo').value;
