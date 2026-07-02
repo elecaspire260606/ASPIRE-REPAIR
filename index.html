@@ -121,6 +121,33 @@
   .case-collapsed { cursor:pointer; border-radius:10px; transition:background 0.15s; margin:-4px; padding:4px; }
   .case-collapsed:hover { background:#faf8f5; }
   .case-tap-hint { font-size:11px; color:#ccc; text-align:center; margin-top:10px; padding-top:8px; border-top:1px dashed #f0ece6; }
+
+  /* ── 案件詳情 Side Panel ── */
+  #caseDetailPanel {
+    position:fixed; top:0; right:0; bottom:0; width:390px;
+    background:white; box-shadow:-4px 0 24px rgba(0,0,0,0.15);
+    z-index:400; transform:translateX(100%);
+    transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  #caseDetailPanel.open { transform:translateX(0); }
+  .panel-header {
+    background:var(--navy,#1A3A5C); color:white;
+    padding:16px 18px; display:flex; justify-content:space-between; align-items:center;
+    flex-shrink:0;
+  }
+  .panel-body { flex:1; overflow-y:auto; padding:16px; }
+  .panel-section { margin-bottom:14px; }
+  .panel-label { font-size:11px; color:#bbb; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+  .panel-value { font-size:14px; color:#333; }
+  .panel-divider { border:none; border-top:1px solid #f0ece6; margin:12px 0; }
+  .drill-row-clickable { cursor:pointer; transition:background 0.15s; }
+  .drill-row-clickable:hover { background:#faf0e8; }
+  @media (max-width:600px) {
+    #caseDetailPanel { width:100%; top:auto; height:80vh; border-radius:18px 18px 0 0;
+      transform:translateY(100%); box-shadow:0 -4px 24px rgba(0,0,0,0.15); }
+    #caseDetailPanel.open { transform:translateY(0); }
+  }
   .case-expand-header { display:flex; justify-content:space-between; align-items:flex-start; cursor:pointer; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #f2ede8; transition:opacity 0.15s; }
   .case-expand-header:hover { opacity:0.6; }
   .collapse-hint { font-size:11px; color:#bbb; white-space:nowrap; padding-top:2px; }
@@ -1786,8 +1813,8 @@ function renderDashboard() {
 
 // ── 鑽取詳情 modal ──
 function renderDrillCaseRows(cases) {
-  return cases.map(c=>`
-    <div style="padding:8px 10px;border-bottom:1px solid #f5f0eb;">
+  return cases.map((c,i)=>`
+    <div class="drill-row-clickable" onclick="openCasePanel(drillModalCases[${i}])" style="padding:10px 10px;border-bottom:1px solid #f5f0eb;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
         <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
         <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
@@ -1796,6 +1823,79 @@ function renderDrillCaseRows(cases) {
       <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
       ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:''}
     </div>`).join('');
+}
+
+function openCasePanel(c) {
+  if (!c) return;
+  document.getElementById('panelCaseId').textContent = c.caseId;
+  document.getElementById('panelTitle').textContent = effArea(c) + ' · ' + (c.normalizedLocation||normalizeLocation(c.location)||c.location||'—');
+
+  const badge = `<span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:11px;padding:3px 10px;">${c.status}</span>`;
+  const timeBadges = `
+    ${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}
+    ${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}
+  `;
+  const photos = (arr, label) => arr && arr.length ? `
+    <hr class="panel-divider">
+    <div class="panel-section">
+      <div class="panel-label">${label}</div>
+      <div class="photo-preview-wrap">${arr.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')" style="cursor:pointer;">`).join('')}</div>
+    </div>` : '';
+
+  document.getElementById('panelBody').innerHTML = `
+    <div class="panel-section" style="display:flex;justify-content:space-between;align-items:center;">
+      ${badge}
+      <div>${timeBadges}</div>
+    </div>
+    <hr class="panel-divider">
+    <div class="panel-section">
+      <div class="panel-label">申請單位 · 申請人</div>
+      <div class="panel-value">${c.unit||'—'} · ${c.name||'—'}</div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-label">位置類型</div>
+      <div class="panel-value">${c.locationType||'—'}</div>
+    </div>
+    <hr class="panel-divider">
+    <div class="panel-section">
+      <div class="panel-label">故障描述</div>
+      <div class="panel-value" style="line-height:1.6;">${c.description||'—'}</div>
+    </div>
+    ${c.repairNote?`
+    <div class="panel-section">
+      <div class="panel-label">${c.status==='已結案'?'結案紀錄':'處理進度'}</div>
+      <div class="panel-value" style="line-height:1.6;">${c.repairNote}</div>
+    </div>`:''}
+    ${c.caseType?`
+    <div class="panel-section">
+      <div class="panel-label">案件類型</div>
+      <div class="panel-value">${normalizeCaseType(c.caseType)}</div>
+    </div>`:''}
+    ${c.closerName?`
+    <div class="panel-section">
+      <div class="panel-label">結案人</div>
+      <div class="panel-value">${c.closerName}</div>
+    </div>`:''}
+    ${c.deviceFingerprint||c.closeFingerprint?`
+    <hr class="panel-divider">
+    <div class="panel-section">
+      <div class="panel-label">裝置指紋</div>
+      <div style="font-size:11px;color:#aaa;font-family:monospace;">
+        📝報修：${c.deviceFingerprint||'—'}<br>
+        ✅結案：${c.closeFingerprint||'—'}
+      </div>
+    </div>`:''}
+    ${photos(c.reportPhotos, '報修照片')}
+    ${photos(c.closePhotos, '結案照片')}
+  `;
+
+  document.getElementById('panelBackdrop').style.display = 'block';
+  document.getElementById('caseDetailPanel').classList.add('open');
+}
+
+function closeCasePanel() {
+  document.getElementById('caseDetailPanel').classList.remove('open');
+  document.getElementById('panelBackdrop').style.display = 'none';
 }
 
 let drillModalCases = [];
@@ -2267,5 +2367,18 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+
+<!-- 案件詳情 Side Panel -->
+<div id="caseDetailPanel">
+  <div class="panel-header">
+    <div>
+      <div id="panelCaseId" style="font-size:11px;opacity:0.7;margin-bottom:2px;"></div>
+      <div id="panelTitle" style="font-size:15px;font-weight:700;"></div>
+    </div>
+    <span onclick="closeCasePanel()" style="cursor:pointer;font-size:22px;opacity:0.7;line-height:1;">×</span>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+<div id="panelBackdrop" style="display:none;position:fixed;inset:0;z-index:399;" onclick="closeCasePanel()"></div>
 
 </body></html>
