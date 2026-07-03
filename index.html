@@ -643,8 +643,7 @@ let currentFilter = '待處理';
 let currentQueryFilter = '待處理';
 let currentMgrArea = 'all';
 let currentQueryArea = 'all';
-const _nowMonth = new Date().getMonth() + 1;
-let currentTimeFilter = 'm' + _nowMonth;
+let currentTimeFilter = 'all';
 let currentAreaDashFilter = 'all';
 let mgrPage = 1;
 let queryPage = 1;
@@ -1497,8 +1496,7 @@ function setTimeFilter(type, btn) {
 }
 
 function initTimeFilterBtn() {
-  const m = new Date().getMonth() + 1;
-  const btn = document.getElementById('time-btn-' + m);
+  const btn = document.getElementById('time-btn-all');
   if (btn) btn.classList.add('active');
 }
 
