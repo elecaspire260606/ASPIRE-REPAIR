@@ -105,6 +105,10 @@
 
   /* ── Case cards ── */
   .case-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:15px; margin-bottom:11px; position:relative; }
+  #caseList { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  #caseList .case-card { margin-bottom:0; }
+  #caseList .case-card.expanded-card { grid-column: 1 / -1; }
+  @media (max-width:700px) { #caseList { grid-template-columns:1fr; } }
   .case-card.is-closed { background:#f8f6f3; }
   .case-card.is-flagged { background:#f5f5f5; opacity:0.72; }
   .case-card.is-flagged .case-title,
@@ -506,6 +510,11 @@
     <input type="file" id="backupFileInput" accept="application/json" style="display:none;" onchange="importBackup(this.files[0])">
     <button onclick="openExportModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📊 下載報告</button>
   </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <span style="font-size:12px;color:#888;font-weight:600;">年份</span>
+    <select id="yearSelector" onchange="onYearChange()" style="padding:5px 10px;border:1.5px solid #e8e8e8;border-radius:20px;font-size:13px;font-family:inherit;background:white;cursor:pointer;color:#444;">
+    </select>
+  </div>
   <div class="time-filter-row" id="month-filter-row">
     <button class="time-btn" id="time-btn-1" onclick="setTimeFilter('m1',this)">1月</button>
     <button class="time-btn" id="time-btn-2" onclick="setTimeFilter('m2',this)">2月</button>
@@ -644,6 +653,7 @@ let currentQueryFilter = '待處理';
 let currentMgrArea = 'all';
 let currentQueryArea = 'all';
 let currentTimeFilter = 'all';
+let currentYear = new Date().getFullYear();
 let currentAreaDashFilter = 'all';
 let mgrPage = 1;
 let queryPage = 1;
@@ -1164,12 +1174,15 @@ function toggleCardEdit(rowIndex) {
   const collapsed = document.getElementById('collapsed-'+rowIndex);
   const expanded = document.getElementById('expanded-'+rowIndex);
   if (!collapsed || !expanded) return;
+  const card = collapsed.closest('.case-card');
   if (expanded.style.display === 'none') {
     collapsed.style.display = 'none';
     expanded.style.display = 'block';
+    if (card) card.classList.add('expanded-card');
   } else {
     collapsed.style.display = 'block';
     expanded.style.display = 'none';
+    if (card) card.classList.remove('expanded-card');
   }
 }
 
@@ -1496,8 +1509,24 @@ function setTimeFilter(type, btn) {
 }
 
 function initTimeFilterBtn() {
+  const sel = document.getElementById('yearSelector');
+  if (sel) {
+    const thisYear = new Date().getFullYear();
+    sel.innerHTML = '';
+    for (let y = thisYear; y >= thisYear - 4; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y + '年';
+      if (y === currentYear) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
   const btn = document.getElementById('time-btn-all');
   if (btn) btn.classList.add('active');
+}
+
+function onYearChange() {
+  currentYear = parseInt(document.getElementById('yearSelector').value);
+  renderDashboard();
 }
 
 function formatDatetime(raw) {
@@ -1547,7 +1576,7 @@ function getFilteredCases() {
     const mMatch = currentTimeFilter.match(/^m(\d+)$/);
     if (mMatch) {
       const m = parseInt(mMatch[1]);
-      return d.getFullYear()===now.getFullYear() && d.getMonth()+1===m;
+      return d.getFullYear()===currentYear && d.getMonth()+1===m;
     }
     if (currentTimeFilter==='custom') {
       const from=document.getElementById('dateFrom').value;
