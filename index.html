@@ -1467,6 +1467,7 @@ function renderQuery() {
 function renderPubCard(c) {
   const isFlagged = !!c.flagReason;
   const locDisplay = c.normalizedLocation||c.location||'—';
+  const flagLabel = isFlagged ? (c.flagReason||'已標記') : '';
   return `<div class="pub-card${isFlagged?' is-flagged':''}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
@@ -1474,7 +1475,10 @@ function renderPubCard(c) {
         <div class="pub-title">${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}</div>
         <div class="pub-meta">${c.unit} · ${c.name}</div>
       </div>
-      <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
+        ${isFlagged?`<span style="font-size:10px;color:#aaa;text-align:right;">${flagLabel}</span>`:''}
+      </div>
     </div>
     <div class="pub-desc">${c.description}</div>
     ${c.repairNote?`<div class="pub-note"><div class="pub-note-label">✅ 處理結果</div>${c.repairNote}</div>`:''}
@@ -1487,16 +1491,25 @@ function renderPubCard(c) {
 function renderPagination(containerId, current, total, onChange) {
   const el = document.getElementById(containerId);
   if (total<=1) { el.innerHTML=''; return; }
-  let html = `<button class="page-btn" ${current===1?'disabled':''} onclick="(${onChange.toString()})(${current-1})">‹</button>`;
+  let html = `<button class="page-btn" ${current===1?'disabled':''} onclick="paginationGo('${containerId}',${current-1})">‹</button>`;
   for (let i=1; i<=total; i++) {
     if (total>7 && i>2 && i<total-1 && Math.abs(i-current)>1) {
       if (i===3||i===total-2) html+=`<span class="page-ellipsis">…</span>`;
       continue;
     }
-    html+=`<button class="page-btn${i===current?' active':''}" onclick="(${onChange.toString()})(${i})">${i}</button>`;
+    html+=`<button class="page-btn${i===current?' active':''}" onclick="paginationGo('${containerId}',${i})">${i}</button>`;
   }
-  html+=`<button class="page-btn" ${current===total?'disabled':''} onclick="(${onChange.toString()})(${current+1})">›</button>`;
+  html+=`<button class="page-btn" ${current===total?'disabled':''} onclick="paginationGo('${containerId}',${current+1})">›</button>`;
   el.innerHTML=html;
+  el._onChange = onChange;
+}
+
+function paginationGo(containerId, page) {
+  const el = document.getElementById(containerId);
+  if (el && el._onChange) {
+    el._onChange(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 // ── 時間篩選 ──
