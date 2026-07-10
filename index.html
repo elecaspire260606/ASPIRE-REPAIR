@@ -2053,7 +2053,7 @@ function parseExportDate(raw) {
   return isNaN(d) ? null : d;
 }
 
-function exportExcel() {
+async function exportExcel() {
   const btn = document.getElementById('exportBtn');
   btn.textContent = '產生中…'; btn.disabled = true;
 
@@ -2080,6 +2080,12 @@ function exportExcel() {
     areaMap[a].total++;
     if (c.status==='已結案') areaMap[a].done++; else areaMap[a].pending++;
   });
+  const areas = Object.entries(areaMap)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([name, stat]) => ({
+      name, total: stat.total, done: stat.done, pending: stat.pending,
+      rate: stat.total>0 ? Math.round(stat.done/stat.total*100) : 0
+    }));
 
   // 維修類別（已結案）
   const typeCounts = {};
@@ -2087,192 +2093,61 @@ function exportExcel() {
     const ct = normalizeCaseType(c.caseType);
     if (ct) typeCounts[ct] = (typeCounts[ct]||0)+1;
   });
+  const types = Object.entries(typeCounts)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([name, cnt]) => ({name, cnt}));
 
-  // 建立 XLSX
-  const XLSX = window.XLSX;
-  const wb = XLSX.utils.book_new();
-  const ws_data = [];
-
-  const C_ORANGE = 'FFE8761A';
-  const C_NAVY   = 'FF1A3A5C';
-  const C_GREEN  = 'FF2D7A3E';
-  const C_RED    = 'FFC0392B';
-  const C_WHITE  = 'FFFFFFFF';
-  const C_LIGHT  = 'FFFFF8F3';
-  const C_LGRAY  = 'FFF5F5F5';
-  const C_LGREEN = 'FFE6F4EA';
-  const C_LRED   = 'FFFDECEA';
-
-  const style = (v, opts={}) => {
-    const cell = {v, t: typeof v === 'number' ? 'n' : 's'};
-    const s = {};
-    if (opts.bold || opts.bg || opts.color || opts.sz || opts.align || opts.border) {
-      s.font = {bold:!!opts.bold, color:{rgb: opts.color||'FF000000'}, sz:opts.sz||11, name:'Arial'};
-      s.fill = {fgColor:{rgb: opts.bg||'FF000000'}, patternType: opts.bg ? 'solid' : 'none'};
-      s.alignment = {horizontal: opts.align||'left', vertical:'center', wrapText:!!opts.wrap};
-      if (opts.border) s.border = {
-        top:{style:'thin',color:{rgb:'FFD0D0D0'}},
-        bottom:{style:'thin',color:{rgb:'FFD0D0D0'}},
-        left:{style:'thin',color:{rgb:'FFD0D0D0'}},
-        right:{style:'thin',color:{rgb:'FFD0D0D0'}}
-      };
-    }
-    if (opts.numFmt) s.numFmt = opts.numFmt;
-    if (Object.keys(s).length) cell.s = s;
-    return cell;
-  };
-
-  const empty = (bg) => style('', {bg});
-  const row = (...cells) => cells;
-
-  // ── 標題區 ──
-  ws_data.push(row(style('渴望園區報修系統 — 統計報告', {bold:true, sz:16, color:C_WHITE, bg:C_NAVY, align:'center'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
-  ws_data.push(row(style(`時間範圍：${rangeLabel}　　產生時間：${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`, {sz:11, color:'FF888888', bg:C_LGRAY, align:'center'}), empty(C_LGRAY), empty(C_LGRAY), empty(C_LGRAY)));
-  ws_data.push(row(empty(), empty(), empty(), empty()));
-
-  // ── 總案件數 ──
-  ws_data.push(row(style('📊  總覽', {bold:true, sz:13, color:C_WHITE, bg:C_ORANGE, align:'left'}), empty(C_ORANGE), empty(C_ORANGE), empty(C_ORANGE)));
-  ws_data.push(row(
-    style('總案件數', {bold:true, sz:11, bg:C_LIGHT, border:true, align:'center'}),
-    style('待處理', {bold:true, sz:11, bg:C_LRED, border:true, align:'center'}),
-    style('已結案', {bold:true, sz:11, bg:C_LGREEN, border:true, align:'center'}),
-    style('結案率', {bold:true, sz:11, bg:C_LGREEN, border:true, align:'center'}),
-  ));
-  ws_data.push(row(
-    style(total, {bold:true, sz:22, color:C_ORANGE, bg:C_LIGHT, border:true, align:'center'}),
-    style(pending, {bold:true, sz:22, color:C_RED, bg:C_LRED, border:true, align:'center'}),
-    style(done, {bold:true, sz:22, color:C_GREEN, bg:C_LGREEN, border:true, align:'center'}),
-    style(rate+'%', {bold:true, sz:22, color:C_GREEN, bg:C_LGREEN, border:true, align:'center'}),
-  ));
-  ws_data.push(row(empty(), empty(), empty(), empty()));
-
-  // ── 各棟數量＋結案率 ──
-  ws_data.push(row(style('🏢  各棟數量與結案率', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
-  ws_data.push(row(
-    style('區域', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('總件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('已結案', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('待處理', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('結案率', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-  ));
-  Object.entries(areaMap).sort((a,b)=>b[1].total-a[1].total).forEach(([area, stat]) => {
-    const aRate = stat.total > 0 ? Math.round(stat.done/stat.total*100) : 0;
-    const rateBg = aRate >= 80 ? C_LGREEN : aRate >= 50 ? 'FFFFF9E6' : C_LRED;
-    const rateColor = aRate >= 80 ? C_GREEN : aRate >= 50 ? 'FFB7770D' : C_RED;
-    ws_data.push(row(
-      style(area, {bold:true, sz:11, border:true, align:'left'}),
-      style(stat.total, {sz:11, border:true, align:'center'}),
-      style(stat.done, {sz:11, color:C_GREEN, border:true, align:'center'}),
-      style(stat.pending, {sz:11, color:stat.pending>0?C_RED:'FF999999', border:true, align:'center'}),
-      style(aRate+'%', {bold:true, sz:11, color:rateColor, bg:rateBg, border:true, align:'center'}),
-    ));
-  });
-  ws_data.push(row(empty(), empty(), empty(), empty(), empty()));
-
-  // ── 維修類別 ──
-  ws_data.push(row(style('🔧  維修類別（已結案）', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
-  ws_data.push(row(
-    style('類別', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('件數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('佔比', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    empty(C_LGRAY),
-  ));
-  const doneTotal = done || 1;
-  Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).forEach(([type, count]) => {
-    const pct = Math.round(count/doneTotal*100);
-    ws_data.push(row(
-      style(type, {sz:11, border:true, align:'left'}),
-      style(count, {sz:11, border:true, align:'center'}),
-      style(pct+'%', {sz:11, color:C_NAVY, border:true, align:'center'}),
-      empty(),
-    ));
-  });
-  ws_data.push(row(empty(), empty(), empty(), empty()));
-
-  // ── 前10名未結案件（依等待天數） ──
+  // 前10名未結案件（依等待天數）
   const exportNow = new Date();
-  const pendingTop10 = allCases
+  const pendingTop = allCases
     .filter(c => c.status === '待處理' && !c.flagReason)
     .map(c => {
       const d = parseDate(c.datetime || c.date);
-      const days = d ? Math.floor((exportNow - d) / 86400000) : 0;
-      return { ...c, waitDays: days };
+      const daysWait = d ? Math.floor((exportNow - d) / 86400000) : 0;
+      return { c, daysWait };
     })
-    .sort((a,b) => b.waitDays - a.waitDays)
-    .slice(0, 10);
+    .sort((a,b) => b.daysWait - a.daysWait)
+    .slice(0, 10)
+    .map((e,i) => ({
+      rank: i+1,
+      loc: effArea(e.c)+' · '+(e.c.normalizedLocation||e.c.location||''),
+      days: e.daysWait,
+      date: e.c.datetime||e.c.date||'',
+      desc: e.c.description||''
+    }));
 
-  ws_data.push(row(style('⏰  前10名未結案件（依等待天數）', {bold:true, sz:13, color:C_WHITE, bg:C_RED, align:'left'}), empty(C_RED), empty(C_RED), empty(C_RED), empty(C_RED)));
-  ws_data.push(row(
-    style('排名', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('區域 · 位置', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('等待天數', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('報修日期', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-    style('故障描述', {bold:true, sz:11, bg:C_LGRAY, border:true, align:'center'}),
-  ));
-  pendingTop10.forEach((c,i) => {
-    const dayColor = c.waitDays >= 7 ? C_RED : c.waitDays >= 3 ? 'FFB7770D' : C_NAVY;
-    const dayBg = c.waitDays >= 7 ? C_LRED : c.waitDays >= 3 ? 'FFFFF9E6' : undefined;
-    ws_data.push(row(
-      style(i+1, {bold:true, sz:11, color:C_ORANGE, border:true, align:'center'}),
-      style(effArea(c)+' · '+(c.normalizedLocation||c.location||''), {sz:11, border:true, align:'left'}),
-      style(c.waitDays+'天', {bold:true, sz:11, color:dayColor, bg:dayBg, border:true, align:'center'}),
-      style(c.datetime||c.date||'', {sz:11, border:true, align:'center'}),
-      style(c.description||'', {sz:11, border:true, align:'left', wrap:true}),
-    ));
-  });
+  // 案件明細
+  const detail = includeDetail ? cases.map(c => ({
+    caseId: c.caseId, datetime: c.datetime, unit: c.unit, name: c.name,
+    area: effArea(c), locationType: c.locationType, location: c.location||'',
+    description: c.description, status: c.status, repairNote: c.repairNote||'',
+    caseType: normalizeCaseType(c.caseType)||'', closerName: c.closerName||''
+  })) : [];
 
-  // ── 案件明細 ──
-  if (includeDetail) {
-    ws_data.push(row(empty(), empty(), empty(), empty(), empty()));
-    ws_data.push(row(style('📋  案件明細清單', {bold:true, sz:13, color:C_WHITE, bg:C_NAVY, align:'left'}), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY), empty(C_NAVY)));
-    const headers = ['案件編號','日期時間','申請單位','申請人','區域','位置類型','詳細位置','故障描述','狀態','維修記錄','案件類型','結案人'];
-    ws_data.push(headers.map(h => style(h, {bold:true, sz:10, bg:C_LGRAY, border:true, align:'center'})));
-    cases.forEach(c => {
-      const statusBg = c.status==='已結案' ? C_LGREEN : C_LRED;
-      const vals = [c.caseId, c.datetime, c.unit, c.name, effArea(c), c.locationType, c.location||'', c.description, c.status, c.repairNote||'', normalizeCaseType(c.caseType)||'', c.closerName||''];
-      ws_data.push(vals.map((v,i) => style(v, {sz:10, border:true, bg: i===8 ? statusBg : undefined})));
-    });
+  const stats = { rangeLabel, total, pending, done, rate, areas, types, pendingTop, detail };
+
+  try {
+    const data = await callApi({ action: 'generateExcelReport', stats });
+    if (data.success) {
+      const a = document.createElement('a');
+      a.href = data.url;
+      a.download = data.fileName || 'report.xlsx';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      closeExportModal();
+      showToast('✓ 報告已下載');
+    } else {
+      showToast('生成失敗：'+(data.message||'未知錯誤'));
+    }
+  } catch(e) {
+    showToast('生成失敗，請檢查網路');
   }
 
-  const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-  // 合併：標題2列 + 所有區段標題（深色橫幅列）
-  const merges = [
-    {s:{r:0,c:0}, e:{r:0,c:4}},  // 主標題
-    {s:{r:1,c:0}, e:{r:1,c:4}},  // 時間範圍
-  ];
-  // 掃描所有以 style(...) 開頭、且 bg=C_NAVY 或 C_ORANGE 的列做合併
-  ws_data.forEach((r, ri) => {
-    if (ri < 2) return;
-    const cell = r[0];
-    if (cell && cell.s && cell.s.fill && cell.s.fill.fgColor &&
-        (cell.s.fill.fgColor.rgb === C_NAVY || cell.s.fill.fgColor.rgb === C_ORANGE)) {
-      merges.push({s:{r:ri,c:0}, e:{r:ri,c:4}});
-    }
-  });
-  ws['!merges'] = merges;
-
-  // 欄寬
-  ws['!cols'] = [
-    {wch:22}, {wch:10}, {wch:10}, {wch:10}, {wch:10}
-  ];
-
-  // 列高
-  ws['!rows'] = ws_data.map((_, i) => {
-    if (i===5) return {hpt:36}; // 總覽數字列
-    if ([0,3,7,9+Object.keys(areaMap).length+2, 10+Object.keys(areaMap).length+Object.keys(typeCounts).length+2].includes(i)) return {hpt:28};
-    return {hpt:20};
-  });
-
-  XLSX.utils.book_append_sheet(wb, ws, '報修統計報告');
-
-  const fileName = `渴望報修報告_${rangeLabel}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
-  XLSX.writeFile(wb, fileName);
-
   btn.textContent = '下載 Excel'; btn.disabled = false;
-  closeExportModal();
-  showToast('✓ 報告已下載');
 }
+
 
 
 // ── 照片上傳 ──
