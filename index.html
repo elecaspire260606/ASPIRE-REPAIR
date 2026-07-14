@@ -1727,8 +1727,8 @@ let locPagerMaxL = 1;
 function renderLocEntries(entries, idOffset, multiArea, maxL) {
   return entries.map((e,i)=>{
     const entryId='loc-detail-'+(i+idOffset);
-    const caseRows=e.cases.map(c=>`
-      <div style="padding:8px 10px;border-bottom:1px solid #f5f0eb;last-child:border-none;">
+    const caseRows=e.cases.map((c,ci)=>`
+      <div class="drill-row-clickable" onclick="openCasePanel(locEntryCasesFlat['${entryId}'][${ci}])" style="padding:8px 10px;border-bottom:1px solid #f5f0eb;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
           <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
           <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
@@ -1736,6 +1736,8 @@ function renderLocEntries(entries, idOffset, multiArea, maxL) {
         <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
         ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:`<div style="font-size:12px;color:#ccc;font-style:italic;">${c.status==='待處理'?'處理進度：（尚未填寫）':''}</div>`}
       </div>`).join('');
+    if (!window.locEntryCasesFlat) window.locEntryCasesFlat = {};
+    window.locEntryCasesFlat[entryId] = e.cases;
     return `
     <div class="loc-entry">
       <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
