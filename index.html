@@ -433,6 +433,30 @@
     cursor:pointer; font-family:inherit; background:#FFD700; color:#4a2a00;
   }
   .sg-crystal-lv-btn:disabled { background:rgba(255,255,255,0.2); color:rgba(255,255,255,0.4); cursor:not-allowed; }
+
+  /* 寶箱掉落提示 */
+  .sg-drop-banner {
+    position:absolute; left:50%; top:8px; transform:translateX(-50%);
+    border:2px solid; border-radius:12px; padding:8px 16px; text-align:center;
+    z-index:20; box-shadow:0 4px 16px rgba(0,0,0,0.15); white-space:nowrap;
+    animation:sgDropIn 0.3s ease-out;
+  }
+  .sg-drop-banner.sg-drop-out { animation:sgDropOut 0.3s ease-in forwards; }
+  @keyframes sgDropIn { 0%{opacity:0; transform:translateX(-50%) translateY(-12px) scale(0.85);} 100%{opacity:1; transform:translateX(-50%) translateY(0) scale(1);} }
+  @keyframes sgDropOut { 0%{opacity:1;} 100%{opacity:0; transform:translateX(-50%) translateY(-8px);} }
+  .sg-drop-rarity { font-size:11px; font-weight:800; }
+  .sg-drop-name { font-size:13px; font-weight:800; margin-top:2px; }
+  .sg-drop-desc { font-size:10px; opacity:0.85; margin-top:2px; }
+
+  /* 道具背包分頁 */
+  .sg-inventory-item {
+    background:white; border-radius:10px; padding:10px 12px; margin-bottom:6px;
+    display:flex; align-items:center; gap:10px; box-shadow:0 1px 6px rgba(0,0,0,0.05);
+    border-left:4px solid transparent;
+  }
+  .sg-inv-name { font-size:12px; font-weight:700; color:#1a1a1a; }
+  .sg-inv-desc { font-size:10px; color:#aaa; margin-top:1px; }
+  .sg-inv-count { font-size:11px; font-weight:800; white-space:nowrap; }
   .sg-crystal-upgrade {
     background:white; border-radius:10px; padding:10px 12px; margin-bottom:8px;
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -452,8 +476,8 @@
   }
   .sg-collect-item.locked { opacity:0.45; }
   .sg-collect-emoji { font-size:26px; }
-  .sg-collect-name { font-size:10px; font-weight:700; color:#1a1a1a; margin-top:4px; }
-  .sg-collect-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; }
+  .sg-collect-name { font-size:9px; font-weight:700; color:#1a1a1a; margin-top:4px; line-height:1.3; }
+  .sg-collect-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; line-height:1.3; }
   .sg-collect-cost { font-size:9px; color:#999; margin-top:2px; }
   .sg-collect-buy { margin-top:6px; width:100%; padding:5px; border:none; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:#E8761A; color:white; }
   .sg-collect-buy:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
@@ -2514,24 +2538,50 @@ const SG_SHOP = [
 ];
 
 const SG_COLLECTION = [
-  { id:'f1', emoji:'🐌', name:'蝸牛使者',   cost:1,  rate:2 },
-  { id:'f2', emoji:'🐢', name:'龜甲工頭',   cost:3,  rate:6 },
-  { id:'f3', emoji:'🦎', name:'蜥蜴巡邏員', cost:6,  rate:15 },
-  { id:'f4', emoji:'🐸', name:'青蛙電工',   cost:12, rate:35 },
-  { id:'f5', emoji:'🦊', name:'狐狸主管',   cost:25, rate:80 },
-  { id:'f6', emoji:'🐉', name:'守護神龍',   cost:50, rate:200 },
+  { id:'f1', emoji:'🐌', name:'蝸牛使者',   stat:'rate',      perLevel:2,   baseCost:1,  costMul:1.6,  statLabel:'產能' },
+  { id:'f2', emoji:'🐢', name:'龜甲工頭',   stat:'rate',      perLevel:8,   baseCost:3,  costMul:1.6,  statLabel:'產能' },
+  { id:'f3', emoji:'🦊', name:'狐狸主管',   stat:'rate',      perLevel:40,  baseCost:10, costMul:1.65, statLabel:'產能' },
+  { id:'f4', emoji:'🐉', name:'守護神龍',   stat:'rate',      perLevel:150, baseCost:30, costMul:1.7,  statLabel:'產能' },
+  { id:'f5', emoji:'🐸', name:'青蛙電工',   stat:'click',     perLevel:3,   baseCost:2,  costMul:1.6,  statLabel:'點擊力' },
+  { id:'f6', emoji:'🦎', name:'蜥蜴神射手', stat:'crit',      perLevel:1,   baseCost:5,  costMul:1.65, statLabel:'會心機率' },
+  { id:'f7', emoji:'🐿️', name:'松鼠快手',   stat:'autoclick', perLevel:0.3, baseCost:8,  costMul:1.7,  statLabel:'自動點擊/秒' },
+  { id:'f8', emoji:'🦫', name:'河狸工程師', stat:'offlinecap',perLevel:1,   baseCost:6,  costMul:1.6,  statLabel:'離線上限(hr)' },
 ];
+
+const SG_RARITY_CHANCE = { legendary:5, rare:25, common:70 };
+const SG_DUPLICATE_CRYSTAL = { common:2, rare:8, legendary:30 };
+
+const SG_GLOBAL_ITEMS = [
+  { id:'g_c1', rarity:'common', name:'產能藥水', desc:'全體產能永久+5%', type:'globalRate', value:0.05 },
+  { id:'g_c2', rarity:'common', name:'點擊手套', desc:'全體點擊力永久+5%', type:'globalClick', value:0.05 },
+  { id:'g_c3', rarity:'common', name:'經驗結晶', desc:'立即獲得大量經驗', type:'instantXp', value:0.05 },
+  { id:'g_r1', rarity:'rare', name:'產能精華', desc:'全體產能永久+15%', type:'globalRate', value:0.15 },
+  { id:'g_r2', rarity:'rare', name:'狂暴符文', desc:'下 10 次點擊皆為 5 倍', type:'burst', value:5, count:10 },
+  { id:'g_r3', rarity:'rare', name:'幸運羽毛', desc:'會心機率永久+2%', type:'critBonus', value:2 },
+  { id:'g_l1', rarity:'legendary', name:'產能核心', desc:'全體產能永久+40%', type:'globalRate', value:0.40 },
+  { id:'g_l2', rarity:'legendary', name:'時之沙漏', desc:'15秒內必定會心一擊', type:'guaranteedCrit', value:15000 },
+  { id:'g_l3', rarity:'legendary', name:'離線結界', desc:'離線效率永久+50%', type:'offlineMult', value:0.50 },
+];
+
+const SG_CHAR_ITEMS = SG_COLLECTION.flatMap(c => [
+  { id:`c_${c.id}_common`,    rarity:'common',    name:`${c.name}的祝福（小）`, charId:c.id, type:'charMult', value:0.10 },
+  { id:`c_${c.id}_rare`,      rarity:'rare',      name:`${c.name}的祝福（中）`, charId:c.id, type:'charMult', value:0.25 },
+  { id:`c_${c.id}_legendary`, rarity:'legendary', name:`${c.name}的祝福（大）`, charId:c.id, type:'charMult', value:0.60 },
+]).map(it => ({ ...it, desc: `${SG_COLLECTION.find(c=>c.id===it.charId).name} 效果永久+${Math.round(it.value*100)}%` }));
+
+const SG_ITEMS = [...SG_GLOBAL_ITEMS, ...SG_CHAR_ITEMS];
+
+const SG_RARITY_META = {
+  common:    { label:'普通', color:'#8B9AA8', bg:'#F0F2F4' },
+  rare:      { label:'稀有', color:'#4F7FD9', bg:'#EAF0FB' },
+  legendary: { label:'傳說', color:'#E0A800', bg:'#FFF7E0' },
+};
 
 const SG_DAILY_QUESTS = [
   { id:'d1', name:'今日點擊 30 次',   type:'clicks',   target:30,  reward:100 },
   { id:'d2', name:'今日賺取 500 經驗', type:'xpEarned', target:500, reward:300 },
   { id:'d3', name:'購買 1 次升級',    type:'buys',     target:1,   reward:200 },
 ];
-
-const SG_TALENTS = {
-  click: { name:'點擊流', icon:'👆', desc:'點擊力 +50%\n產能 -20%' },
-  idle:  { name:'放置流', icon:'⏳', desc:'產能 +50%\n點擊力 -20%' },
-};
 
 function sgDefaultState() {
   return {
@@ -2549,11 +2599,19 @@ function sgDefaultState() {
     achievements: [],  // 已解鎖成就 id 清單
     crystals: 0,
     prestigeCount: 0,
-    talent: null,      // 'click' | 'idle' | null
-    talentLv: { click:0, idle:0 },  // 各天賦分支已投資等級（用水晶購買）
     crystalClickLv: 0,  // 永久點擊強化等級
     crystalRateLv: 0,   // 永久產能強化等級
-    collection: [],    // 已收集圖鑑 id
+    collection: [],    // (舊版相容用，已棄用)
+    collectionLv: {},  // 圖鑑夥伴等級 { id: level }
+    itemInventory: {}, // 已獲得道具 { itemId: count }
+    itemGlobalRateBonus: 0,
+    itemGlobalClickBonus: 0,
+    itemCritBonus: 0,      // 百分點
+    itemOfflineBonus: 0,   // 小數(0.5=+50%)
+    charMult: {},          // 角色專屬加成 { charId: 累計比例 }
+    burstClicksRemaining: 0,
+    burstMult: 1,
+    guaranteedCritUntil: 0,
     autoBuy: false,
     dailyDoubleDate: '',   // 上次使用雙倍離線收益的日期
     daily: { date:'', clicks:0, xpEarned:0, buys:0, claimed:[] },
@@ -2566,6 +2624,14 @@ function sgLoad() {
     const raw = localStorage.getItem(SG_SAVE_KEY);
     sg = raw ? Object.assign(sgDefaultState(), JSON.parse(raw)) : sgDefaultState();
   } catch(e) { sg = sgDefaultState(); }
+  // 舊版圖鑑資料（陣列式收集）遷移為等級式
+  if (Array.isArray(sg.collection) && sg.collection.length && (!sg.collectionLv || Object.keys(sg.collectionLv).length===0)) {
+    sg.collectionLv = {};
+    sg.collection.forEach(id => { sg.collectionLv[id] = 1; });
+  }
+  if (!sg.collectionLv) sg.collectionLv = {};
+  if (!sg.itemInventory) sg.itemInventory = {};
+  if (!sg.charMult) sg.charMult = {};
 }
 
 function sgSave() {
@@ -2596,40 +2662,137 @@ function sgEnsureDailyReset() {
   }
 }
 
-function sgCollectionBonus() {
-  return SG_COLLECTION.filter(c => sg.collection.includes(c.id)).reduce((s,c)=>s+c.rate, 0);
+function sgCollectionLv(id) { return sg.collectionLv[id] || 0; }
+
+function sgCollectionStatSum(stat) {
+  return SG_COLLECTION.filter(c => c.stat === stat)
+    .reduce((sum,c) => {
+      const base = sgCollectionLv(c.id) * c.perLevel;
+      const charBonus = (sg.charMult && sg.charMult[c.id]) || 0;
+      return sum + base * (1 + charBonus);
+    }, 0);
+}
+
+function sgCollectionRateBonus()    { return sgCollectionStatSum('rate'); }
+function sgCollectionClickBonus()   { return sgCollectionStatSum('click'); }
+function sgCollectionCritBonus()    { return sgCollectionStatSum('crit'); }       // 百分點
+function sgCollectionAutoClickPerSec() { return sgCollectionStatSum('autoclick'); }
+function sgCollectionOfflineCapHours() { return sgCollectionStatSum('offlinecap'); }
+
+// ── 🎁 寶箱掉落系統 ──
+function sgRollRarity() {
+  const r = Math.random()*100;
+  if (r < SG_RARITY_CHANCE.legendary) return 'legendary';
+  if (r < SG_RARITY_CHANCE.legendary + SG_RARITY_CHANCE.rare) return 'rare';
+  return 'common';
+}
+
+function sgRollItemOfRarity(rarity) {
+  const pool = SG_ITEMS.filter(i=>i.rarity===rarity);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function sgApplyItemEffect(itemDef) {
+  switch(itemDef.type) {
+    case 'globalRate':  sg.itemGlobalRateBonus  = (sg.itemGlobalRateBonus||0) + itemDef.value; break;
+    case 'globalClick': sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + itemDef.value; break;
+    case 'critBonus':   sg.itemCritBonus = (sg.itemCritBonus||0) + itemDef.value; break;
+    case 'offlineMult': sg.itemOfflineBonus = (sg.itemOfflineBonus||0) + itemDef.value; break;
+    case 'charMult':
+      sg.charMult = sg.charMult || {};
+      sg.charMult[itemDef.charId] = (sg.charMult[itemDef.charId]||0) + itemDef.value;
+      break;
+    case 'instantXp': {
+      const gain = Math.max(50, Math.floor(sg.totalXp * itemDef.value));
+      sg.xp += gain; sg.totalXp += gain;
+      itemDef._actualGain = gain;
+      break;
+    }
+    case 'burst':
+      sg.burstClicksRemaining = itemDef.count;
+      sg.burstMult = itemDef.value;
+      break;
+    case 'guaranteedCrit':
+      sg.guaranteedCritUntil = Date.now() + itemDef.value;
+      break;
+  }
+}
+
+function sgObtainItem(itemDef) {
+  const owned = sg.itemInventory[itemDef.id] || 0;
+  if (owned > 0) {
+    const crystalGain = SG_DUPLICATE_CRYSTAL[itemDef.rarity];
+    sg.crystals += crystalGain;
+    sg.itemInventory[itemDef.id] = owned + 1;
+    return { itemDef, duplicate:true, crystalGain };
+  } else {
+    sg.itemInventory[itemDef.id] = 1;
+    sgApplyItemEffect(itemDef);
+    return { itemDef, duplicate:false };
+  }
+}
+
+function sgTryDropItem(source) {
+  const chance = source==='click' ? 0.005 : 0.001;
+  if (Math.random() >= chance) return null;
+  const rarity = sgRollRarity();
+  const itemDef = sgRollItemOfRarity(rarity);
+  const result = sgObtainItem(itemDef);
+  sgShowDropBanner(result);
+  sgSave();
+  return result;
+}
+
+function sgRollOfflineDrops(hours) {
+  const results = [];
+  const whole = Math.floor(hours);
+  for (let i=0; i<whole; i++) {
+    if (Math.random() < 0.003) {
+      const rarity = sgRollRarity();
+      results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
+    }
+  }
+  const frac = hours - whole;
+  if (Math.random() < frac*0.003) {
+    const rarity = sgRollRarity();
+    results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
+  }
+  return results;
+}
+
+function sgShowDropBanner(result) {
+  const stageBox = document.getElementById('sgStage');
+  if (!stageBox) return;
+  const meta = SG_RARITY_META[result.itemDef.rarity];
+  const banner = document.createElement('div');
+  banner.className = 'sg-drop-banner';
+  banner.style.background = meta.bg;
+  banner.style.color = meta.color;
+  banner.style.borderColor = meta.color;
+  const dupText = result.duplicate ? `（重複，轉換 ${result.crystalGain} 💠）` : '（新獲得！）';
+  banner.innerHTML = `
+    <div class="sg-drop-rarity">🎁 ${meta.label}道具${dupText}</div>
+    <div class="sg-drop-name">${result.itemDef.name}</div>
+    <div class="sg-drop-desc">${result.itemDef.desc}</div>
+  `;
+  stageBox.appendChild(banner);
+  setTimeout(()=>{ banner.classList.add('sg-drop-out'); setTimeout(()=>banner.remove(), 300); }, 2600);
 }
 
 function sgEffClickPower() {
-  let mult = 1;
-  if (sg.talent === 'click') mult = 1.5 + (sg.talentLv.click||0)*0.15;
-  else if (sg.talent === 'idle') mult = 0.8;
+  const base = sg.clickPower + sgCollectionClickBonus();
   const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
-  return sg.clickPower * mult * crystalMult;
+  const itemMult = 1 + (sg.itemGlobalClickBonus||0);
+  return base * crystalMult * itemMult;
 }
 
 function sgEffRate() {
-  const base = sg.ratePerSec + sgCollectionBonus();
-  let mult = 1;
-  if (sg.talent === 'idle') mult = 1.5 + (sg.talentLv.idle||0)*0.15;
-  else if (sg.talent === 'click') mult = 0.8;
+  const base = sg.ratePerSec + sgCollectionRateBonus();
   const crystalMult = 1 + 0.08*(sg.crystalRateLv||0);
-  return base * mult * crystalMult;
-}
-
-function sgTalentLevelCost(branch) {
-  const lv = sg.talentLv[branch] || 0;
-  return Math.floor(15 * Math.pow(1.4, lv));
-}
-
-function sgBuyTalentLevel(branch) {
-  const cost = sgTalentLevelCost(branch);
-  if (sg.crystals < cost) return;
-  sg.crystals -= cost;
-  sg.talentLv[branch] = (sg.talentLv[branch]||0) + 1;
-  sgSave();
-  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
-  sgUpdateStageDisplay();
+  const itemMult = 1 + (sg.itemGlobalRateBonus||0);
+  const passiveRate = base * crystalMult * itemMult;
+  const autoClickRate = sgCollectionAutoClickPerSec() * sgEffClickPower();
+  return passiveRate + autoClickRate;
 }
 
 function sgCrystalUpgradeCost(id) {
@@ -2674,15 +2837,18 @@ function openSlimeGame() {
   const elapsedSec = Math.max(0, Math.floor((now - (sg.lastSeen||now)) / 1000));
   let offlineGain = 0;
   const effRate = sgEffRate();
+  const capHours = 8 + sgCollectionOfflineCapHours();
+  const cappedSec = Math.min(elapsedSec, capHours*3600);
   if (elapsedSec > 5 && effRate > 0) {
-    const cappedSec = Math.min(elapsedSec, 8*3600); // 上限8小時離線收益
-    offlineGain = Math.floor(cappedSec * effRate);
+    const offlineMult = 1 + (sg.itemOfflineBonus||0);
+    offlineGain = Math.floor(cappedSec * effRate * offlineMult);
     sg.xp += offlineGain;
     sg.totalXp += offlineGain;
   }
   sg._offlineGain = offlineGain;
   sg._offlineSec = elapsedSec;
   sg._offlineDoubled = false;
+  sg._offlineDrops = elapsedSec > 5 ? sgRollOfflineDrops(cappedSec/3600) : [];
 
   document.getElementById('slimeGameOverlay').classList.add('open');
   sgActiveTab = sgActiveTab || 'shop';
@@ -2697,6 +2863,7 @@ function openSlimeGame() {
       sg.totalXp += rate;
       sgUpdateNumbers();
     }
+    sgTryDropItem('tick');
     if (sg.autoBuy) sgAutoBuyTick();
   }, 1000);
 
@@ -2791,10 +2958,21 @@ function sgRender() {
   const effRate = sgEffRate();
   const effClick = sgEffClickPower();
 
-  const offlineHtml = sg._offlineGain > 0 ? `
+  const offlineDrops = sg._offlineDrops || [];
+  const offlineDropsHtml = offlineDrops.length ? `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(45,122,62,0.3);">
+      <div style="font-weight:800;margin-bottom:4px;">🎁 離開期間開了 ${offlineDrops.length} 個寶箱！</div>
+      ${offlineDrops.map(r => {
+        const meta = SG_RARITY_META[r.itemDef.rarity];
+        return `<div style="font-size:11px;color:${meta.color};">・${meta.label}｜${r.itemDef.name}${r.duplicate?`（重複+${r.crystalGain}💠）`:'（新獲得）'}</div>`;
+      }).join('')}
+    </div>` : '';
+
+  const offlineHtml = (sg._offlineGain > 0 || offlineDrops.length > 0) ? `
     <div class="sg-offline-toast">
-      🎉 離開了 ${sgFormatDuration(sg._offlineSec)}，蝸牛小弟們幫你賺了 <b>+${sgFormatNum(sg._offlineGain)}</b> 經驗！
-      ${!sg._offlineDoubled && sg.dailyDoubleDate !== sgTodayStr() ? `<br><button class="sg-buy-btn" style="margin-top:8px;" onclick="sgDoubleOffline()">🎬 再領一次雙倍（每日一次）</button>` : ''}
+      ${sg._offlineGain > 0 ? `🎉 離開了 ${sgFormatDuration(sg._offlineSec)}，蝸牛小弟們幫你賺了 <b>+${sgFormatNum(sg._offlineGain)}</b> 經驗！` : `👋 歡迎回來！離開了 ${sgFormatDuration(sg._offlineSec)}`}
+      ${sg._offlineGain > 0 && !sg._offlineDoubled && sg.dailyDoubleDate !== sgTodayStr() ? `<br><button class="sg-buy-btn" style="margin-top:8px;" onclick="sgDoubleOffline()">🎬 再領一次雙倍（每日一次）</button>` : ''}
+      ${offlineDropsHtml}
     </div>` : '';
 
   document.getElementById('sgBody').innerHTML = `
@@ -2806,7 +2984,7 @@ function sgRender() {
         <span class="sg-xp-num" id="sgXpNum">${sgFormatNum(sg.xp)}</span>
         <span class="sg-xp-label">經驗值</span>
       </div>
-      <div class="sg-xp-rate" id="sgXpRate">+${sgFormatNum(effRate)}/秒　｜　點擊 +${sgFormatNum(effClick)}${sg.talent?`　｜　${SG_TALENTS[sg.talent].icon} ${SG_TALENTS[sg.talent].name}`:''}</div>
+      <div class="sg-xp-rate" id="sgXpRate">+${sgFormatNum(effRate)}/秒　｜　點擊 +${sgFormatNum(effClick)}</div>
       <div class="sg-combo-bar"><div class="sg-combo-fill" id="sgComboFill"></div></div>
       <div class="sg-combo-label" id="sgComboLabel"></div>
     </div>
@@ -2814,6 +2992,7 @@ function sgRender() {
       <button class="sg-tab-btn${sgActiveTab==='shop'?' active':''}" onclick="sgSwitchTab('shop',this)">🛒 商店</button>
       <button class="sg-tab-btn${sgActiveTab==='prestige'?' active':''}" onclick="sgSwitchTab('prestige',this)">🔮 轉生</button>
       <button class="sg-tab-btn${sgActiveTab==='collection'?' active':''}" onclick="sgSwitchTab('collection',this)">📖 圖鑑</button>
+      <button class="sg-tab-btn${sgActiveTab==='inventory'?' active':''}" onclick="sgSwitchTab('inventory',this)">🎒 道具</button>
       <button class="sg-tab-btn${sgActiveTab==='daily'?' active':''}" onclick="sgSwitchTab('daily',this)">📅 每日</button>
       <button class="sg-tab-btn${sgActiveTab==='achv'?' active':''}" onclick="sgSwitchTab('achv',this)">🏆 成就</button>
     </div>
@@ -2833,9 +3012,34 @@ function sgTabContentHtml() {
   if (sgActiveTab === 'shop') return sgShopTabHtml();
   if (sgActiveTab === 'prestige') return sgPrestigeTabHtml();
   if (sgActiveTab === 'collection') return sgCollectionTabHtml();
+  if (sgActiveTab === 'inventory') return sgInventoryTabHtml();
   if (sgActiveTab === 'daily') return sgDailyTabHtml();
   if (sgActiveTab === 'achv') return sgAchvTabHtml();
   return '';
+}
+
+function sgInventoryTabHtml() {
+  const owned = SG_ITEMS.filter(it => (sg.itemInventory[it.id]||0) > 0);
+  if (!owned.length) {
+    return `<div class="empty-state" style="padding:30px 0;color:#ccc;">尚未獲得任何道具<br>點擊、放置或離線都有機會開到寶箱 🎁</div>`;
+  }
+  const sorted = owned.sort((a,b) => {
+    const order = {legendary:0, rare:1, common:2};
+    return order[a.rarity]-order[b.rarity];
+  });
+  const html = sorted.map(it => {
+    const meta = SG_RARITY_META[it.rarity];
+    const count = sg.itemInventory[it.id];
+    return `
+      <div class="sg-inventory-item" style="border-left-color:${meta.color};">
+        <div style="flex:1;min-width:0;">
+          <div class="sg-inv-name">${it.name} <span style="font-size:9px;color:${meta.color};font-weight:800;">[${meta.label}]</span></div>
+          <div class="sg-inv-desc">${it.desc}</div>
+        </div>
+        <div class="sg-inv-count" style="color:${meta.color};">x${count}</div>
+      </div>`;
+  }).join('');
+  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具</div>${html}`;
 }
 
 function sgShopTabHtml() {
@@ -2909,24 +3113,6 @@ function sgPrestigeTabHtml() {
   const crystalGain = sgPrestigeCrystalGain();
   const progress = Math.min(100, Math.round(sg.totalXp/threshold*100));
 
-  const talentHtml = Object.entries(SG_TALENTS).map(([key,t]) => {
-    const lv = sg.talentLv[key] || 0;
-    const lvCost = sgTalentLevelCost(key);
-    const canLevel = sg.crystals >= lvCost;
-    const bonusText = key==='click'
-      ? `點擊力 +${Math.round((0.5+lv*0.15)*100)}%　產能 -20%`
-      : `產能 +${Math.round((0.5+lv*0.15)*100)}%　點擊力 -20%`;
-    return `
-    <div class="sg-talent-card${sg.talent===key?' selected':''}" onclick="sgSetTalent('${key}')">
-      <div class="sg-talent-icon">${t.icon}</div>
-      <div class="sg-talent-name">${t.name} Lv.${lv}</div>
-      <div class="sg-talent-desc">${bonusText}</div>
-      <button class="sg-crystal-lv-btn" style="margin-top:6px;width:100%;font-size:9px;padding:5px;" ${canLevel?'':'disabled'} onclick="event.stopPropagation();sgBuyTalentLevel('${key}')">
-        升級 ${lvCost} 💠
-      </button>
-    </div>`;
-  }).join('');
-
   const clickCost = sgCrystalUpgradeCost('crystalClick');
   const rateCost = sgCrystalUpgradeCost('crystalRate');
 
@@ -2943,12 +3129,7 @@ function sgPrestigeTabHtml() {
         ${canPrestige ? '✨ 立即轉生' : `尚未達成（${progress}%）`}
       </button>
 
-      <div class="sg-talent-current" style="margin-top:14px;">
-        <div style="font-weight:800;margin-bottom:8px;">🌟 天賦分支（點選切換，水晶升級）</div>
-        <div class="sg-talent-choice">${talentHtml}</div>
-      </div>
-
-      <div class="sg-talent-current" style="margin-top:10px; text-align:left;">
+      <div class="sg-talent-current" style="margin-top:14px; text-align:left;">
         <div style="font-weight:800;margin-bottom:8px;text-align:center;">💎 永久水晶強化（無上限）</div>
         <div class="sg-crystal-lv-card">
           <div class="sg-crystal-lv-info">
@@ -2970,23 +3151,16 @@ function sgPrestigeTabHtml() {
   `;
 }
 
-function sgSetTalent(key) {
-  sg.talent = sg.talent === key ? null : key;
-  sgSave();
-  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
-  sgUpdateStageDisplay();
-}
-
 function sgUpdateStageDisplay() {
   const rateEl = document.getElementById('sgXpRate');
-  if (rateEl) rateEl.textContent = `+${sgFormatNum(sgEffRate())}/秒　｜　點擊 +${sgFormatNum(sgEffClickPower())}${sg.talent?`　｜　${SG_TALENTS[sg.talent].icon} ${SG_TALENTS[sg.talent].name}`:''}`;
+  if (rateEl) rateEl.textContent = `+${sgFormatNum(sgEffRate())}/秒　｜　點擊 +${sgFormatNum(sgEffClickPower())}`;
 }
 
 function sgDoPrestige() {
   const threshold = sgPrestigeThreshold();
   if (sg.totalXp < threshold) return;
   const gain = sgPrestigeCrystalGain();
-  if (!confirm(`確定要轉生嗎？\n\n將重置經驗值、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n圖鑑、成就、天賦選擇不會重置。`)) return;
+  if (!confirm(`確定要轉生嗎？\n\n將重置經驗值、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n圖鑑、成就、道具不會重置。`)) return;
   sg.crystals += gain;
   sg.prestigeCount++;
   sg.xp = 0; sg.totalXp = 0; sg.clickPower = 1; sg.ratePerSec = 0; sg.owned = {};
@@ -2997,32 +3171,38 @@ function sgDoPrestige() {
 
 function sgCollectionTabHtml() {
   const items = SG_COLLECTION.map(c => {
-    const owned = sg.collection.includes(c.id);
-    const canAfford = sg.crystals >= c.cost;
+    const lv = sgCollectionLv(c.id);
+    const cost = Math.floor(c.baseCost * Math.pow(c.costMul, lv));
+    const canAfford = sg.crystals >= cost;
+    const totalBonus = lv * c.perLevel;
+    const bonusDisplay = c.stat==='autoclick' ? totalBonus.toFixed(1) : totalBonus;
     return `
-      <div class="sg-collect-item${owned?'':' locked'}">
-        <div class="sg-collect-emoji">${owned?c.emoji:'❓'}</div>
-        <div class="sg-collect-name">${owned?c.name:'未收集'}</div>
-        ${owned
-          ? `<div class="sg-collect-bonus">+${c.rate}/秒</div>`
-          : `<div class="sg-collect-cost">${c.cost} 💠</div><button class="sg-collect-buy" ${canAfford?'':'disabled'} onclick="sgUnlockCollection('${c.id}')">收集</button>`}
+      <div class="sg-collect-item${lv>0?'':' locked'}">
+        <div class="sg-collect-emoji">${lv>0?c.emoji:'❓'}</div>
+        <div class="sg-collect-name">${lv>0?c.name:'未收集'}${lv>0?' Lv.'+lv:''}</div>
+        <div class="sg-collect-bonus">${lv>0?`+${bonusDisplay} ${c.statLabel}`:c.statLabel}</div>
+        <div class="sg-collect-cost">${cost} 💠</div>
+        <button class="sg-collect-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeCollection('${c.id}')">${lv>0?'升級':'收集'}</button>
       </div>`;
   }).join('');
   return `
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集永久夥伴，效果不受轉生影響</div>
+    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受轉生影響、無等級上限</div>
     <div class="sg-collection-grid">${items}</div>
   `;
 }
 
-function sgUnlockCollection(id) {
+function sgUpgradeCollection(id) {
   const item = SG_COLLECTION.find(c=>c.id===id);
-  if (!item || sg.collection.includes(id) || sg.crystals < item.cost) return;
-  sg.crystals -= item.cost;
-  sg.collection.push(id);
+  if (!item) return;
+  const lv = sgCollectionLv(id);
+  const cost = Math.floor(item.baseCost * Math.pow(item.costMul, lv));
+  if (sg.crystals < cost) return;
+  sg.crystals -= cost;
+  sg.collectionLv[id] = lv + 1;
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
   sgUpdateStageDisplay();
-  showToast(`📖 收集了「${item.name}」！永久 +${item.rate}/秒`);
+  showToast(`📖 ${item.name} 升級到 Lv.${lv+1}！`);
 }
 
 function sgDailyTabHtml() {
@@ -3152,11 +3332,20 @@ function sgClick(evt) {
   // 連擊加成：每5連擊 +10% 加成，上限100%
   const comboMult = 1 + Math.min(Math.floor(sg.combo/5)*0.1, 1.0);
 
-  // 會心一擊：8% 機率 x3
-  const isCrit = Math.random() < 0.08;
+  // 會心一擊：基礎8% + 圖鑑加成 + 道具加成，倍率x3；時之沙漏期間必定觸發
+  const critChance = 0.08 + sgCollectionCritBonus()/100 + (sg.itemCritBonus||0)/100;
+  let isCrit = Math.random() < critChance;
+  if (sg.guaranteedCritUntil && now < sg.guaranteedCritUntil) isCrit = true;
   const critMult = isCrit ? 3 : 1;
 
-  const gain = Math.round(sgEffClickPower() * comboMult * critMult);
+  // 狂暴符文：剩餘次數內每次點擊額外倍率
+  let burstMult = 1;
+  if (sg.burstClicksRemaining > 0) {
+    burstMult = sg.burstMult;
+    sg.burstClicksRemaining--;
+  }
+
+  const gain = Math.round(sgEffClickPower() * comboMult * critMult * burstMult);
   sg.xp += gain;
   sg.totalXp += gain;
   sg.totalClicks++;
@@ -3165,6 +3354,8 @@ function sgClick(evt) {
   sgEnsureDailyReset();
   sg.daily.clicks++;
   sg.daily.xpEarned += gain;
+
+  sgTryDropItem('click');
 
   sgUpdateNumbers();
 
