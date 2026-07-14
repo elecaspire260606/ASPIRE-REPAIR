@@ -335,13 +335,45 @@
     background:white; border-radius:16px; padding:20px; text-align:center;
     box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:16px; position:relative; overflow:hidden;
   }
-  .sg-slime-emoji {
-    font-size:64px; cursor:pointer; user-select:none; transition:transform 0.08s;
-    display:inline-block; filter:drop-shadow(0 6px 10px rgba(232,118,26,0.25));
+  .sg-slime-wrap {
+    width:130px; height:130px; margin:0 auto; cursor:pointer; user-select:none;
+    display:flex; align-items:center; justify-content:center; position:relative;
   }
-  .sg-slime-emoji:active { transform:scale(0.88); }
-  .sg-slime-emoji.bounce { animation:sgBounce 0.35s ease; }
-  @keyframes sgBounce { 0%{transform:scale(1);} 30%{transform:scale(1.18) rotate(-4deg);} 60%{transform:scale(0.94) rotate(3deg);} 100%{transform:scale(1);} }
+  .sg-slime-wrap svg { width:100%; height:100%; overflow:visible; transition:transform 0.05s; }
+  .sg-slime-wrap.squish svg { animation:sgSquish 0.38s cubic-bezier(.34,1.9,.64,1); }
+  @keyframes sgSquish {
+    0%   { transform:scale(1,1); }
+    22%  { transform:scale(1.28,0.72) translateY(8px); }
+    45%  { transform:scale(0.85,1.18) translateY(-6px); }
+    65%  { transform:scale(1.1,0.92) translateY(2px); }
+    100% { transform:scale(1,1); }
+  }
+  .sg-slime-wrap.idle svg { animation:sgIdleBob 2.6s ease-in-out infinite; }
+  @keyframes sgIdleBob {
+    0%,100% { transform:translateY(0) scale(1,1); }
+    50%     { transform:translateY(-4px) scale(1.02,0.98); }
+  }
+  .sg-eye-blink { animation:sgBlink 4s ease-in-out infinite; }
+  @keyframes sgBlink { 0%,92%,100% { transform:scaleY(1); } 95% { transform:scaleY(0.1); } }
+  .sg-sparkle { position:absolute; font-size:16px; pointer-events:none; animation:sgSparkle 0.7s ease-out forwards; }
+  @keyframes sgSparkle {
+    0%   { opacity:1; transform:translate(0,0) scale(0.5) rotate(0deg); }
+    100% { opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.2) rotate(180deg); }
+  }
+  .sg-crit-float { color:#E0524D !important; font-size:17px !important; font-weight:900 !important; }
+  .sg-combo-bar { height:5px; background:#f0ece0; border-radius:3px; overflow:hidden; margin-top:10px; }
+  .sg-combo-fill { height:100%; background:linear-gradient(90deg,#F4A24A,#E8761A); border-radius:3px; transition:width 0.15s; width:0%; }
+  .sg-combo-label { font-size:10px; color:#c99; margin-top:3px; text-align:center; min-height:14px; font-weight:700; }
+  .sg-achv-item {
+    background:white; border-radius:10px; padding:10px 12px; margin-bottom:6px;
+    display:flex; align-items:center; gap:10px; box-shadow:0 1px 6px rgba(0,0,0,0.05);
+  }
+  .sg-achv-item.locked { opacity:0.4; }
+  .sg-achv-icon { font-size:22px; flex-shrink:0; }
+  .sg-achv-info { flex:1; min-width:0; }
+  .sg-achv-name { font-size:12px; font-weight:700; color:#1a1a1a; }
+  .sg-achv-desc { font-size:10px; color:#aaa; margin-top:1px; }
+  .sg-achv-reward { font-size:10px; color:#2D7A3E; font-weight:700; white-space:nowrap; }
   .sg-stage-name { font-size:13px; color:#E8761A; font-weight:700; margin-top:8px; }
   .sg-xp-row { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-top:10px; }
   .sg-xp-num { font-size:24px; font-weight:800; color:#1a1a1a; }
@@ -2347,12 +2379,25 @@ let sg = null; // 遊戲狀態
 let sgTickInterval = null;
 
 const SG_STAGES = [
-  { min:0,     emoji:'🟠', name:'小史萊姆' },
-  { min:100,   emoji:'🔶', name:'活力史萊姆' },
-  { min:500,   emoji:'🧡', name:'閃亮史萊姆' },
-  { min:2000,  emoji:'⭐', name:'星光史萊姆' },
-  { min:8000,  emoji:'🌟', name:'超新星史萊姆' },
-  { min:30000, emoji:'👑', name:'史萊姆之王' },
+  { min:0,     name:'小史萊姆',     body:'#F4A24A', body2:'#E8761A', eye:'#1a1a1a', crown:false },
+  { min:100,   name:'活力史萊姆',   body:'#7ED9A8', body2:'#2D9E5F', eye:'#1a1a1a', crown:false },
+  { min:500,   name:'閃亮史萊姆',   body:'#7EC8E3', body2:'#2D8FBF', eye:'#1a1a1a', crown:false },
+  { min:2000,  name:'星光史萊姆',   body:'#C89EF2', body2:'#8B4FD9', eye:'#1a1a1a', crown:false },
+  { min:8000,  name:'超新星史萊姆', body:'#F2D46E', body2:'#E0A800', eye:'#1a1a1a', crown:true, glow:true },
+  { min:30000, name:'史萊姆之王',   body:'#FFFFFF', body2:'#E8761A', eye:'#E8761A', crown:true, glow:true, royal:true },
+];
+
+const SG_ACHIEVEMENTS = [
+  { id:'click10',   name:'初次見面',   desc:'累積點擊 10 次',       icon:'👋', cond:s=>s.totalClicks>=10,     rewardClick:1, rewardText:'點擊力 +1' },
+  { id:'click100',  name:'勤奮的手指', desc:'累積點擊 100 次',      icon:'💪', cond:s=>s.totalClicks>=100,    rewardClick:2, rewardText:'點擊力 +2' },
+  { id:'click500',  name:'指尖風暴',   desc:'累積點擊 500 次',      icon:'⚡', cond:s=>s.totalClicks>=500,    rewardClick:5, rewardText:'點擊力 +5' },
+  { id:'xp100',     name:'小小起步',   desc:'累積經驗達 100',       icon:'🌱', cond:s=>s.totalXp>=100,        rewardRate:1, rewardText:'產能 +1/秒' },
+  { id:'xp1000',    name:'穩定成長',   desc:'累積經驗達 1,000',     icon:'🌿', cond:s=>s.totalXp>=1000,       rewardRate:3, rewardText:'產能 +3/秒' },
+  { id:'xp10000',   name:'欣欣向榮',   desc:'累積經驗達 10,000',    icon:'🌳', cond:s=>s.totalXp>=10000,      rewardRate:10,rewardText:'產能 +10/秒' },
+  { id:'xp100000',  name:'繁榮盛世',   desc:'累積經驗達 100,000',   icon:'🏔️', cond:s=>s.totalXp>=100000,     rewardRate:50,rewardText:'產能 +50/秒' },
+  { id:'ownHelper', name:'不再孤單',   desc:'雇用第一位小夥伴',     icon:'🤝', cond:s=>Object.values(s.owned||{}).some(n=>n>0), rewardClick:1, rewardText:'點擊力 +1' },
+  { id:'crit10',    name:'手感絕佳',   desc:'觸發 10 次會心一擊',   icon:'🎯', cond:s=>(s.critCount||0)>=10, rewardClick:2, rewardText:'點擊力 +2' },
+  { id:'combo20',   name:'連擊大師',   desc:'連擊數達到 20',        icon:'🔥', cond:s=>(s.maxCombo||0)>=20,   rewardRate:5, rewardText:'產能 +5/秒' },
 ];
 
 const SG_SHOP = [
@@ -2371,6 +2416,12 @@ function sgDefaultState() {
     ratePerSec: 0,
     owned: {},        // { shopId: count }
     lastSeen: Date.now(),
+    totalClicks: 0,
+    critCount: 0,
+    combo: 0,
+    maxCombo: 0,
+    lastClickTime: 0,
+    achievements: [],  // 已解鎖成就 id 清單
   };
 }
 
@@ -2442,6 +2493,61 @@ function closeSlimeGame() {
   sgSave();
 }
 
+function sgSlimeSvg(stage) {
+  const glowFilter = stage.glow ? `<filter id="sgGlow"><feGaussianBlur stdDeviation="3.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>` : '';
+  const glowAttr = stage.glow ? 'filter="url(#sgGlow)"' : '';
+  const crown = stage.crown ? `
+    <g transform="translate(50,8)">
+      <path d="M -16,14 L -12,-2 L -5,8 L 0,-8 L 5,8 L 12,-2 L 16,14 Z" fill="#FFD700" stroke="#D4A017" stroke-width="1.2"/>
+      <circle cx="-12" cy="-2" r="2" fill="#FF6B6B"/>
+      <circle cx="0" cy="-8" r="2.3" fill="#5B9BD5"/>
+      <circle cx="12" cy="-2" r="2" fill="#FF6B6B"/>
+    </g>` : '';
+  const royalSparkle = stage.royal ? `
+    <circle cx="20" cy="35" r="2" fill="#FFD700" opacity="0.8"><animate attributeName="opacity" values="0.8;0.1;0.8" dur="1.8s" repeatCount="indefinite"/></circle>
+    <circle cx="82" cy="45" r="1.6" fill="#FFD700" opacity="0.7"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="2.2s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="20" r="1.8" fill="#E8761A" opacity="0.6"><animate attributeName="opacity" values="0.7;0.1;0.7" dur="1.5s" repeatCount="indefinite"/></circle>` : '';
+
+  return `
+  <svg viewBox="0 0 100 95" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      ${glowFilter}
+      <linearGradient id="sgBodyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${stage.body}"/>
+        <stop offset="100%" stop-color="${stage.body2}"/>
+      </linearGradient>
+      <radialGradient id="sgHighlight" cx="35%" cy="28%" r="45%">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85"/>
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    ${crown}
+    <g ${glowAttr}>
+      <ellipse cx="50" cy="80" rx="34" ry="7" fill="#000000" opacity="0.08"/>
+      <path d="M 50 18
+               C 72 18, 88 34, 88 55
+               C 88 74, 71 86, 50 86
+               C 29 86, 12 74, 12 55
+               C 12 34, 28 18, 50 18 Z"
+            fill="url(#sgBodyGrad)" stroke="${stage.body2}" stroke-width="2"/>
+      <path d="M 50 18 C 72 18, 88 34, 88 55 C 88 74, 71 86, 50 86 C 29 86, 12 74, 12 55 C 12 34, 28 18, 50 18 Z"
+            fill="url(#sgHighlight)"/>
+      ${royalSparkle}
+      <g class="sg-eye-blink" style="transform-origin:38px 52px;">
+        <ellipse cx="38" cy="52" rx="4.2" ry="5.5" fill="${stage.eye}"/>
+        <circle cx="39.3" cy="49.5" r="1.3" fill="#fff"/>
+      </g>
+      <g class="sg-eye-blink" style="transform-origin:62px 52px;">
+        <ellipse cx="62" cy="52" rx="4.2" ry="5.5" fill="${stage.eye}"/>
+        <circle cx="63.3" cy="49.5" r="1.3" fill="#fff"/>
+      </g>
+      <path d="M 42 63 Q 50 69 58 63" stroke="${stage.eye}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="27" cy="60" rx="5" ry="3" fill="#FF9E9E" opacity="0.55"/>
+      <ellipse cx="73" cy="60" rx="5" ry="3" fill="#FF9E9E" opacity="0.55"/>
+    </g>
+  </svg>`;
+}
+
 function sgFormatNum(n) {
   n = Math.floor(n);
   if (n >= 1000000) return (n/1000000).toFixed(2)+'M';
@@ -2473,19 +2579,36 @@ function sgRender() {
       </div>`;
   }).join('');
 
+  const achvHtml = SG_ACHIEVEMENTS.map(a => {
+    const unlocked = sg.achievements.includes(a.id);
+    return `
+      <div class="sg-achv-item${unlocked?'':' locked'}">
+        <div class="sg-achv-icon">${unlocked?a.icon:'🔒'}</div>
+        <div class="sg-achv-info">
+          <div class="sg-achv-name">${a.name}</div>
+          <div class="sg-achv-desc">${a.desc}</div>
+        </div>
+        <div class="sg-achv-reward">${unlocked?a.rewardText:''}</div>
+      </div>`;
+  }).join('');
+
   document.getElementById('sgBody').innerHTML = `
     ${offlineHtml}
     <div class="sg-stage" id="sgStage">
-      <div class="sg-slime-emoji" id="sgSlimeEmoji" onclick="sgClick(event)">${stage.emoji}</div>
+      <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgSlimeSvg(stage)}</div>
       <div class="sg-stage-name">${stage.name}</div>
       <div class="sg-xp-row">
         <span class="sg-xp-num" id="sgXpNum">${sgFormatNum(sg.xp)}</span>
         <span class="sg-xp-label">經驗值</span>
       </div>
       <div class="sg-xp-rate" id="sgXpRate">+${sg.ratePerSec}/秒　｜　點擊 +${sg.clickPower}</div>
+      <div class="sg-combo-bar"><div class="sg-combo-fill" id="sgComboFill"></div></div>
+      <div class="sg-combo-label" id="sgComboLabel"></div>
     </div>
     <div class="sg-section-label">🛒 升級商店</div>
     <div id="sgShopList">${shopHtml}</div>
+    <div class="sg-section-label">🏆 成就（${sg.achievements.length}/${SG_ACHIEVEMENTS.length}）</div>
+    <div id="sgAchvList">${achvHtml}</div>
     <div class="sg-reset-btn" onclick="sgConfirmReset()">重新開始遊戲</div>
   `;
 }
@@ -2502,34 +2625,96 @@ function sgUpdateNumbers() {
   });
 }
 
+function sgCheckAchievements() {
+  let newlyUnlocked = [];
+  SG_ACHIEVEMENTS.forEach(a => {
+    if (!sg.achievements.includes(a.id) && a.cond(sg)) {
+      sg.achievements.push(a.id);
+      if (a.rewardClick) sg.clickPower += a.rewardClick;
+      if (a.rewardRate) sg.ratePerSec += a.rewardRate;
+      newlyUnlocked.push(a);
+    }
+  });
+  return newlyUnlocked;
+}
+
 function sgClick(evt) {
-  sg.xp += sg.clickPower;
-  sg.totalXp += sg.clickPower;
+  const now = Date.now();
+  // 連擊：1.2秒內連續點擊則連擊數+1，否則重置
+  if (now - sg.lastClickTime < 1200) { sg.combo++; } else { sg.combo = 1; }
+  sg.lastClickTime = now;
+  if (sg.combo > sg.maxCombo) sg.maxCombo = sg.combo;
+
+  // 連擊加成：每5連擊 +10% 加成，上限100%
+  const comboMult = 1 + Math.min(Math.floor(sg.combo/5)*0.1, 1.0);
+
+  // 會心一擊：8% 機率 x3
+  const isCrit = Math.random() < 0.08;
+  const critMult = isCrit ? 3 : 1;
+
+  const gain = Math.round(sg.clickPower * comboMult * critMult);
+  sg.xp += gain;
+  sg.totalXp += gain;
+  sg.totalClicks++;
+  if (isCrit) sg.critCount++;
+
   sgUpdateNumbers();
 
-  const emoji = document.getElementById('sgSlimeEmoji');
-  emoji.classList.remove('bounce');
-  void emoji.offsetWidth; // reflow 觸發動畫重播
-  emoji.classList.add('bounce');
+  const wrap = document.getElementById('sgSlimeWrap');
+  wrap.classList.remove('squish'); void wrap.offsetWidth; wrap.classList.add('squish');
 
   // 浮動 +N 文字
   const stageBox = document.getElementById('sgStage');
   const float = document.createElement('div');
-  float.className = 'sg-float';
-  float.textContent = '+'+sg.clickPower;
-  const rect = evt.target.getBoundingClientRect();
+  float.className = 'sg-float' + (isCrit ? ' sg-crit-float' : '');
+  float.textContent = (isCrit ? '💥 會心 ' : '+') + gain;
+  const rect = evt.currentTarget.getBoundingClientRect();
   const boxRect = stageBox.getBoundingClientRect();
   float.style.left = (rect.left - boxRect.left + rect.width/2 + (Math.random()*30-15)) + 'px';
-  float.style.top = (rect.top - boxRect.top) + 'px';
+  float.style.top = (rect.top - boxRect.top + 20) + 'px';
   stageBox.appendChild(float);
   setTimeout(()=>float.remove(), 800);
 
-  // 檢查是否升級進化（重新渲染以更新emoji/稱號）
+  // 星星閃爍粒子（高階史萊姆才有）
+  const stage = sgGetStage();
+  if (stage.glow) {
+    for (let i=0; i<3; i++) {
+      const sp = document.createElement('div');
+      sp.className = 'sg-sparkle';
+      sp.textContent = ['✨','⭐','💫'][i%3];
+      sp.style.left = (rect.left - boxRect.left + rect.width/2) + 'px';
+      sp.style.top = (rect.top - boxRect.top + rect.height/2) + 'px';
+      sp.style.setProperty('--sx', (Math.random()*60-30)+'px');
+      sp.style.setProperty('--sy', (Math.random()*-50-10)+'px');
+      stageBox.appendChild(sp);
+      setTimeout(()=>sp.remove(), 700);
+    }
+  }
+
+  // 連擊條更新
+  const comboFill = document.getElementById('sgComboFill');
+  const comboLabel = document.getElementById('sgComboLabel');
+  if (comboFill) {
+    const pct = Math.min((sg.combo/20)*100, 100);
+    comboFill.style.width = pct+'%';
+    comboLabel.textContent = sg.combo>=3 ? `🔥 連擊 x${sg.combo}（+${Math.round((comboMult-1)*100)}%）` : '';
+  }
+
+  // 檢查升級進化
   const newStage = sgGetStage();
   const stageNameEl = document.querySelector('.sg-stage-name');
-  if (stageNameEl && stageNameEl.textContent !== newStage.name) {
+  let stageChanged = false;
+  if (stageNameEl && stageNameEl.textContent !== newStage.name) stageChanged = true;
+
+  // 檢查成就
+  const unlocked = sgCheckAchievements();
+
+  if (stageChanged) {
     sgRender();
     showToast('✨ 史萊姆進化成「'+newStage.name+'」了！');
+  } else if (unlocked.length) {
+    sgRender();
+    unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
   }
 }
 
@@ -2542,8 +2727,10 @@ function sgBuy(itemId) {
   sg.owned[itemId] = (sg.owned[itemId]||0) + 1;
   if (item.effect === 'click') sg.clickPower += item.amount;
   if (item.effect === 'rate') sg.ratePerSec += item.amount;
+  const unlocked = sgCheckAchievements();
   sgSave();
   sgRender();
+  unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
 }
 
 function sgFormatDuration(sec) {
