@@ -417,6 +417,22 @@
   .sg-talent-name { font-size:11px; font-weight:800; margin:4px 0 2px; }
   .sg-talent-desc { font-size:9px; opacity:0.85; line-height:1.4; }
   .sg-talent-current { font-size:10px; background:rgba(255,255,255,0.15); border-radius:8px; padding:8px 10px; margin-top:10px; text-align:center; }
+
+  .sg-buy-row { display:flex; flex-wrap:wrap; gap:4px; flex-shrink:0; max-width:130px; justify-content:flex-end; }
+  .sg-buy-row .sg-buy-btn { padding:6px 8px; font-size:10px; line-height:1.3; min-width:34px; }
+  .sg-shop-item { flex-wrap:wrap; align-items:flex-start; }
+  .sg-crystal-lv-card {
+    background:rgba(255,255,255,0.12); border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; color:white;
+  }
+  .sg-crystal-lv-info { flex:1; min-width:0; }
+  .sg-crystal-lv-name { font-size:12px; font-weight:800; }
+  .sg-crystal-lv-desc { font-size:10px; opacity:0.85; margin-top:2px; }
+  .sg-crystal-lv-btn {
+    flex-shrink:0; padding:7px 12px; border:none; border-radius:9px; font-size:11px; font-weight:700;
+    cursor:pointer; font-family:inherit; background:#FFD700; color:#4a2a00;
+  }
+  .sg-crystal-lv-btn:disabled { background:rgba(255,255,255,0.2); color:rgba(255,255,255,0.4); cursor:not-allowed; }
   .sg-crystal-upgrade {
     background:white; border-radius:10px; padding:10px 12px; margin-bottom:8px;
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -2534,6 +2550,9 @@ function sgDefaultState() {
     crystals: 0,
     prestigeCount: 0,
     talent: null,      // 'click' | 'idle' | null
+    talentLv: { click:0, idle:0 },  // 各天賦分支已投資等級（用水晶購買）
+    crystalClickLv: 0,  // 永久點擊強化等級
+    crystalRateLv: 0,   // 永久產能強化等級
     collection: [],    // 已收集圖鑑 id
     autoBuy: false,
     dailyDoubleDate: '',   // 上次使用雙倍離線收益的日期
@@ -2582,14 +2601,51 @@ function sgCollectionBonus() {
 }
 
 function sgEffClickPower() {
-  const mult = sg.talent==='click' ? 1.5 : (sg.talent==='idle' ? 0.8 : 1);
-  return sg.clickPower * mult;
+  let mult = 1;
+  if (sg.talent === 'click') mult = 1.5 + (sg.talentLv.click||0)*0.15;
+  else if (sg.talent === 'idle') mult = 0.8;
+  const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
+  return sg.clickPower * mult * crystalMult;
 }
 
 function sgEffRate() {
   const base = sg.ratePerSec + sgCollectionBonus();
-  const mult = sg.talent==='idle' ? 1.5 : (sg.talent==='click' ? 0.8 : 1);
-  return base * mult;
+  let mult = 1;
+  if (sg.talent === 'idle') mult = 1.5 + (sg.talentLv.idle||0)*0.15;
+  else if (sg.talent === 'click') mult = 0.8;
+  const crystalMult = 1 + 0.08*(sg.crystalRateLv||0);
+  return base * mult * crystalMult;
+}
+
+function sgTalentLevelCost(branch) {
+  const lv = sg.talentLv[branch] || 0;
+  return Math.floor(15 * Math.pow(1.4, lv));
+}
+
+function sgBuyTalentLevel(branch) {
+  const cost = sgTalentLevelCost(branch);
+  if (sg.crystals < cost) return;
+  sg.crystals -= cost;
+  sg.talentLv[branch] = (sg.talentLv[branch]||0) + 1;
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateStageDisplay();
+}
+
+function sgCrystalUpgradeCost(id) {
+  const lv = id==='crystalClick' ? (sg.crystalClickLv||0) : (sg.crystalRateLv||0);
+  return Math.floor(20 * Math.pow(1.3, lv));
+}
+
+function sgBuyCrystalUpgrade(id) {
+  const cost = sgCrystalUpgradeCost(id);
+  if (sg.crystals < cost) return;
+  sg.crystals -= cost;
+  if (id==='crystalClick') sg.crystalClickLv = (sg.crystalClickLv||0)+1;
+  else sg.crystalRateLv = (sg.crystalRateLv||0)+1;
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateStageDisplay();
 }
 
 function sgPrestigeThreshold() {
@@ -2794,9 +2850,12 @@ function sgShopTabHtml() {
           <div class="sg-shop-desc">${item.desc}</div>
           ${owned>0?`<div class="sg-shop-owned">已擁有 ${owned}</div>`:''}
         </div>
-        <button class="sg-buy-btn" ${canAfford?'':'disabled'} onclick="sgBuy('${item.id}')">
-          ${sgFormatNum(cost)} 💠
-        </button>
+        <div class="sg-buy-row">
+          <button class="sg-buy-btn" data-item="${item.id}" ${canAfford?'':'disabled'} onclick="sgBuyBatch('${item.id}',1)">x1<br>${sgFormatNum(cost)}💠</button>
+          <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',10)">x10</button>
+          <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',100)">x100</button>
+          <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',Infinity)">MAX</button>
+        </div>
       </div>`;
   }).join('');
   return `
@@ -2805,6 +2864,38 @@ function sgShopTabHtml() {
       <input type="checkbox" ${sg.autoBuy?'checked':''} onchange="sgToggleAutoBuy(this.checked)" style="width:18px;height:18px;accent-color:#E8761A;">
     </label>
     ${shopHtml}`;
+}
+
+function sgCalcBuyQty(item, qty) {
+  const owned = sg.owned[item.id] || 0;
+  let cost = 0, count = 0;
+  const budget = sg.xp;
+  const limit = qty === Infinity ? 100000 : qty;
+  while (count < limit) {
+    const c = Math.floor(item.baseCost * Math.pow(item.costMul, owned + count));
+    if (cost + c > budget) break;
+    cost += c;
+    count++;
+  }
+  return { count, cost };
+}
+
+function sgBuyBatch(itemId, qty) {
+  const item = SG_SHOP.find(s=>s.id===itemId);
+  if (!item) return;
+  const { count, cost } = sgCalcBuyQty(item, qty);
+  if (count <= 0) { showToast('經驗值不足'); return; }
+  sg.xp -= cost;
+  sg.owned[itemId] = (sg.owned[itemId]||0) + count;
+  if (item.effect === 'click') sg.clickPower += item.amount * count;
+  if (item.effect === 'rate') sg.ratePerSec += item.amount * count;
+  sgEnsureDailyReset();
+  sg.daily.buys++;
+  const unlocked = sgCheckAchievements();
+  sgSave();
+  sgRender();
+  showToast(`✓ 購買「${item.name.replace(/^\S+\s/,'')}」x${count}`);
+  unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
 }
 
 function sgToggleAutoBuy(checked) {
@@ -2818,12 +2909,26 @@ function sgPrestigeTabHtml() {
   const crystalGain = sgPrestigeCrystalGain();
   const progress = Math.min(100, Math.round(sg.totalXp/threshold*100));
 
-  const talentHtml = Object.entries(SG_TALENTS).map(([key,t]) => `
+  const talentHtml = Object.entries(SG_TALENTS).map(([key,t]) => {
+    const lv = sg.talentLv[key] || 0;
+    const lvCost = sgTalentLevelCost(key);
+    const canLevel = sg.crystals >= lvCost;
+    const bonusText = key==='click'
+      ? `點擊力 +${Math.round((0.5+lv*0.15)*100)}%　產能 -20%`
+      : `產能 +${Math.round((0.5+lv*0.15)*100)}%　點擊力 -20%`;
+    return `
     <div class="sg-talent-card${sg.talent===key?' selected':''}" onclick="sgSetTalent('${key}')">
       <div class="sg-talent-icon">${t.icon}</div>
-      <div class="sg-talent-name">${t.name}</div>
-      <div class="sg-talent-desc">${t.desc.replace('\n','<br>')}</div>
-    </div>`).join('');
+      <div class="sg-talent-name">${t.name} Lv.${lv}</div>
+      <div class="sg-talent-desc">${bonusText}</div>
+      <button class="sg-crystal-lv-btn" style="margin-top:6px;width:100%;font-size:9px;padding:5px;" ${canLevel?'':'disabled'} onclick="event.stopPropagation();sgBuyTalentLevel('${key}')">
+        升級 ${lvCost} 💠
+      </button>
+    </div>`;
+  }).join('');
+
+  const clickCost = sgCrystalUpgradeCost('crystalClick');
+  const rateCost = sgCrystalUpgradeCost('crystalRate');
 
   return `
     <div class="sg-prestige-box">
@@ -2837,9 +2942,28 @@ function sgPrestigeTabHtml() {
       <button class="sg-prestige-btn" ${canPrestige?'':'disabled'} onclick="sgDoPrestige()">
         ${canPrestige ? '✨ 立即轉生' : `尚未達成（${progress}%）`}
       </button>
+
       <div class="sg-talent-current" style="margin-top:14px;">
-        <div style="font-weight:800;margin-bottom:8px;">🌟 天賦分支（可隨時切換）</div>
+        <div style="font-weight:800;margin-bottom:8px;">🌟 天賦分支（點選切換，水晶升級）</div>
         <div class="sg-talent-choice">${talentHtml}</div>
+      </div>
+
+      <div class="sg-talent-current" style="margin-top:10px; text-align:left;">
+        <div style="font-weight:800;margin-bottom:8px;text-align:center;">💎 永久水晶強化（無上限）</div>
+        <div class="sg-crystal-lv-card">
+          <div class="sg-crystal-lv-info">
+            <div class="sg-crystal-lv-name">👆 永久點擊強化 Lv.${sg.crystalClickLv||0}</div>
+            <div class="sg-crystal-lv-desc">點擊力額外 +${(sg.crystalClickLv||0)*8}%</div>
+          </div>
+          <button class="sg-crystal-lv-btn" ${sg.crystals>=clickCost?'':'disabled'} onclick="sgBuyCrystalUpgrade('crystalClick')">${clickCost} 💠</button>
+        </div>
+        <div class="sg-crystal-lv-card">
+          <div class="sg-crystal-lv-info">
+            <div class="sg-crystal-lv-name">⏳ 永久產能強化 Lv.${sg.crystalRateLv||0}</div>
+            <div class="sg-crystal-lv-desc">產能額外 +${(sg.crystalRateLv||0)*8}%</div>
+          </div>
+          <button class="sg-crystal-lv-btn" ${sg.crystals>=rateCost?'':'disabled'} onclick="sgBuyCrystalUpgrade('crystalRate')">${rateCost} 💠</button>
+        </div>
       </div>
     </div>
     <div style="font-size:11px;color:#aaa;text-align:center;">已轉生 ${sg.prestigeCount} 次</div>
@@ -2996,9 +3120,9 @@ function sgClickLucky(el) {
 function sgUpdateNumbers() {
   const xpEl = document.getElementById('sgXpNum');
   if (xpEl) xpEl.textContent = sgFormatNum(sg.xp);
-  // 更新商店按鈕可購買狀態（不整個重繪，避免閃爍）
-  document.querySelectorAll('#sgTabContent .sg-buy-btn').forEach((btn, i) => {
-    const item = SG_SHOP[i];
+  // 更新商店 x1 按鈕可購買狀態（不整個重繪，避免閃爍）
+  document.querySelectorAll('#sgTabContent .sg-buy-btn[data-item]').forEach(btn => {
+    const item = SG_SHOP.find(s=>s.id===btn.dataset.item);
     if (!item) return;
     const cost = sgShopCost(item);
     btn.disabled = sg.xp < cost;
