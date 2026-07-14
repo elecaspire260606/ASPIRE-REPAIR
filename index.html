@@ -374,6 +374,90 @@
   .sg-achv-name { font-size:12px; font-weight:700; color:#1a1a1a; }
   .sg-achv-desc { font-size:10px; color:#aaa; margin-top:1px; }
   .sg-achv-reward { font-size:10px; color:#2D7A3E; font-weight:700; white-space:nowrap; }
+
+  /* 分頁導覽 */
+  .sg-tabs { display:flex; gap:4px; margin:14px 0 10px; overflow-x:auto; padding-bottom:2px; }
+  .sg-tab-btn {
+    flex-shrink:0; padding:7px 12px; border:none; border-radius:20px; background:#f0ece0;
+    color:#999; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
+  }
+  .sg-tab-btn.active { background:#E8761A; color:white; }
+
+  /* 幸運史萊姆 */
+  .sg-lucky {
+    position:absolute; font-size:34px; cursor:pointer; z-index:10;
+    animation:sgLuckyPulse 0.6s ease-in-out infinite, sgLuckyIn 0.25s ease-out;
+    filter:drop-shadow(0 4px 8px rgba(255,200,0,0.5));
+  }
+  @keyframes sgLuckyPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
+  @keyframes sgLuckyIn { 0%{opacity:0; transform:scale(0.3);} 100%{opacity:1; transform:scale(1);} }
+
+  /* 轉生 */
+  .sg-prestige-box {
+    background:linear-gradient(135deg,#2b1a4a,#4a2a7a); border-radius:14px; padding:16px;
+    text-align:center; color:white; margin-bottom:14px;
+  }
+  .sg-prestige-crystal { font-size:28px; font-weight:800; }
+  .sg-prestige-desc { font-size:11px; opacity:0.85; margin:6px 0 12px; line-height:1.5; }
+  .sg-prestige-btn {
+    background:#FFD700; color:#4a2a00; border:none; border-radius:10px; padding:10px 18px;
+    font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; width:100%;
+  }
+  .sg-prestige-btn:disabled { background:#6b5d8a; color:#a89bc4; cursor:not-allowed; }
+
+  /* 天賦分支選擇 */
+  .sg-talent-choice { display:flex; gap:8px; margin-top:12px; }
+  .sg-talent-card {
+    flex:1; background:rgba(255,255,255,0.12); border:2px solid transparent; border-radius:10px;
+    padding:10px 8px; text-align:center; cursor:pointer; transition:all 0.15s;
+  }
+  .sg-talent-card:hover { background:rgba(255,255,255,0.2); }
+  .sg-talent-card.selected { border-color:#FFD700; background:rgba(255,215,0,0.18); }
+  .sg-talent-icon { font-size:20px; }
+  .sg-talent-name { font-size:11px; font-weight:800; margin:4px 0 2px; }
+  .sg-talent-desc { font-size:9px; opacity:0.85; line-height:1.4; }
+  .sg-talent-current { font-size:10px; background:rgba(255,255,255,0.15); border-radius:8px; padding:8px 10px; margin-top:10px; text-align:center; }
+  .sg-crystal-upgrade {
+    background:white; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    box-shadow:0 1px 6px rgba(0,0,0,0.05);
+  }
+  .sg-crystal-buy-btn {
+    padding:7px 12px; border:none; border-radius:9px; font-size:11px; font-weight:700; cursor:pointer;
+    font-family:inherit; background:#8B4FD9; color:white; flex-shrink:0;
+  }
+  .sg-crystal-buy-btn:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
+
+  /* 圖鑑 */
+  .sg-collection-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .sg-collect-item {
+    background:white; border-radius:12px; padding:12px 6px; text-align:center;
+    box-shadow:0 1px 6px rgba(0,0,0,0.05); position:relative;
+  }
+  .sg-collect-item.locked { opacity:0.45; }
+  .sg-collect-emoji { font-size:26px; }
+  .sg-collect-name { font-size:10px; font-weight:700; color:#1a1a1a; margin-top:4px; }
+  .sg-collect-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; }
+  .sg-collect-cost { font-size:9px; color:#999; margin-top:2px; }
+  .sg-collect-buy { margin-top:6px; width:100%; padding:5px; border:none; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:#E8761A; color:white; }
+  .sg-collect-buy:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
+
+  /* 每日任務 */
+  .sg-daily-item {
+    background:white; border-radius:10px; padding:12px 14px; margin-bottom:8px;
+    box-shadow:0 1px 6px rgba(0,0,0,0.05);
+  }
+  .sg-daily-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .sg-daily-name { font-size:12px; font-weight:700; color:#1a1a1a; }
+  .sg-daily-reward { font-size:11px; color:#E8761A; font-weight:700; }
+  .sg-daily-track { height:6px; background:#f0ece0; border-radius:3px; overflow:hidden; }
+  .sg-daily-fill { height:100%; background:#2D9E5F; border-radius:3px; transition:width 0.3s; }
+  .sg-daily-prog { font-size:10px; color:#aaa; margin-top:4px; text-align:right; }
+  .sg-daily-claim {
+    margin-top:8px; width:100%; padding:7px; border:none; border-radius:8px; font-size:11px; font-weight:700;
+    cursor:pointer; font-family:inherit; background:#2D7A3E; color:white;
+  }
+  .sg-daily-claim:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
   .sg-stage-name { font-size:13px; color:#E8761A; font-weight:700; margin-top:8px; }
   .sg-xp-row { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-top:10px; }
   .sg-xp-num { font-size:24px; font-weight:800; color:#1a1a1a; }
@@ -2377,6 +2461,8 @@ let sgClickCount = 0;
 let sgClickTimer = null;
 let sg = null; // 遊戲狀態
 let sgTickInterval = null;
+let sgLuckyInterval = null;
+let sgActiveTab = 'shop';
 
 const SG_STAGES = [
   { min:0,     name:'小史萊姆',     body:'#F4A24A', body2:'#E8761A', eye:'#1a1a1a', crown:false },
@@ -2406,7 +2492,30 @@ const SG_SHOP = [
   { id:'helper2',name:'🐢 烏龜工班',   desc:'+5 經驗/秒',       baseCost:150, costMul:1.14, effect:'rate',  amount:5 },
   { id:'helper3',name:'🔧 維修小隊',   desc:'+20 經驗/秒',      baseCost:800, costMul:1.15, effect:'rate',  amount:20 },
   { id:'helper4',name:'🏗️ 營繕大隊',   desc:'+100 經驗/秒',     baseCost:4000,costMul:1.16, effect:'rate',  amount:100 },
+  { id:'helper5',name:'🚁 空拋支援',   desc:'+500 經驗/秒',     baseCost:20000,   costMul:1.16, effect:'rate', amount:500 },
+  { id:'helper6',name:'🏭 史萊姆工廠', desc:'+2500 經驗/秒',    baseCost:120000,  costMul:1.17, effect:'rate', amount:2500 },
+  { id:'helper7',name:'🛰️ 衛星維修站', desc:'+12000 經驗/秒',   baseCost:800000,  costMul:1.18, effect:'rate', amount:12000 },
 ];
+
+const SG_COLLECTION = [
+  { id:'f1', emoji:'🐌', name:'蝸牛使者',   cost:1,  rate:2 },
+  { id:'f2', emoji:'🐢', name:'龜甲工頭',   cost:3,  rate:6 },
+  { id:'f3', emoji:'🦎', name:'蜥蜴巡邏員', cost:6,  rate:15 },
+  { id:'f4', emoji:'🐸', name:'青蛙電工',   cost:12, rate:35 },
+  { id:'f5', emoji:'🦊', name:'狐狸主管',   cost:25, rate:80 },
+  { id:'f6', emoji:'🐉', name:'守護神龍',   cost:50, rate:200 },
+];
+
+const SG_DAILY_QUESTS = [
+  { id:'d1', name:'今日點擊 30 次',   type:'clicks',   target:30,  reward:100 },
+  { id:'d2', name:'今日賺取 500 經驗', type:'xpEarned', target:500, reward:300 },
+  { id:'d3', name:'購買 1 次升級',    type:'buys',     target:1,   reward:200 },
+];
+
+const SG_TALENTS = {
+  click: { name:'點擊流', icon:'👆', desc:'點擊力 +50%\n產能 -20%' },
+  idle:  { name:'放置流', icon:'⏳', desc:'產能 +50%\n點擊力 -20%' },
+};
 
 function sgDefaultState() {
   return {
@@ -2422,6 +2531,14 @@ function sgDefaultState() {
     maxCombo: 0,
     lastClickTime: 0,
     achievements: [],  // 已解鎖成就 id 清單
+    crystals: 0,
+    prestigeCount: 0,
+    talent: null,      // 'click' | 'idle' | null
+    collection: [],    // 已收集圖鑑 id
+    autoBuy: false,
+    dailyDoubleDate: '',   // 上次使用雙倍離線收益的日期
+    daily: { date:'', clicks:0, xpEarned:0, buys:0, claimed:[] },
+    luckyClickCount: 0,
   };
 }
 
@@ -2448,6 +2565,41 @@ function sgShopCost(item) {
   return Math.floor(item.baseCost * Math.pow(item.costMul, owned));
 }
 
+function sgTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function sgEnsureDailyReset() {
+  const today = sgTodayStr();
+  if (!sg.daily || sg.daily.date !== today) {
+    sg.daily = { date: today, clicks:0, xpEarned:0, buys:0, claimed:[] };
+  }
+}
+
+function sgCollectionBonus() {
+  return SG_COLLECTION.filter(c => sg.collection.includes(c.id)).reduce((s,c)=>s+c.rate, 0);
+}
+
+function sgEffClickPower() {
+  const mult = sg.talent==='click' ? 1.5 : (sg.talent==='idle' ? 0.8 : 1);
+  return sg.clickPower * mult;
+}
+
+function sgEffRate() {
+  const base = sg.ratePerSec + sgCollectionBonus();
+  const mult = sg.talent==='idle' ? 1.5 : (sg.talent==='click' ? 0.8 : 1);
+  return base * mult;
+}
+
+function sgPrestigeThreshold() {
+  return Math.floor(50000 * Math.pow(1.6, sg.prestigeCount));
+}
+
+function sgPrestigeCrystalGain() {
+  return Math.floor(Math.sqrt(sg.totalXp / 1000));
+}
+
 function onSlimeIconClick() {
   sgClickCount++;
   clearTimeout(sgClickTimer);
@@ -2460,36 +2612,59 @@ function onSlimeIconClick() {
 
 function openSlimeGame() {
   sgLoad();
+  sgEnsureDailyReset();
   // 計算離線累積
   const now = Date.now();
   const elapsedSec = Math.max(0, Math.floor((now - (sg.lastSeen||now)) / 1000));
   let offlineGain = 0;
-  if (elapsedSec > 5 && sg.ratePerSec > 0) {
+  const effRate = sgEffRate();
+  if (elapsedSec > 5 && effRate > 0) {
     const cappedSec = Math.min(elapsedSec, 8*3600); // 上限8小時離線收益
-    offlineGain = Math.floor(cappedSec * sg.ratePerSec);
+    offlineGain = Math.floor(cappedSec * effRate);
     sg.xp += offlineGain;
     sg.totalXp += offlineGain;
   }
   sg._offlineGain = offlineGain;
   sg._offlineSec = elapsedSec;
+  sg._offlineDoubled = false;
 
   document.getElementById('slimeGameOverlay').classList.add('open');
+  sgActiveTab = sgActiveTab || 'shop';
   sgRender();
   sgSave();
 
   if (sgTickInterval) clearInterval(sgTickInterval);
   sgTickInterval = setInterval(()=>{
-    if (sg.ratePerSec > 0) {
-      sg.xp += sg.ratePerSec;
-      sg.totalXp += sg.ratePerSec;
+    const rate = sgEffRate();
+    if (rate > 0) {
+      sg.xp += rate;
+      sg.totalXp += rate;
       sgUpdateNumbers();
     }
+    if (sg.autoBuy) sgAutoBuyTick();
   }, 1000);
+
+  if (sgLuckyInterval) clearInterval(sgLuckyInterval);
+  sgLuckyInterval = setInterval(()=>{
+    if (!sg._luckyActive && Math.random() < 0.22) sgSpawnLucky();
+  }, 5000);
+}
+
+function sgAutoBuyTick() {
+  // 買得起的項目中，挑最便宜的自動購買
+  let cheapest = null, cheapestCost = Infinity;
+  SG_SHOP.forEach(item => {
+    const cost = sgShopCost(item);
+    if (sg.xp >= cost && cost < cheapestCost) { cheapest = item; cheapestCost = cost; }
+  });
+  if (cheapest) sgBuy(cheapest.id, true);
 }
 
 function closeSlimeGame() {
   document.getElementById('slimeGameOverlay').classList.remove('open');
   if (sgTickInterval) { clearInterval(sgTickInterval); sgTickInterval = null; }
+  if (sgLuckyInterval) { clearInterval(sgLuckyInterval); sgLuckyInterval = null; }
+  sg._luckyActive = false;
   sgSave();
 }
 
@@ -2557,11 +2732,57 @@ function sgFormatNum(n) {
 
 function sgRender() {
   const stage = sgGetStage();
+  const effRate = sgEffRate();
+  const effClick = sgEffClickPower();
+
   const offlineHtml = sg._offlineGain > 0 ? `
     <div class="sg-offline-toast">
       🎉 離開了 ${sgFormatDuration(sg._offlineSec)}，蝸牛小弟們幫你賺了 <b>+${sgFormatNum(sg._offlineGain)}</b> 經驗！
+      ${!sg._offlineDoubled && sg.dailyDoubleDate !== sgTodayStr() ? `<br><button class="sg-buy-btn" style="margin-top:8px;" onclick="sgDoubleOffline()">🎬 再領一次雙倍（每日一次）</button>` : ''}
     </div>` : '';
 
+  document.getElementById('sgBody').innerHTML = `
+    ${offlineHtml}
+    <div class="sg-stage" id="sgStage">
+      <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgSlimeSvg(stage)}</div>
+      <div class="sg-stage-name">${stage.name}</div>
+      <div class="sg-xp-row">
+        <span class="sg-xp-num" id="sgXpNum">${sgFormatNum(sg.xp)}</span>
+        <span class="sg-xp-label">經驗值</span>
+      </div>
+      <div class="sg-xp-rate" id="sgXpRate">+${sgFormatNum(effRate)}/秒　｜　點擊 +${sgFormatNum(effClick)}${sg.talent?`　｜　${SG_TALENTS[sg.talent].icon} ${SG_TALENTS[sg.talent].name}`:''}</div>
+      <div class="sg-combo-bar"><div class="sg-combo-fill" id="sgComboFill"></div></div>
+      <div class="sg-combo-label" id="sgComboLabel"></div>
+    </div>
+    <div class="sg-tabs">
+      <button class="sg-tab-btn${sgActiveTab==='shop'?' active':''}" onclick="sgSwitchTab('shop',this)">🛒 商店</button>
+      <button class="sg-tab-btn${sgActiveTab==='prestige'?' active':''}" onclick="sgSwitchTab('prestige',this)">🔮 轉生</button>
+      <button class="sg-tab-btn${sgActiveTab==='collection'?' active':''}" onclick="sgSwitchTab('collection',this)">📖 圖鑑</button>
+      <button class="sg-tab-btn${sgActiveTab==='daily'?' active':''}" onclick="sgSwitchTab('daily',this)">📅 每日</button>
+      <button class="sg-tab-btn${sgActiveTab==='achv'?' active':''}" onclick="sgSwitchTab('achv',this)">🏆 成就</button>
+    </div>
+    <div id="sgTabContent">${sgTabContentHtml()}</div>
+    <div class="sg-reset-btn" onclick="sgConfirmReset()">重新開始遊戲（清除全部進度）</div>
+  `;
+}
+
+function sgSwitchTab(tab, btn) {
+  sgActiveTab = tab;
+  document.querySelectorAll('.sg-tab-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgTabContentHtml() {
+  if (sgActiveTab === 'shop') return sgShopTabHtml();
+  if (sgActiveTab === 'prestige') return sgPrestigeTabHtml();
+  if (sgActiveTab === 'collection') return sgCollectionTabHtml();
+  if (sgActiveTab === 'daily') return sgDailyTabHtml();
+  if (sgActiveTab === 'achv') return sgAchvTabHtml();
+  return '';
+}
+
+function sgShopTabHtml() {
   const shopHtml = SG_SHOP.map(item => {
     const owned = sg.owned[item.id] || 0;
     const cost = sgShopCost(item);
@@ -2578,8 +2799,147 @@ function sgRender() {
         </button>
       </div>`;
   }).join('');
+  return `
+    <label style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#666;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+      🤖 自動購買最便宜升級
+      <input type="checkbox" ${sg.autoBuy?'checked':''} onchange="sgToggleAutoBuy(this.checked)" style="width:18px;height:18px;accent-color:#E8761A;">
+    </label>
+    ${shopHtml}`;
+}
 
-  const achvHtml = SG_ACHIEVEMENTS.map(a => {
+function sgToggleAutoBuy(checked) {
+  sg.autoBuy = checked;
+  sgSave();
+}
+
+function sgPrestigeTabHtml() {
+  const threshold = sgPrestigeThreshold();
+  const canPrestige = sg.totalXp >= threshold;
+  const crystalGain = sgPrestigeCrystalGain();
+  const progress = Math.min(100, Math.round(sg.totalXp/threshold*100));
+
+  const talentHtml = Object.entries(SG_TALENTS).map(([key,t]) => `
+    <div class="sg-talent-card${sg.talent===key?' selected':''}" onclick="sgSetTalent('${key}')">
+      <div class="sg-talent-icon">${t.icon}</div>
+      <div class="sg-talent-name">${t.name}</div>
+      <div class="sg-talent-desc">${t.desc.replace('\n','<br>')}</div>
+    </div>`).join('');
+
+  return `
+    <div class="sg-prestige-box">
+      <div style="font-size:11px;opacity:0.8;">💎 目前水晶</div>
+      <div class="sg-prestige-crystal">${sg.crystals} 💠</div>
+      <div class="sg-prestige-desc">
+        轉生會重置經驗值、點擊力、產能與已購買升級，換取「水晶」。<br>
+        累積經驗達 <b>${sgFormatNum(threshold)}</b> 才能轉生（目前進度 ${progress}%）。<br>
+        本次轉生預計可獲得 <b>${crystalGain} 💠</b>
+      </div>
+      <button class="sg-prestige-btn" ${canPrestige?'':'disabled'} onclick="sgDoPrestige()">
+        ${canPrestige ? '✨ 立即轉生' : `尚未達成（${progress}%）`}
+      </button>
+      <div class="sg-talent-current" style="margin-top:14px;">
+        <div style="font-weight:800;margin-bottom:8px;">🌟 天賦分支（可隨時切換）</div>
+        <div class="sg-talent-choice">${talentHtml}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#aaa;text-align:center;">已轉生 ${sg.prestigeCount} 次</div>
+  `;
+}
+
+function sgSetTalent(key) {
+  sg.talent = sg.talent === key ? null : key;
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateStageDisplay();
+}
+
+function sgUpdateStageDisplay() {
+  const rateEl = document.getElementById('sgXpRate');
+  if (rateEl) rateEl.textContent = `+${sgFormatNum(sgEffRate())}/秒　｜　點擊 +${sgFormatNum(sgEffClickPower())}${sg.talent?`　｜　${SG_TALENTS[sg.talent].icon} ${SG_TALENTS[sg.talent].name}`:''}`;
+}
+
+function sgDoPrestige() {
+  const threshold = sgPrestigeThreshold();
+  if (sg.totalXp < threshold) return;
+  const gain = sgPrestigeCrystalGain();
+  if (!confirm(`確定要轉生嗎？\n\n將重置經驗值、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n圖鑑、成就、天賦選擇不會重置。`)) return;
+  sg.crystals += gain;
+  sg.prestigeCount++;
+  sg.xp = 0; sg.totalXp = 0; sg.clickPower = 1; sg.ratePerSec = 0; sg.owned = {};
+  sgSave();
+  sgRender();
+  showToast(`✨ 轉生成功！獲得 ${gain} 💠 水晶`);
+}
+
+function sgCollectionTabHtml() {
+  const items = SG_COLLECTION.map(c => {
+    const owned = sg.collection.includes(c.id);
+    const canAfford = sg.crystals >= c.cost;
+    return `
+      <div class="sg-collect-item${owned?'':' locked'}">
+        <div class="sg-collect-emoji">${owned?c.emoji:'❓'}</div>
+        <div class="sg-collect-name">${owned?c.name:'未收集'}</div>
+        ${owned
+          ? `<div class="sg-collect-bonus">+${c.rate}/秒</div>`
+          : `<div class="sg-collect-cost">${c.cost} 💠</div><button class="sg-collect-buy" ${canAfford?'':'disabled'} onclick="sgUnlockCollection('${c.id}')">收集</button>`}
+      </div>`;
+  }).join('');
+  return `
+    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集永久夥伴，效果不受轉生影響</div>
+    <div class="sg-collection-grid">${items}</div>
+  `;
+}
+
+function sgUnlockCollection(id) {
+  const item = SG_COLLECTION.find(c=>c.id===id);
+  if (!item || sg.collection.includes(id) || sg.crystals < item.cost) return;
+  sg.crystals -= item.cost;
+  sg.collection.push(id);
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateStageDisplay();
+  showToast(`📖 收集了「${item.name}」！永久 +${item.rate}/秒`);
+}
+
+function sgDailyTabHtml() {
+  sgEnsureDailyReset();
+  const items = SG_DAILY_QUESTS.map(q => {
+    const progress = sg.daily[q.type] || 0;
+    const done = progress >= q.target;
+    const claimed = sg.daily.claimed.includes(q.id);
+    const pct = Math.min(100, Math.round(progress/q.target*100));
+    return `
+      <div class="sg-daily-item">
+        <div class="sg-daily-top">
+          <div class="sg-daily-name">${q.name}</div>
+          <div class="sg-daily-reward">+${q.reward} 經驗</div>
+        </div>
+        <div class="sg-daily-track"><div class="sg-daily-fill" style="width:${pct}%;"></div></div>
+        <div class="sg-daily-prog">${Math.min(progress,q.target)} / ${q.target}</div>
+        <button class="sg-daily-claim" ${(done && !claimed)?'':'disabled'} onclick="sgClaimDaily('${q.id}')">
+          ${claimed ? '✓ 已領取' : (done ? '領取獎勵' : '尚未達成')}
+        </button>
+      </div>`;
+  }).join('');
+  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">每日 00:00 重置</div>${items}`;
+}
+
+function sgClaimDaily(id) {
+  const q = SG_DAILY_QUESTS.find(d=>d.id===id);
+  if (!q) return;
+  const progress = sg.daily[q.type] || 0;
+  if (progress < q.target || sg.daily.claimed.includes(id)) return;
+  sg.daily.claimed.push(id);
+  sg.xp += q.reward;
+  sg.totalXp += q.reward;
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateNumbers();
+  showToast(`✅ 完成每日任務！+${q.reward} 經驗`);
+}
+
+function sgAchvTabHtml() {
+  return SG_ACHIEVEMENTS.map(a => {
     const unlocked = sg.achievements.includes(a.id);
     return `
       <div class="sg-achv-item${unlocked?'':' locked'}">
@@ -2590,34 +2950,54 @@ function sgRender() {
         </div>
         <div class="sg-achv-reward">${unlocked?a.rewardText:''}</div>
       </div>`;
-  }).join('');
+  }).join('') + `<div style="font-size:11px;color:#999;text-align:center;margin-top:6px;">已解鎖 ${sg.achievements.length} / ${SG_ACHIEVEMENTS.length}</div>`;
+}
 
-  document.getElementById('sgBody').innerHTML = `
-    ${offlineHtml}
-    <div class="sg-stage" id="sgStage">
-      <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgSlimeSvg(stage)}</div>
-      <div class="sg-stage-name">${stage.name}</div>
-      <div class="sg-xp-row">
-        <span class="sg-xp-num" id="sgXpNum">${sgFormatNum(sg.xp)}</span>
-        <span class="sg-xp-label">經驗值</span>
-      </div>
-      <div class="sg-xp-rate" id="sgXpRate">+${sg.ratePerSec}/秒　｜　點擊 +${sg.clickPower}</div>
-      <div class="sg-combo-bar"><div class="sg-combo-fill" id="sgComboFill"></div></div>
-      <div class="sg-combo-label" id="sgComboLabel"></div>
-    </div>
-    <div class="sg-section-label">🛒 升級商店</div>
-    <div id="sgShopList">${shopHtml}</div>
-    <div class="sg-section-label">🏆 成就（${sg.achievements.length}/${SG_ACHIEVEMENTS.length}）</div>
-    <div id="sgAchvList">${achvHtml}</div>
-    <div class="sg-reset-btn" onclick="sgConfirmReset()">重新開始遊戲</div>
-  `;
+function sgDoubleOffline() {
+  if (sg._offlineDoubled || sg.dailyDoubleDate === sgTodayStr()) return;
+  sg.xp += sg._offlineGain;
+  sg.totalXp += sg._offlineGain;
+  sg.dailyDoubleDate = sgTodayStr();
+  sg._offlineDoubled = true;
+  sgSave();
+  sgRender();
+  showToast(`🎬 雙倍領取成功！再 +${sgFormatNum(sg._offlineGain)} 經驗`);
+}
+
+function sgSpawnLucky() {
+  const stageBox = document.getElementById('sgStage');
+  if (!stageBox) return;
+  sg._luckyActive = true;
+  const el = document.createElement('div');
+  el.className = 'sg-lucky';
+  el.textContent = '🍀';
+  const x = 20 + Math.random()*60;
+  const y = 15 + Math.random()*20;
+  el.style.left = x + '%';
+  el.style.top = y + '%';
+  el.onclick = (e) => { e.stopPropagation(); sgClickLucky(el); };
+  stageBox.appendChild(el);
+  el._timeout = setTimeout(()=>{ el.remove(); sg._luckyActive = false; }, 5000);
+}
+
+function sgClickLucky(el) {
+  if (el._timeout) clearTimeout(el._timeout);
+  el.remove();
+  sg._luckyActive = false;
+  const reward = Math.max(20, Math.floor(sgEffRate()*30 + sgEffClickPower()*20));
+  sg.xp += reward;
+  sg.totalXp += reward;
+  sg.luckyClickCount = (sg.luckyClickCount||0) + 1;
+  sgUpdateNumbers();
+  sgSave();
+  showToast(`🍀 幸運史萊姆！+${sgFormatNum(reward)} 經驗`);
 }
 
 function sgUpdateNumbers() {
   const xpEl = document.getElementById('sgXpNum');
   if (xpEl) xpEl.textContent = sgFormatNum(sg.xp);
   // 更新商店按鈕可購買狀態（不整個重繪，避免閃爍）
-  document.querySelectorAll('#sgShopList .sg-buy-btn').forEach((btn, i) => {
+  document.querySelectorAll('#sgTabContent .sg-buy-btn').forEach((btn, i) => {
     const item = SG_SHOP[i];
     if (!item) return;
     const cost = sgShopCost(item);
@@ -2652,16 +3032,24 @@ function sgClick(evt) {
   const isCrit = Math.random() < 0.08;
   const critMult = isCrit ? 3 : 1;
 
-  const gain = Math.round(sg.clickPower * comboMult * critMult);
+  const gain = Math.round(sgEffClickPower() * comboMult * critMult);
   sg.xp += gain;
   sg.totalXp += gain;
   sg.totalClicks++;
   if (isCrit) sg.critCount++;
 
+  sgEnsureDailyReset();
+  sg.daily.clicks++;
+  sg.daily.xpEarned += gain;
+
   sgUpdateNumbers();
 
   const wrap = document.getElementById('sgSlimeWrap');
-  wrap.classList.remove('squish'); void wrap.offsetWidth; wrap.classList.add('squish');
+  wrap.classList.remove('squish', 'idle');
+  void wrap.offsetWidth;
+  wrap.classList.add('squish');
+  clearTimeout(wrap._idleTimer);
+  wrap._idleTimer = setTimeout(()=>{ wrap.classList.remove('squish'); wrap.classList.add('idle'); }, 400);
 
   // 浮動 +N 文字
   const stageBox = document.getElementById('sgStage');
@@ -2716,9 +3104,11 @@ function sgClick(evt) {
     sgRender();
     unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
   }
+
+  if (sg.totalClicks % 5 === 0) sgSave();
 }
 
-function sgBuy(itemId) {
+function sgBuy(itemId, silent) {
   const item = SG_SHOP.find(s=>s.id===itemId);
   if (!item) return;
   const cost = sgShopCost(item);
@@ -2727,10 +3117,16 @@ function sgBuy(itemId) {
   sg.owned[itemId] = (sg.owned[itemId]||0) + 1;
   if (item.effect === 'click') sg.clickPower += item.amount;
   if (item.effect === 'rate') sg.ratePerSec += item.amount;
+  sgEnsureDailyReset();
+  sg.daily.buys++;
   const unlocked = sgCheckAchievements();
   sgSave();
-  sgRender();
-  unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
+  if (!silent) {
+    sgRender();
+    unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
+  } else {
+    sgUpdateNumbers();
+  }
 }
 
 function sgFormatDuration(sec) {
