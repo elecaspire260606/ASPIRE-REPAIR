@@ -309,6 +309,67 @@
   }
   #normPreview { display:none; margin-top:5px; font-size:12px; color:#E8761A; background:#FEF0E3; border-radius:7px; padding:5px 10px; }
   .dash-filter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+
+  /* ── 🎮 史萊姆放置遊戲 ── */
+  #slimeGameOverlay {
+    display:none; position:fixed; inset:0; background:rgba(20,15,10,0.75);
+    z-index:1000; align-items:center; justify-content:center; padding:20px;
+  }
+  #slimeGameOverlay.open { display:flex; }
+  .sg-panel {
+    background:linear-gradient(180deg,#FFF9F2 0%,#FBF3E8 100%);
+    border-radius:22px; width:100%; max-width:420px; max-height:88vh;
+    overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.4);
+    position:relative;
+  }
+  .sg-header {
+    background:linear-gradient(135deg,#E8761A,#F4A24A); color:white;
+    padding:16px 20px; border-radius:22px 22px 0 0;
+    display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; z-index:2;
+  }
+  .sg-title { font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .sg-close { cursor:pointer; font-size:22px; opacity:0.85; line-height:1; }
+  .sg-body { padding:18px 20px 26px; }
+  .sg-stage {
+    background:white; border-radius:16px; padding:20px; text-align:center;
+    box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:16px; position:relative; overflow:hidden;
+  }
+  .sg-slime-emoji {
+    font-size:64px; cursor:pointer; user-select:none; transition:transform 0.08s;
+    display:inline-block; filter:drop-shadow(0 6px 10px rgba(232,118,26,0.25));
+  }
+  .sg-slime-emoji:active { transform:scale(0.88); }
+  .sg-slime-emoji.bounce { animation:sgBounce 0.35s ease; }
+  @keyframes sgBounce { 0%{transform:scale(1);} 30%{transform:scale(1.18) rotate(-4deg);} 60%{transform:scale(0.94) rotate(3deg);} 100%{transform:scale(1);} }
+  .sg-stage-name { font-size:13px; color:#E8761A; font-weight:700; margin-top:8px; }
+  .sg-xp-row { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-top:10px; }
+  .sg-xp-num { font-size:24px; font-weight:800; color:#1a1a1a; }
+  .sg-xp-label { font-size:12px; color:#aaa; }
+  .sg-xp-rate { font-size:11px; color:#2D7A3E; margin-top:4px; font-weight:600; }
+  .sg-float { position:absolute; font-size:14px; font-weight:800; color:#E8761A; pointer-events:none; animation:sgFloat 0.8s ease-out forwards; }
+  @keyframes sgFloat { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-40px);} }
+  .sg-section-label { font-size:11px; font-weight:700; color:#999; text-transform:uppercase; letter-spacing:0.06em; margin:14px 0 8px; }
+  .sg-shop-item {
+    background:white; border-radius:12px; padding:12px 14px; margin-bottom:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    box-shadow:0 1px 6px rgba(0,0,0,0.05);
+  }
+  .sg-shop-info { flex:1; min-width:0; }
+  .sg-shop-name { font-size:13px; font-weight:700; color:#1a1a1a; display:flex; align-items:center; gap:6px; }
+  .sg-shop-desc { font-size:11px; color:#aaa; margin-top:2px; }
+  .sg-shop-owned { font-size:11px; color:#2D7A3E; font-weight:700; margin-top:2px; }
+  .sg-buy-btn {
+    flex-shrink:0; padding:8px 14px; border:none; border-radius:10px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; background:#E8761A; color:white; transition:all 0.15s;
+  }
+  .sg-buy-btn:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
+  .sg-buy-btn:not(:disabled):hover { background:#d06815; }
+  .sg-reset-btn { font-size:11px; color:#ccc; text-align:center; margin-top:16px; cursor:pointer; text-decoration:underline; }
+  .sg-offline-toast {
+    background:#EEF7F0; color:#246332; border-radius:10px; padding:10px 14px; font-size:12px;
+    margin-bottom:14px; text-align:center; border-left:3px solid #2D7A3E;
+  }
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -326,7 +387,7 @@
 </nav>
 
 <div class="stats-bar">
-  <img src="slime.png" alt="slime" class="stats-slime">
+  <img src="slime.png" alt="slime" class="stats-slime" id="slimeIcon" onclick="onSlimeIconClick()" style="cursor:pointer;">
   <div class="stats-item">今日報修　<b id="statTodayCount">0</b>　件</div>
   <div class="stats-item">最後報修　<span class="val" id="statLastTime">無</span></div>
   <div class="stats-item"><span class="val" id="statLastLocation"></span></div>
@@ -2276,6 +2337,231 @@ function getClosePhotos(rowIndex) {
   return photoData[key] ? photoData[key].filter(Boolean) : [];
 }
 
+// ══════════════════════════════════════════════
+// 🎮 史萊姆放置遊戲
+// ══════════════════════════════════════════════
+const SG_SAVE_KEY = 'aspire_slime_game_v1';
+let sgClickCount = 0;
+let sgClickTimer = null;
+let sg = null; // 遊戲狀態
+let sgTickInterval = null;
+
+const SG_STAGES = [
+  { min:0,     emoji:'🟠', name:'小史萊姆' },
+  { min:100,   emoji:'🔶', name:'活力史萊姆' },
+  { min:500,   emoji:'🧡', name:'閃亮史萊姆' },
+  { min:2000,  emoji:'⭐', name:'星光史萊姆' },
+  { min:8000,  emoji:'🌟', name:'超新星史萊姆' },
+  { min:30000, emoji:'👑', name:'史萊姆之王' },
+];
+
+const SG_SHOP = [
+  { id:'click',  name:'💪 點擊力訓練', desc:'每次點擊 +1 經驗', baseCost:10,  costMul:1.15, effect:'click', amount:1 },
+  { id:'helper1',name:'🐌 蝸牛小弟',   desc:'+1 經驗/秒',       baseCost:25,  costMul:1.13, effect:'rate',  amount:1 },
+  { id:'helper2',name:'🐢 烏龜工班',   desc:'+5 經驗/秒',       baseCost:150, costMul:1.14, effect:'rate',  amount:5 },
+  { id:'helper3',name:'🔧 維修小隊',   desc:'+20 經驗/秒',      baseCost:800, costMul:1.15, effect:'rate',  amount:20 },
+  { id:'helper4',name:'🏗️ 營繕大隊',   desc:'+100 經驗/秒',     baseCost:4000,costMul:1.16, effect:'rate',  amount:100 },
+];
+
+function sgDefaultState() {
+  return {
+    xp: 0,
+    totalXp: 0,
+    clickPower: 1,
+    ratePerSec: 0,
+    owned: {},        // { shopId: count }
+    lastSeen: Date.now(),
+  };
+}
+
+function sgLoad() {
+  try {
+    const raw = localStorage.getItem(SG_SAVE_KEY);
+    sg = raw ? Object.assign(sgDefaultState(), JSON.parse(raw)) : sgDefaultState();
+  } catch(e) { sg = sgDefaultState(); }
+}
+
+function sgSave() {
+  sg.lastSeen = Date.now();
+  try { localStorage.setItem(SG_SAVE_KEY, JSON.stringify(sg)); } catch(e) {}
+}
+
+function sgGetStage() {
+  let stage = SG_STAGES[0];
+  for (const s of SG_STAGES) { if (sg.totalXp >= s.min) stage = s; }
+  return stage;
+}
+
+function sgShopCost(item) {
+  const owned = sg.owned[item.id] || 0;
+  return Math.floor(item.baseCost * Math.pow(item.costMul, owned));
+}
+
+function onSlimeIconClick() {
+  sgClickCount++;
+  clearTimeout(sgClickTimer);
+  sgClickTimer = setTimeout(()=>{ sgClickCount = 0; }, 1500);
+  if (sgClickCount >= 7) {
+    sgClickCount = 0;
+    openSlimeGame();
+  }
+}
+
+function openSlimeGame() {
+  sgLoad();
+  // 計算離線累積
+  const now = Date.now();
+  const elapsedSec = Math.max(0, Math.floor((now - (sg.lastSeen||now)) / 1000));
+  let offlineGain = 0;
+  if (elapsedSec > 5 && sg.ratePerSec > 0) {
+    const cappedSec = Math.min(elapsedSec, 8*3600); // 上限8小時離線收益
+    offlineGain = Math.floor(cappedSec * sg.ratePerSec);
+    sg.xp += offlineGain;
+    sg.totalXp += offlineGain;
+  }
+  sg._offlineGain = offlineGain;
+  sg._offlineSec = elapsedSec;
+
+  document.getElementById('slimeGameOverlay').classList.add('open');
+  sgRender();
+  sgSave();
+
+  if (sgTickInterval) clearInterval(sgTickInterval);
+  sgTickInterval = setInterval(()=>{
+    if (sg.ratePerSec > 0) {
+      sg.xp += sg.ratePerSec;
+      sg.totalXp += sg.ratePerSec;
+      sgUpdateNumbers();
+    }
+  }, 1000);
+}
+
+function closeSlimeGame() {
+  document.getElementById('slimeGameOverlay').classList.remove('open');
+  if (sgTickInterval) { clearInterval(sgTickInterval); sgTickInterval = null; }
+  sgSave();
+}
+
+function sgFormatNum(n) {
+  n = Math.floor(n);
+  if (n >= 1000000) return (n/1000000).toFixed(2)+'M';
+  if (n >= 1000) return (n/1000).toFixed(1)+'K';
+  return String(n);
+}
+
+function sgRender() {
+  const stage = sgGetStage();
+  const offlineHtml = sg._offlineGain > 0 ? `
+    <div class="sg-offline-toast">
+      🎉 離開了 ${sgFormatDuration(sg._offlineSec)}，蝸牛小弟們幫你賺了 <b>+${sgFormatNum(sg._offlineGain)}</b> 經驗！
+    </div>` : '';
+
+  const shopHtml = SG_SHOP.map(item => {
+    const owned = sg.owned[item.id] || 0;
+    const cost = sgShopCost(item);
+    const canAfford = sg.xp >= cost;
+    return `
+      <div class="sg-shop-item">
+        <div class="sg-shop-info">
+          <div class="sg-shop-name">${item.name}</div>
+          <div class="sg-shop-desc">${item.desc}</div>
+          ${owned>0?`<div class="sg-shop-owned">已擁有 ${owned}</div>`:''}
+        </div>
+        <button class="sg-buy-btn" ${canAfford?'':'disabled'} onclick="sgBuy('${item.id}')">
+          ${sgFormatNum(cost)} 💠
+        </button>
+      </div>`;
+  }).join('');
+
+  document.getElementById('sgBody').innerHTML = `
+    ${offlineHtml}
+    <div class="sg-stage" id="sgStage">
+      <div class="sg-slime-emoji" id="sgSlimeEmoji" onclick="sgClick(event)">${stage.emoji}</div>
+      <div class="sg-stage-name">${stage.name}</div>
+      <div class="sg-xp-row">
+        <span class="sg-xp-num" id="sgXpNum">${sgFormatNum(sg.xp)}</span>
+        <span class="sg-xp-label">經驗值</span>
+      </div>
+      <div class="sg-xp-rate" id="sgXpRate">+${sg.ratePerSec}/秒　｜　點擊 +${sg.clickPower}</div>
+    </div>
+    <div class="sg-section-label">🛒 升級商店</div>
+    <div id="sgShopList">${shopHtml}</div>
+    <div class="sg-reset-btn" onclick="sgConfirmReset()">重新開始遊戲</div>
+  `;
+}
+
+function sgUpdateNumbers() {
+  const xpEl = document.getElementById('sgXpNum');
+  if (xpEl) xpEl.textContent = sgFormatNum(sg.xp);
+  // 更新商店按鈕可購買狀態（不整個重繪，避免閃爍）
+  document.querySelectorAll('#sgShopList .sg-buy-btn').forEach((btn, i) => {
+    const item = SG_SHOP[i];
+    if (!item) return;
+    const cost = sgShopCost(item);
+    btn.disabled = sg.xp < cost;
+  });
+}
+
+function sgClick(evt) {
+  sg.xp += sg.clickPower;
+  sg.totalXp += sg.clickPower;
+  sgUpdateNumbers();
+
+  const emoji = document.getElementById('sgSlimeEmoji');
+  emoji.classList.remove('bounce');
+  void emoji.offsetWidth; // reflow 觸發動畫重播
+  emoji.classList.add('bounce');
+
+  // 浮動 +N 文字
+  const stageBox = document.getElementById('sgStage');
+  const float = document.createElement('div');
+  float.className = 'sg-float';
+  float.textContent = '+'+sg.clickPower;
+  const rect = evt.target.getBoundingClientRect();
+  const boxRect = stageBox.getBoundingClientRect();
+  float.style.left = (rect.left - boxRect.left + rect.width/2 + (Math.random()*30-15)) + 'px';
+  float.style.top = (rect.top - boxRect.top) + 'px';
+  stageBox.appendChild(float);
+  setTimeout(()=>float.remove(), 800);
+
+  // 檢查是否升級進化（重新渲染以更新emoji/稱號）
+  const newStage = sgGetStage();
+  const stageNameEl = document.querySelector('.sg-stage-name');
+  if (stageNameEl && stageNameEl.textContent !== newStage.name) {
+    sgRender();
+    showToast('✨ 史萊姆進化成「'+newStage.name+'」了！');
+  }
+}
+
+function sgBuy(itemId) {
+  const item = SG_SHOP.find(s=>s.id===itemId);
+  if (!item) return;
+  const cost = sgShopCost(item);
+  if (sg.xp < cost) return;
+  sg.xp -= cost;
+  sg.owned[itemId] = (sg.owned[itemId]||0) + 1;
+  if (item.effect === 'click') sg.clickPower += item.amount;
+  if (item.effect === 'rate') sg.ratePerSec += item.amount;
+  sgSave();
+  sgRender();
+}
+
+function sgFormatDuration(sec) {
+  if (sec < 60) return sec+'秒';
+  if (sec < 3600) return Math.floor(sec/60)+'分鐘';
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+  return h+'小時'+(m>0?m+'分':'');
+}
+
+function sgConfirmReset() {
+  if (confirm('確定要重新開始嗎？所有進度將會消失，此操作無法復原。')) {
+    sg = sgDefaultState();
+    sgSave();
+    sgRender();
+    showToast('🔄 史萊姆重新開始了！');
+  }
+}
+
 function showToast(msg) {
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
@@ -2304,5 +2590,16 @@ if ('serviceWorker' in navigator) {
   <div class="panel-body" id="panelBody"></div>
 </div>
 <div id="panelBackdrop" style="display:none;position:fixed;inset:0;z-index:399;" onclick="closeCasePanel()"></div>
+
+<!-- 🎮 史萊姆放置遊戲 -->
+<div id="slimeGameOverlay" onclick="if(event.target===this)closeSlimeGame()">
+  <div class="sg-panel">
+    <div class="sg-header">
+      <div class="sg-title">🌟 史萊姆放置屋</div>
+      <span class="sg-close" onclick="closeSlimeGame()">×</span>
+    </div>
+    <div class="sg-body" id="sgBody"></div>
+  </div>
+</div>
 
 </body></html>
