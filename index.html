@@ -2513,18 +2513,42 @@ const SG_STAGES = [
   { min:30000, name:'史萊姆之王',   body:'#FFFFFF', body2:'#E8761A', eye:'#E8761A', crown:true, glow:true, royal:true },
 ];
 
-const SG_ACHIEVEMENTS = [
-  { id:'click10',   name:'初次見面',   desc:'累積點擊 10 次',       icon:'👋', cond:s=>s.totalClicks>=10,     rewardClick:1, rewardText:'點擊力 +1' },
-  { id:'click100',  name:'勤奮的手指', desc:'累積點擊 100 次',      icon:'💪', cond:s=>s.totalClicks>=100,    rewardClick:2, rewardText:'點擊力 +2' },
-  { id:'click500',  name:'指尖風暴',   desc:'累積點擊 500 次',      icon:'⚡', cond:s=>s.totalClicks>=500,    rewardClick:5, rewardText:'點擊力 +5' },
-  { id:'xp100',     name:'小小起步',   desc:'累積經驗達 100',       icon:'🌱', cond:s=>s.totalXp>=100,        rewardRate:1, rewardText:'產能 +1/秒' },
-  { id:'xp1000',    name:'穩定成長',   desc:'累積經驗達 1,000',     icon:'🌿', cond:s=>s.totalXp>=1000,       rewardRate:3, rewardText:'產能 +3/秒' },
-  { id:'xp10000',   name:'欣欣向榮',   desc:'累積經驗達 10,000',    icon:'🌳', cond:s=>s.totalXp>=10000,      rewardRate:10,rewardText:'產能 +10/秒' },
-  { id:'xp100000',  name:'繁榮盛世',   desc:'累積經驗達 100,000',   icon:'🏔️', cond:s=>s.totalXp>=100000,     rewardRate:50,rewardText:'產能 +50/秒' },
-  { id:'ownHelper', name:'不再孤單',   desc:'雇用第一位小夥伴',     icon:'🤝', cond:s=>Object.values(s.owned||{}).some(n=>n>0), rewardClick:1, rewardText:'點擊力 +1' },
-  { id:'crit10',    name:'手感絕佳',   desc:'觸發 10 次會心一擊',   icon:'🎯', cond:s=>(s.critCount||0)>=10, rewardClick:2, rewardText:'點擊力 +2' },
-  { id:'combo20',   name:'連擊大師',   desc:'連擊數達到 20',        icon:'🔥', cond:s=>(s.maxCombo||0)>=20,   rewardRate:5, rewardText:'產能 +5/秒' },
+const SG_ACHV_CATEGORIES = [
+  { id:'clicks',       icon:'👆', name:'點擊次數',   statFn:s=>s.totalClicks||0,                                            base:10,  ratio:6,   rewardType:'click',       rewardPerTier:0.03 },
+  { id:'xp',           icon:'✨', name:'累積經驗',   statFn:s=>s.lifetimeXp||0,                                             base:100, ratio:10,  rewardType:'rate',        rewardPerTier:0.03 },
+  { id:'prestige',     icon:'🔮', name:'轉生次數',   statFn:s=>s.prestigeCount||0,                                          base:1,   ratio:2,   rewardType:'crystalGain', rewardPerTier:0.05 },
+  { id:'collectionLv', icon:'📖', name:'圖鑑總等級', statFn:s=>Object.values(s.collectionLv||{}).reduce((a,b)=>a+b,0),      base:5,   ratio:3,   rewardType:'click',       rewardPerTier:0.03 },
+  { id:'items',        icon:'🎒', name:'道具收集數', statFn:s=>Object.keys(s.itemInventory||{}).length,                    base:3,   ratio:1.7, rewardType:'rate',        rewardPerTier:0.04 },
+  { id:'lucky',        icon:'🍀', name:'幸運史萊姆', statFn:s=>s.luckyClickCount||0,                                        base:3,   ratio:2.2, rewardType:'crit',        rewardPerTier:1 },
+  { id:'crit',         icon:'🎯', name:'會心一擊',   statFn:s=>s.critCount||0,                                              base:10,  ratio:3,   rewardType:'click',       rewardPerTier:0.02 },
+  { id:'combo',        icon:'🔥', name:'最高連擊',   statFn:s=>s.maxCombo||0,                                               base:10,  ratio:1.6, rewardType:'rate',        rewardPerTier:0.02 },
 ];
+
+function sgAchvTier(cat) {
+  const val = cat.statFn(sg);
+  if (val < cat.base) return 0;
+  return Math.floor(Math.log(val/cat.base)/Math.log(cat.ratio)) + 1;
+}
+
+function sgAchvBonusSum(rewardType) {
+  return SG_ACHV_CATEGORIES.filter(c=>c.rewardType===rewardType)
+    .reduce((sum,c) => sum + sgAchvTier(c)*c.rewardPerTier, 0);
+}
+
+function sgCheckAchvTierUps() {
+  if (!sg.achvSeenTiers) sg.achvSeenTiers = {};
+  const ups = [];
+  SG_ACHV_CATEGORIES.forEach(cat => {
+    const tier = sgAchvTier(cat);
+    const seen = sg.achvSeenTiers[cat.id] || 0;
+    if (tier > seen) {
+      sg.achvSeenTiers[cat.id] = tier;
+      ups.push({ cat, tier });
+    }
+  });
+  return ups;
+}
+
 
 const SG_SHOP = [
   { id:'click',  name:'💪 點擊力訓練', desc:'每次點擊 +1 經驗', baseCost:10,  costMul:1.15, effect:'click', amount:1 },
@@ -2577,16 +2601,17 @@ const SG_RARITY_META = {
   legendary: { label:'傳說', color:'#E0A800', bg:'#FFF7E0' },
 };
 
-const SG_DAILY_QUESTS = [
-  { id:'d1', name:'今日點擊 30 次',   type:'clicks',   target:30,  reward:100 },
-  { id:'d2', name:'今日賺取 500 經驗', type:'xpEarned', target:500, reward:300 },
-  { id:'d3', name:'購買 1 次升級',    type:'buys',     target:1,   reward:200 },
+const SG_DAILY_TEMPLATES = [
+  { id:'d1', name:'今日點擊 50 次',     type:'clicks',   target:50, rewardCrystal:2 },
+  { id:'d2', name:'今日賺取指定經驗',   type:'xpEarned', dynamicTarget:true, rewardCrystal:5 },
+  { id:'d3', name:'購買 3 次升級',      type:'buys',     target:3, rewardCrystal:3 },
 ];
 
 function sgDefaultState() {
   return {
     xp: 0,
     totalXp: 0,
+    lifetimeXp: 0,   // 永久累積(不受轉生影響)，用於成就計算
     clickPower: 1,
     ratePerSec: 0,
     owned: {},        // { shopId: count }
@@ -2596,7 +2621,7 @@ function sgDefaultState() {
     combo: 0,
     maxCombo: 0,
     lastClickTime: 0,
-    achievements: [],  // 已解鎖成就 id 清單
+    achvSeenTiers: {},  // 各成就分類已通知過的最高階層 { catId: tier }
     crystals: 0,
     prestigeCount: 0,
     crystalClickLv: 0,  // 永久點擊強化等級
@@ -2632,6 +2657,8 @@ function sgLoad() {
   if (!sg.collectionLv) sg.collectionLv = {};
   if (!sg.itemInventory) sg.itemInventory = {};
   if (!sg.charMult) sg.charMult = {};
+  // 舊存檔沒有 lifetimeXp 欄位時，用目前 totalXp 補上底線(保守估計)
+  if (!sg.lifetimeXp || sg.lifetimeXp < sg.totalXp) sg.lifetimeXp = sg.totalXp;
 }
 
 function sgSave() {
@@ -2658,7 +2685,8 @@ function sgTodayStr() {
 function sgEnsureDailyReset() {
   const today = sgTodayStr();
   if (!sg.daily || sg.daily.date !== today) {
-    sg.daily = { date: today, clicks:0, xpEarned:0, buys:0, claimed:[] };
+    const xpTarget = Math.max(200, Math.floor(sgEffRate()*60));
+    sg.daily = { date: today, clicks:0, xpEarned:0, buys:0, claimed:[], xpTarget };
   }
 }
 
@@ -2704,7 +2732,7 @@ function sgApplyItemEffect(itemDef) {
       break;
     case 'instantXp': {
       const gain = Math.max(50, Math.floor(sg.totalXp * itemDef.value));
-      sg.xp += gain; sg.totalXp += gain;
+      sgAddXp(gain);
       itemDef._actualGain = gain;
       break;
     }
@@ -2783,14 +2811,16 @@ function sgEffClickPower() {
   const base = sg.clickPower + sgCollectionClickBonus();
   const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
   const itemMult = 1 + (sg.itemGlobalClickBonus||0);
-  return base * crystalMult * itemMult;
+  const achvMult = 1 + sgAchvBonusSum('click');
+  return base * crystalMult * itemMult * achvMult;
 }
 
 function sgEffRate() {
   const base = sg.ratePerSec + sgCollectionRateBonus();
   const crystalMult = 1 + 0.08*(sg.crystalRateLv||0);
   const itemMult = 1 + (sg.itemGlobalRateBonus||0);
-  const passiveRate = base * crystalMult * itemMult;
+  const achvMult = 1 + sgAchvBonusSum('rate');
+  const passiveRate = base * crystalMult * itemMult * achvMult;
   const autoClickRate = sgCollectionAutoClickPerSec() * sgEffClickPower();
   return passiveRate + autoClickRate;
 }
@@ -2816,7 +2846,9 @@ function sgPrestigeThreshold() {
 }
 
 function sgPrestigeCrystalGain() {
-  return Math.floor(Math.sqrt(sg.totalXp / 1000));
+  const base = Math.floor(Math.sqrt(sg.totalXp / 1000));
+  const mult = 1 + sgAchvBonusSum('crystalGain');
+  return Math.floor(base * mult);
 }
 
 function onSlimeIconClick() {
@@ -2842,8 +2874,7 @@ function openSlimeGame() {
   if (elapsedSec > 5 && effRate > 0) {
     const offlineMult = 1 + (sg.itemOfflineBonus||0);
     offlineGain = Math.floor(cappedSec * effRate * offlineMult);
-    sg.xp += offlineGain;
-    sg.totalXp += offlineGain;
+    sgAddXp(offlineGain);
   }
   sg._offlineGain = offlineGain;
   sg._offlineSec = elapsedSec;
@@ -2859,8 +2890,7 @@ function openSlimeGame() {
   sgTickInterval = setInterval(()=>{
     const rate = sgEffRate();
     if (rate > 0) {
-      sg.xp += rate;
-      sg.totalXp += rate;
+      sgAddXp(rate);
       sgUpdateNumbers();
     }
     sgTryDropItem('tick');
@@ -2944,6 +2974,12 @@ function sgSlimeSvg(stage) {
       <ellipse cx="73" cy="60" rx="5" ry="3" fill="#FF9E9E" opacity="0.55"/>
     </g>
   </svg>`;
+}
+
+function sgAddXp(amount) {
+  sg.xp += amount;
+  sg.totalXp += amount;
+  sg.lifetimeXp = (sg.lifetimeXp||0) + amount;
 }
 
 function sgFormatNum(n) {
@@ -3095,11 +3131,11 @@ function sgBuyBatch(itemId, qty) {
   if (item.effect === 'rate') sg.ratePerSec += item.amount * count;
   sgEnsureDailyReset();
   sg.daily.buys++;
-  const unlocked = sgCheckAchievements();
+  const tierUps = sgCheckAchvTierUps();
   sgSave();
   sgRender();
   showToast(`✓ 購買「${item.name.replace(/^\S+\s/,'')}」x${count}`);
-  unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
+  tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
 }
 
 function sgToggleAutoBuy(checked) {
@@ -3207,60 +3243,69 @@ function sgUpgradeCollection(id) {
 
 function sgDailyTabHtml() {
   sgEnsureDailyReset();
-  const items = SG_DAILY_QUESTS.map(q => {
+  const items = SG_DAILY_TEMPLATES.map(q => {
+    const target = q.dynamicTarget ? (sg.daily.xpTarget||200) : q.target;
     const progress = sg.daily[q.type] || 0;
-    const done = progress >= q.target;
+    const done = progress >= target;
     const claimed = sg.daily.claimed.includes(q.id);
-    const pct = Math.min(100, Math.round(progress/q.target*100));
+    const pct = Math.min(100, Math.round(progress/target*100));
     return `
       <div class="sg-daily-item">
         <div class="sg-daily-top">
-          <div class="sg-daily-name">${q.name}</div>
-          <div class="sg-daily-reward">+${q.reward} 經驗</div>
+          <div class="sg-daily-name">${q.name}${q.dynamicTarget?`（${sgFormatNum(target)}）`:''}</div>
+          <div class="sg-daily-reward">+${q.rewardCrystal} 💠</div>
         </div>
         <div class="sg-daily-track"><div class="sg-daily-fill" style="width:${pct}%;"></div></div>
-        <div class="sg-daily-prog">${Math.min(progress,q.target)} / ${q.target}</div>
+        <div class="sg-daily-prog">${sgFormatNum(Math.min(progress,target))} / ${sgFormatNum(target)}</div>
         <button class="sg-daily-claim" ${(done && !claimed)?'':'disabled'} onclick="sgClaimDaily('${q.id}')">
           ${claimed ? '✓ 已領取' : (done ? '領取獎勵' : '尚未達成')}
         </button>
       </div>`;
   }).join('');
-  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">每日 00:00 重置</div>${items}`;
+  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">每日 00:00 重置，經驗目標依你目前產能自動調整</div>${items}`;
 }
 
 function sgClaimDaily(id) {
-  const q = SG_DAILY_QUESTS.find(d=>d.id===id);
+  const q = SG_DAILY_TEMPLATES.find(d=>d.id===id);
   if (!q) return;
+  const target = q.dynamicTarget ? (sg.daily.xpTarget||200) : q.target;
   const progress = sg.daily[q.type] || 0;
-  if (progress < q.target || sg.daily.claimed.includes(id)) return;
+  if (progress < target || sg.daily.claimed.includes(id)) return;
   sg.daily.claimed.push(id);
-  sg.xp += q.reward;
-  sg.totalXp += q.reward;
+  sg.crystals += q.rewardCrystal;
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
-  sgUpdateNumbers();
-  showToast(`✅ 完成每日任務！+${q.reward} 經驗`);
+  showToast(`✅ 完成每日任務！+${q.rewardCrystal} 💠`);
 }
 
 function sgAchvTabHtml() {
-  return SG_ACHIEVEMENTS.map(a => {
-    const unlocked = sg.achievements.includes(a.id);
+  const rewardLabel = { click:'點擊力', rate:'產能', crit:'會心機率', crystalGain:'轉生水晶量' };
+  const rows = SG_ACHV_CATEGORIES.map(cat => {
+    const tier = sgAchvTier(cat);
+    const val = cat.statFn(sg);
+    const prevThreshold = tier===0 ? 0 : cat.base*Math.pow(cat.ratio, tier-1);
+    const nextThreshold = cat.base*Math.pow(cat.ratio, tier);
+    const pct = Math.min(100, Math.max(0, Math.round((val-prevThreshold)/(nextThreshold-prevThreshold)*100)));
+    const totalBonus = tier*cat.rewardPerTier;
+    const bonusDisplay = cat.rewardType==='crit' ? `+${totalBonus.toFixed(0)}%` : `+${Math.round(totalBonus*100)}%`;
     return `
-      <div class="sg-achv-item${unlocked?'':' locked'}">
-        <div class="sg-achv-icon">${unlocked?a.icon:'🔒'}</div>
+      <div class="sg-achv-item">
+        <div class="sg-achv-icon">${cat.icon}</div>
         <div class="sg-achv-info">
-          <div class="sg-achv-name">${a.name}</div>
-          <div class="sg-achv-desc">${a.desc}</div>
+          <div class="sg-achv-name">${cat.name} Lv.${tier}</div>
+          <div class="sg-achv-desc">${sgFormatNum(val)} / ${sgFormatNum(nextThreshold)}</div>
+          <div class="sg-daily-track" style="margin-top:4px;"><div class="sg-daily-fill" style="width:${pct}%;"></div></div>
         </div>
-        <div class="sg-achv-reward">${unlocked?a.rewardText:''}</div>
+        <div class="sg-achv-reward">${rewardLabel[cat.rewardType]}<br>${bonusDisplay}</div>
       </div>`;
-  }).join('') + `<div style="font-size:11px;color:#999;text-align:center;margin-top:6px;">已解鎖 ${sg.achievements.length} / ${SG_ACHIEVEMENTS.length}</div>`;
+  }).join('');
+  const totalTiers = SG_ACHV_CATEGORIES.reduce((s,c)=>s+sgAchvTier(c),0);
+  return `<div style="font-size:11px;color:#999;text-align:center;margin-bottom:10px;">成就無上限，數值越高加成越強</div>${rows}<div style="font-size:11px;color:#aaa;text-align:center;margin-top:8px;">總計已達成 ${totalTiers} 階</div>`;
 }
 
 function sgDoubleOffline() {
   if (sg._offlineDoubled || sg.dailyDoubleDate === sgTodayStr()) return;
-  sg.xp += sg._offlineGain;
-  sg.totalXp += sg._offlineGain;
+  sgAddXp(sg._offlineGain);
   sg.dailyDoubleDate = sgTodayStr();
   sg._offlineDoubled = true;
   sgSave();
@@ -3289,8 +3334,7 @@ function sgClickLucky(el) {
   el.remove();
   sg._luckyActive = false;
   const reward = Math.max(20, Math.floor(sgEffRate()*30 + sgEffClickPower()*20));
-  sg.xp += reward;
-  sg.totalXp += reward;
+  sgAddXp(reward);
   sg.luckyClickCount = (sg.luckyClickCount||0) + 1;
   sgUpdateNumbers();
   sgSave();
@@ -3309,19 +3353,6 @@ function sgUpdateNumbers() {
   });
 }
 
-function sgCheckAchievements() {
-  let newlyUnlocked = [];
-  SG_ACHIEVEMENTS.forEach(a => {
-    if (!sg.achievements.includes(a.id) && a.cond(sg)) {
-      sg.achievements.push(a.id);
-      if (a.rewardClick) sg.clickPower += a.rewardClick;
-      if (a.rewardRate) sg.ratePerSec += a.rewardRate;
-      newlyUnlocked.push(a);
-    }
-  });
-  return newlyUnlocked;
-}
-
 function sgClick(evt) {
   const now = Date.now();
   // 連擊：1.2秒內連續點擊則連擊數+1，否則重置
@@ -3333,7 +3364,7 @@ function sgClick(evt) {
   const comboMult = 1 + Math.min(Math.floor(sg.combo/5)*0.1, 1.0);
 
   // 會心一擊：基礎8% + 圖鑑加成 + 道具加成，倍率x3；時之沙漏期間必定觸發
-  const critChance = 0.08 + sgCollectionCritBonus()/100 + (sg.itemCritBonus||0)/100;
+  const critChance = 0.08 + sgCollectionCritBonus()/100 + (sg.itemCritBonus||0)/100 + sgAchvBonusSum('crit')/100;
   let isCrit = Math.random() < critChance;
   if (sg.guaranteedCritUntil && now < sg.guaranteedCritUntil) isCrit = true;
   const critMult = isCrit ? 3 : 1;
@@ -3346,8 +3377,7 @@ function sgClick(evt) {
   }
 
   const gain = Math.round(sgEffClickPower() * comboMult * critMult * burstMult);
-  sg.xp += gain;
-  sg.totalXp += gain;
+  sgAddXp(gain);
   sg.totalClicks++;
   if (isCrit) sg.critCount++;
 
@@ -3409,15 +3439,15 @@ function sgClick(evt) {
   let stageChanged = false;
   if (stageNameEl && stageNameEl.textContent !== newStage.name) stageChanged = true;
 
-  // 檢查成就
-  const unlocked = sgCheckAchievements();
+  // 檢查成就階層提升
+  const tierUps = sgCheckAchvTierUps();
 
   if (stageChanged) {
     sgRender();
     showToast('✨ 史萊姆進化成「'+newStage.name+'」了！');
-  } else if (unlocked.length) {
+  } else if (tierUps.length) {
     sgRender();
-    unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
+    tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
   }
 
   if (sg.totalClicks % 5 === 0) sgSave();
@@ -3434,11 +3464,11 @@ function sgBuy(itemId, silent) {
   if (item.effect === 'rate') sg.ratePerSec += item.amount;
   sgEnsureDailyReset();
   sg.daily.buys++;
-  const unlocked = sgCheckAchievements();
+  const tierUps = sgCheckAchvTierUps();
   sgSave();
   if (!silent) {
     sgRender();
-    unlocked.forEach(a => showToast(`🏆 解鎖成就「${a.name}」！${a.rewardText}`));
+    tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
   } else {
     sgUpdateNumbers();
   }
