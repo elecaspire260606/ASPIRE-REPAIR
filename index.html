@@ -469,14 +469,14 @@
   .sg-crystal-buy-btn:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
 
   /* 圖鑑 */
-  .sg-collection-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .sg-collect-item {
+  .sg-colleague-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .sg-colleague-item {
     background:white; border-radius:12px; padding:12px 6px; text-align:center;
     box-shadow:0 1px 6px rgba(0,0,0,0.05); position:relative;
   }
-  .sg-collect-item.locked { opacity:0.45; }
-  .sg-collect-item.can-afford { border:2px solid #E8761A; box-shadow:0 0 0 3px rgba(232,118,26,0.15); }
-  .sg-collection-crystal-bar {
+  .sg-colleague-item.locked { opacity:0.45; }
+  .sg-colleague-item.can-afford { border:2px solid #E8761A; box-shadow:0 0 0 3px rgba(232,118,26,0.15); }
+  .sg-colleague-crystal-bar {
     display:flex; align-items:center; justify-content:center; gap:6px;
     background:#2b1a4a; color:white; border-radius:10px; padding:8px 12px; margin-bottom:10px;
     font-size:13px; font-weight:800;
@@ -486,12 +486,12 @@
   .sg-slime-wrap { position:relative; }
   .sg-equip-head { position:absolute; top:-6px; left:50%; transform:translateX(-50%); font-size:32px; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
   .sg-equip-hand { position:absolute; bottom:6px; right:-4px; font-size:26px; z-index:5; pointer-events:none; transform:rotate(18deg); filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
-  .sg-collect-emoji { font-size:26px; }
-  .sg-collect-name { font-size:9px; font-weight:700; color:#1a1a1a; margin-top:4px; line-height:1.3; }
-  .sg-collect-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; line-height:1.3; }
-  .sg-collect-cost { font-size:9px; color:#999; margin-top:2px; }
-  .sg-collect-buy { margin-top:6px; width:100%; padding:5px; border:none; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:#E8761A; color:white; }
-  .sg-collect-buy:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
+  .sg-colleague-emoji { font-size:26px; }
+  .sg-colleague-name { font-size:9px; font-weight:700; color:#1a1a1a; margin-top:4px; line-height:1.3; }
+  .sg-colleague-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; line-height:1.3; }
+  .sg-colleague-cost { font-size:9px; color:#999; margin-top:2px; }
+  .sg-colleague-buy { margin-top:6px; width:100%; padding:5px; border:none; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:#E8761A; color:white; }
+  .sg-colleague-buy:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
 
   /* 每日任務 */
   .sg-daily-item {
@@ -2554,7 +2554,7 @@ const SG_ACHV_CATEGORIES = [
   { id:'autoClicks',   icon:'🐿️', name:'自動點擊次數', statFn:s=>s.autoClicks||0,                                             base:50,  ratio:8,   rewardType:'rate',        rewardPerTier:0.03 },
   { id:'xp',           icon:'✨', name:'累積經驗',   statFn:s=>s.lifetimeXp||0,                                             base:100, ratio:10,  rewardType:'rate',        rewardPerTier:0.03 },
   { id:'prestige',     icon:'🔮', name:'轉生次數',   statFn:s=>s.prestigeCount||0,                                          base:1,   ratio:2,   rewardType:'crystalGain', rewardPerTier:0.05 },
-  { id:'collectionLv', icon:'📖', name:'圖鑑總等級', statFn:s=>Object.values(s.collectionLv||{}).reduce((a,b)=>a+b,0),      base:5,   ratio:3,   rewardType:'click',       rewardPerTier:0.03 },
+  { id:'colleagueLv', icon:'📖', name:'同事總等級', statFn:s=>Object.values(s.colleagueLv||{}).reduce((a,b)=>a+b,0),      base:5,   ratio:3,   rewardType:'click',       rewardPerTier:0.03 },
   { id:'items',        icon:'🎒', name:'道具收集數', statFn:s=>Object.keys(s.itemInventory||{}).length,                    base:3,   ratio:1.7, rewardType:'rate',        rewardPerTier:0.04 },
   { id:'lucky',        icon:'🍀', name:'幸運史萊姆', statFn:s=>s.luckyClickCount||0,                                        base:3,   ratio:2.2, rewardType:'crit',        rewardPerTier:1 },
   { id:'crit',         icon:'🎯', name:'會心一擊',   statFn:s=>s.critCount||0,                                              base:10,  ratio:3,   rewardType:'click',       rewardPerTier:0.02 },
@@ -2608,7 +2608,7 @@ const SG_SHOP = [
   { id:'helper13',category:'hotel',       name:'👔 總經理',       desc:'+60000 經驗/秒',    baseCost:3000000, costMul:1.19,  effect:'rate',  amount:60000 },
 ];
 
-const SG_COLLECTION = [
+const SG_COLLEAGUES = [
   { id:'f1', emoji:'🐌', name:'蝸牛使者',   stat:'rate',      perLevel:2,   baseCost:1,  costMul:1.6,  statLabel:'產能' },
   { id:'f2', emoji:'🐢', name:'龜甲工頭',   stat:'rate',      perLevel:8,   baseCost:3,  costMul:1.6,  statLabel:'產能' },
   { id:'f3', emoji:'🦊', name:'狐狸主管',   stat:'rate',      perLevel:40,  baseCost:10, costMul:1.65, statLabel:'產能' },
@@ -2648,11 +2648,11 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_r6', rarity:'rare', name:'安全掛鎖與掛牌（LOTO）', desc:'離線收益上限永久+1小時', type:'offlineHrBonus', value:1 },
 ];
 
-const SG_CHAR_ITEMS = SG_COLLECTION.flatMap(c => [
+const SG_CHAR_ITEMS = SG_COLLEAGUES.flatMap(c => [
   { id:`c_${c.id}_common`,    rarity:'common',    name:`${c.name}的祝福（小）`, charId:c.id, type:'charMult', value:0.10 },
   { id:`c_${c.id}_rare`,      rarity:'rare',      name:`${c.name}的祝福（中）`, charId:c.id, type:'charMult', value:0.25 },
   { id:`c_${c.id}_legendary`, rarity:'legendary', name:`${c.name}的祝福（大）`, charId:c.id, type:'charMult', value:0.60 },
-]).map(it => ({ ...it, desc: `${SG_COLLECTION.find(c=>c.id===it.charId).name} 效果永久+${Math.round(it.value*100)}%` }));
+]).map(it => ({ ...it, desc: `${SG_COLLEAGUES.find(c=>c.id===it.charId).name} 效果永久+${Math.round(it.value*100)}%` }));
 
 const SG_ITEMS = [...SG_GLOBAL_ITEMS, ...SG_CHAR_ITEMS];
 
@@ -2766,8 +2766,8 @@ function sgDefaultState() {
     itemComboWindowBonus: 0,// 道具帶來的永久連擊時間窗加成(毫秒)
     gearOwned: {},    // 已購買的裝備 { id: true }（全部同時生效，不需穿戴切換）
     certOwned: {},    // 已取得的證照 { id: true }
-    collection: [],    // (舊版相容用，已棄用)
-    collectionLv: {},  // 圖鑑夥伴等級 { id: level }
+    legacyColleagueArray: [],    // (舊版相容用，已棄用)
+    colleagueLv: {},  // 圖鑑夥伴等級 { id: level }
     itemInventory: {}, // 已獲得道具 { itemId: count }
     itemGlobalRateBonus: 0,
     itemGlobalClickBonus: 0,
@@ -2791,11 +2791,13 @@ function sgLoad() {
     sg = raw ? Object.assign(sgDefaultState(), JSON.parse(raw)) : sgDefaultState();
   } catch(e) { sg = sgDefaultState(); }
   // 舊版圖鑑資料（陣列式收集）遷移為等級式
-  if (Array.isArray(sg.collection) && sg.collection.length && (!sg.collectionLv || Object.keys(sg.collectionLv).length===0)) {
-    sg.collectionLv = {};
-    sg.collection.forEach(id => { sg.collectionLv[id] = 1; });
+  // 注意：此處刻意讀取舊鍵名 collection（早期存檔格式），而非新的 legacyColleagueArray，
+  // 因為舊存檔資料本身就是用 collection 這個鍵名儲存的
+  if (Array.isArray(sg.collection) && sg.collection.length && (!sg.colleagueLv || Object.keys(sg.colleagueLv).length===0)) {
+    sg.colleagueLv = {};
+    sg.collection.forEach(id => { sg.colleagueLv[id] = 1; });
   }
-  if (!sg.collectionLv) sg.collectionLv = {};
+  if (!sg.colleagueLv) sg.colleagueLv = {};
   if (!sg.itemInventory) sg.itemInventory = {};
   if (!sg.gearOwned) sg.gearOwned = {};
   if (!sg.certOwned) sg.certOwned = {};
@@ -2844,22 +2846,22 @@ function sgEnsureDailyReset() {
   }
 }
 
-function sgCollectionLv(id) { return sg.collectionLv[id] || 0; }
+function sgColleagueLv(id) { return sg.colleagueLv[id] || 0; }
 
-function sgCollectionStatSum(stat) {
-  return SG_COLLECTION.filter(c => c.stat === stat)
+function sgColleagueStatSum(stat) {
+  return SG_COLLEAGUES.filter(c => c.stat === stat)
     .reduce((sum,c) => {
-      const base = sgCollectionLv(c.id) * c.perLevel;
+      const base = sgColleagueLv(c.id) * c.perLevel;
       const charBonus = (sg.charMult && sg.charMult[c.id]) || 0;
       return sum + base * (1 + charBonus);
     }, 0);
 }
 
-function sgCollectionRateBonus()    { return sgCollectionStatSum('rate'); }
-function sgCollectionClickBonus()   { return sgCollectionStatSum('click'); }
-function sgCollectionCritBonus()    { return sgCollectionStatSum('crit'); }       // 百分點
-function sgCollectionAutoClickPerSec() { return sgCollectionStatSum('autoclick'); }
-function sgCollectionOfflineCapHours() { return sgCollectionStatSum('offlinecap'); }
+function sgColleagueRateBonus()    { return sgColleagueStatSum('rate'); }
+function sgColleagueClickBonus()   { return sgColleagueStatSum('click'); }
+function sgColleagueCritBonus()    { return sgColleagueStatSum('crit'); }       // 百分點
+function sgColleagueAutoClickPerSec() { return sgColleagueStatSum('autoclick'); }
+function sgColleagueOfflineCapHours() { return sgColleagueStatSum('offlinecap'); }
 
 // ── 🎁 寶箱掉落系統 ──
 function sgRollRarity() {
@@ -2931,13 +2933,13 @@ function sgObtainItem(itemDef) {
   }
 }
 
-function sgTryDropItem(source) {
-  const chance = source==='click' ? 0.002 : 0.001; // 點擊機率調降：自動點擊次數大增，避免寶箱過於氾濫
+function sgTryDropItem(source, silent) {
+  const chance = source==='click' ? 0.002 : 0.001; // 點擊：僅手動點擊觸發；tick：放置本身固定機率
   if (Math.random() >= chance) return null;
   const rarity = sgRollRarity();
   const itemDef = sgRollItemOfRarity(rarity);
   const result = sgObtainItem(itemDef);
-  sgShowDropBanner(result);
+  if (!silent) sgShowDropBanner(result);
   sgSave();
   return result;
 }
@@ -2978,8 +2980,9 @@ function sgShowDropBanner(result) {
   setTimeout(()=>{ banner.classList.add('sg-drop-out'); setTimeout(()=>banner.remove(), 300); }, 2600);
 }
 
+// 批次點擊(自動點擊一次tick內)如果同時開出多個寶箱，合併成單一橫幅顯示，避免多個橫幅疊在同一位置
 function sgCategoryBoost(category) {
-  return category==='hotel' ? sgCollectionStatSum('hotelBoost') : sgCollectionStatSum('maintBoost');
+  return category==='hotel' ? sgColleagueStatSum('hotelBoost') : sgColleagueStatSum('maintBoost');
 }
 
 function sgShopContribution(effectType) {
@@ -2992,7 +2995,7 @@ function sgShopContribution(effectType) {
 }
 
 function sgEffClickPower() {
-  const base = sg.clickPower + sgShopContribution('click') + sgCollectionClickBonus();
+  const base = sg.clickPower + sgShopContribution('click') + sgColleagueClickBonus();
   const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
   const itemMult = 1 + (sg.itemGlobalClickBonus||0);
   const achvMult = 1 + sgAchvBonusSum('click');
@@ -3001,7 +3004,7 @@ function sgEffClickPower() {
 }
 
 function sgEffRate() {
-  const base = sg.ratePerSec + sgShopContribution('rate') + sgCollectionRateBonus();
+  const base = sg.ratePerSec + sgShopContribution('rate') + sgColleagueRateBonus();
   const crystalMult = 1 + 0.08*(sg.crystalRateLv||0);
   const itemMult = 1 + (sg.itemGlobalRateBonus||0);
   const achvMult = 1 + sgAchvBonusSum('rate');
@@ -3010,7 +3013,7 @@ function sgEffRate() {
 }
 
 function sgTotalAutoClickPerSec() {
-  const base = sgCollectionAutoClickPerSec() + (sg.itemAutoClickBonus||0) + (sg.crystalAutoClickLv||0)*0.1;
+  const base = sgColleagueAutoClickPerSec() + (sg.itemAutoClickBonus||0) + (sg.crystalAutoClickLv||0)*0.1;
   return base * (1 + sgEquipBonus('autoclick'));
 }
 
@@ -3063,7 +3066,7 @@ function openSlimeGame() {
   const elapsedSec = Math.max(0, Math.floor((now - (sg.lastSeen||now)) / 1000));
   let offlineGain = 0;
   const effRate = sgEffRate();
-  const capHours = 8 + sgCollectionOfflineCapHours() + sgEquipOfflineHrBonus() + (sg.itemOfflineHrBonus||0);
+  const capHours = 8 + sgColleagueOfflineCapHours() + sgEquipOfflineHrBonus() + (sg.itemOfflineHrBonus||0);
   const cappedSec = Math.min(elapsedSec, capHours*3600);
   if (elapsedSec > 5 && effRate > 0) {
     const offlineMult = 1 + (sg.itemOfflineBonus||0);
@@ -3243,7 +3246,7 @@ function sgRender() {
     <div class="sg-tabs">
       <button class="sg-tab-btn${sgActiveTab==='shop'?' active':''}" onclick="sgSwitchTab('shop',this)">🛒 商店</button>
       <button class="sg-tab-btn${sgActiveTab==='prestige'?' active':''}" onclick="sgSwitchTab('prestige',this)">🔮 轉生</button>
-      <button class="sg-tab-btn${sgActiveTab==='collection'?' active':''}" onclick="sgSwitchTab('collection',this)">📖 圖鑑</button>
+      <button class="sg-tab-btn${sgActiveTab==='colleague'?' active':''}" onclick="sgSwitchTab('colleague',this)">📖 同事</button>
       <button class="sg-tab-btn${sgActiveTab==='equip'?' active':''}" onclick="sgSwitchTab('equip',this)">🎽 裝備</button>
       <button class="sg-tab-btn${sgActiveTab==='inventory'?' active':''}" onclick="sgSwitchTab('inventory',this)">🎒 道具</button>
       <button class="sg-tab-btn${sgActiveTab==='daily'?' active':''}" onclick="sgSwitchTab('daily',this)">📅 每日</button>
@@ -3264,7 +3267,7 @@ function sgSwitchTab(tab, btn) {
 function sgTabContentHtml() {
   if (sgActiveTab === 'shop') return sgShopTabHtml();
   if (sgActiveTab === 'prestige') return sgPrestigeTabHtml();
-  if (sgActiveTab === 'collection') return sgCollectionTabHtml();
+  if (sgActiveTab === 'colleague') return sgColleagueTabHtml();
   if (sgActiveTab === 'equip') return sgEquipTabHtml();
   if (sgActiveTab === 'inventory') return sgInventoryTabHtml();
   if (sgActiveTab === 'daily') return sgDailyTabHtml();
@@ -3420,7 +3423,7 @@ function sgDoPrestige() {
   const threshold = sgPrestigeThreshold();
   if (sg.totalXp < threshold) return;
   const gain = sgPrestigeCrystalGain();
-  if (!confirm(`確定要轉生嗎？\n\n將重置經驗值、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n圖鑑、成就、道具不會重置。`)) return;
+  if (!confirm(`確定要轉生嗎？\n\n將重置經驗值、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n同事、成就、道具不會重置。`)) return;
   sg.crystals += gain;
   sg.prestigeCount++;
   sg.xp = 0; sg.totalXp = 0; sg.clickPower = 1; sg.ratePerSec = 0; sg.owned = {};
@@ -3429,9 +3432,9 @@ function sgDoPrestige() {
   showToast(`✨ 轉生成功！獲得 ${gain} 💠 水晶`);
 }
 
-function sgCollectionTabHtml() {
-  const items = SG_COLLECTION.map(c => {
-    const lv = sgCollectionLv(c.id);
+function sgColleagueTabHtml() {
+  const items = SG_COLLEAGUES.map(c => {
+    const lv = sgColleagueLv(c.id);
     const cost = Math.floor(c.baseCost * Math.pow(c.costMul, lv));
     const canAfford = sg.crystals >= cost;
     const totalBonus = lv * c.perLevel;
@@ -3440,29 +3443,29 @@ function sgCollectionTabHtml() {
     const lockedClass = lv>0 ? '' : ' locked';
     const affordClass = canAfford ? ' can-afford' : '';
     return `
-      <div class="sg-collect-item${lockedClass}${affordClass}">
-        <div class="sg-collect-emoji">${lv>0?c.emoji:'❓'}</div>
-        <div class="sg-collect-name">${lv>0?c.name:'未收集'}${lv>0?' Lv.'+lv:''}</div>
-        <div class="sg-collect-bonus">${lv>0?`+${bonusDisplay} ${c.statLabel}`:c.statLabel}</div>
-        <div class="sg-collect-cost">${cost} 💠</div>
-        <button class="sg-collect-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeCollection('${c.id}')">${lv>0?'升級':'收集'}</button>
+      <div class="sg-colleague-item${lockedClass}${affordClass}">
+        <div class="sg-colleague-emoji">${lv>0?c.emoji:'❓'}</div>
+        <div class="sg-colleague-name">${lv>0?c.name:'未收集'}${lv>0?' Lv.'+lv:''}</div>
+        <div class="sg-colleague-bonus">${lv>0?`+${bonusDisplay} ${c.statLabel}`:c.statLabel}</div>
+        <div class="sg-colleague-cost">${cost} 💠</div>
+        <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeColleague('${c.id}')">${lv>0?'升級':'收集'}</button>
       </div>`;
   }).join('');
   return `
-    <div class="sg-collection-crystal-bar">💎 目前水晶：${sg.crystals} 💠</div>
+    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠</div>
     <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受轉生影響、無等級上限</div>
-    <div class="sg-collection-grid">${items}</div>
+    <div class="sg-colleague-grid">${items}</div>
   `;
 }
 
-function sgUpgradeCollection(id) {
-  const item = SG_COLLECTION.find(c=>c.id===id);
+function sgUpgradeColleague(id) {
+  const item = SG_COLLEAGUES.find(c=>c.id===id);
   if (!item) return;
-  const lv = sgCollectionLv(id);
+  const lv = sgColleagueLv(id);
   const cost = Math.floor(item.baseCost * Math.pow(item.costMul, lv));
   if (sg.crystals < cost) return;
   sg.crystals -= cost;
-  sg.collectionLv[id] = lv + 1;
+  sg.colleagueLv[id] = lv + 1;
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
   sgUpdateStageDisplay();
@@ -3533,13 +3536,13 @@ function sgEquipTabHtml() {
     const canAfford = budget >= def.cost;
     const costLabel = def.currency==='xp' ? `${sgFormatNum(def.cost)} ✨` : `${def.cost} 💠`;
     return `
-      <div class="sg-collect-item${owned?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
-        <div class="sg-collect-emoji">${owned?def.emoji:'❓'}</div>
-        <div class="sg-collect-name">${owned?def.name:'未購買'}</div>
-        <div class="sg-collect-bonus">${bonusLabel(def.bonuses)}</div>
+      <div class="sg-colleague-item${owned?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
+        <div class="sg-colleague-emoji">${owned?def.emoji:'❓'}</div>
+        <div class="sg-colleague-name">${owned?def.name:'未購買'}</div>
+        <div class="sg-colleague-bonus">${bonusLabel(def.bonuses)}</div>
         ${owned
           ? `<div class="sg-shop-owned" style="text-align:center;margin-top:8px;">✓ 已擁有（永久生效）</div>`
-          : `<div class="sg-collect-cost">${costLabel}</div><button class="sg-collect-buy" ${canAfford?'':'disabled'} onclick="sgBuyGear('${def.id}')">購買</button>`}
+          : `<div class="sg-colleague-cost">${costLabel}</div><button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgBuyGear('${def.id}')">購買</button>`}
       </div>`;
   };
 
@@ -3547,31 +3550,31 @@ function sgEquipTabHtml() {
     const owned = !!sg.certOwned[def.id];
     const canAfford = sg.crystals >= def.cost;
     return `
-      <div class="sg-collect-item${owned?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
-        <div class="sg-collect-emoji">${owned?def.emoji:'❓'}</div>
-        <div class="sg-collect-name">${owned?def.name:'未取得'}<span style="font-size:9px;color:#999;font-weight:400;"> [${def.tier}]</span></div>
-        <div class="sg-collect-bonus">${bonusLabel(def.bonuses)}</div>
+      <div class="sg-colleague-item${owned?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
+        <div class="sg-colleague-emoji">${owned?def.emoji:'❓'}</div>
+        <div class="sg-colleague-name">${owned?def.name:'未取得'}<span style="font-size:9px;color:#999;font-weight:400;"> [${def.tier}]</span></div>
+        <div class="sg-colleague-bonus">${bonusLabel(def.bonuses)}</div>
         ${owned
           ? `<div class="sg-shop-owned" style="text-align:center;margin-top:8px;">✓ 已取得（永久生效）</div>`
-          : `<div class="sg-collect-cost">${def.cost} 💠</div><button class="sg-collect-buy" ${canAfford?'':'disabled'} onclick="sgBuyCertification('${def.id}')">考取</button>`}
+          : `<div class="sg-colleague-cost">${def.cost} 💠</div><button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgBuyCertification('${def.id}')">考取</button>`}
       </div>`;
   };
 
   const certByTier = (tier) => SG_CERTIFICATIONS.filter(c=>c.tier===tier);
 
   return `
-    <div class="sg-collection-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　✨ 目前經驗：${sgFormatNum(sg.xp)}</div>
+    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　✨ 目前經驗：${sgFormatNum(sg.xp)}</div>
     <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">全部裝備與證照買了即永久生效，可同時持有全部、無需切換</div>
     <div class="sg-section-label">🎽 基礎裝備（經驗值購買）</div>
-    <div class="sg-collection-grid">${SG_GEAR.map(renderGearCard).join('')}</div>
+    <div class="sg-colleague-grid">${SG_GEAR.map(renderGearCard).join('')}</div>
     <div class="sg-section-label">📋 甲級證照（水晶購買）</div>
-    <div class="sg-collection-grid">${certByTier('甲').map(renderCertCard).join('')}</div>
+    <div class="sg-colleague-grid">${certByTier('甲').map(renderCertCard).join('')}</div>
     <div class="sg-section-label">📋 乙級證照（水晶購買）</div>
-    <div class="sg-collection-grid">${certByTier('乙').map(renderCertCard).join('')}</div>
+    <div class="sg-colleague-grid">${certByTier('乙').map(renderCertCard).join('')}</div>
     <div class="sg-section-label">📋 丙級證照（水晶購買）</div>
-    <div class="sg-collection-grid">${certByTier('丙').map(renderCertCard).join('')}</div>
+    <div class="sg-colleague-grid">${certByTier('丙').map(renderCertCard).join('')}</div>
     <div class="sg-section-label">📋 專業證照／訓練證書（水晶購買）</div>
-    <div class="sg-collection-grid">${certByTier('特殊').map(renderCertCard).join('')}</div>
+    <div class="sg-colleague-grid">${certByTier('特殊').map(renderCertCard).join('')}</div>
   `;
 }
 
@@ -3700,9 +3703,10 @@ function sgUpdateNumbers() {
 function sgPerformClick(opts) {
   const isAuto = !!(opts && opts.isAuto);
   const comboMult = (opts && opts.comboMult) || 1;
+  const silentDrop = !!(opts && opts.silentDrop);
   const now = Date.now();
 
-  const critChance = 0.08 + sgCollectionCritBonus()/100 + (sg.itemCritBonus||0)/100 + sgAchvBonusSum('crit')/100;
+  const critChance = 0.08 + sgColleagueCritBonus()/100 + (sg.itemCritBonus||0)/100 + sgAchvBonusSum('crit')/100;
   let isCrit = Math.random() < critChance;
   if (sg.guaranteedCritUntil && now < sg.guaranteedCritUntil) isCrit = true;
   const critMult = isCrit ? (3 + (sg.itemCritMultBonus||0)) : 1;
@@ -3724,9 +3728,10 @@ function sgPerformClick(opts) {
   sg.daily.clicks++;
   sg.daily.xpEarned += gain;
 
-  sgTryDropItem('click');
+  // 寶箱只由「真人手動點擊」觸發，自動點擊(松鼠/道具/水晶)純粹負責衝數值，不佔用寶箱池
+  const dropResult = isAuto ? null : sgTryDropItem('click', silentDrop);
 
-  return { gain, isCrit };
+  return { gain, isCrit, dropResult };
 }
 
 function sgClick(evt) {
@@ -3822,14 +3827,14 @@ function sgAutoClickTick() {
   let totalGain = 0, anyCrit = false;
   const simN = Math.min(n, CAP);
   for (let i=0; i<simN; i++) {
-    const { gain, isCrit } = sgPerformClick({ isAuto:true });
+    const { gain, isCrit } = sgPerformClick({ isAuto:true }); // 自動點擊不觸發寶箱掉落
     totalGain += gain;
     if (isCrit) anyCrit = true;
   }
   if (n > CAP) {
     // 極端數值下的統計估算，避免單一tick跑上萬次迴圈
     const remain = n - CAP;
-    const critChance = 0.08 + sgCollectionCritBonus()/100 + (sg.itemCritBonus||0)/100 + sgAchvBonusSum('crit')/100;
+    const critChance = 0.08 + sgColleagueCritBonus()/100 + (sg.itemCritBonus||0)/100 + sgAchvBonusSum('crit')/100;
     const avgMult = 1 + critChance*2; // 期望值近似：(1-p)*1 + p*3
     const gain = Math.round(remain * sgEffClickPower() * avgMult);
     sgAddXp(gain);
