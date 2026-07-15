@@ -526,6 +526,31 @@
     background:#EEF7F0; color:#246332; border-radius:10px; padding:10px 14px; font-size:12px;
     margin-bottom:14px; text-align:center; border-left:3px solid #2D7A3E;
   }
+
+  /* 收假報告面板 */
+  .sg-welcome-panel {
+    background:linear-gradient(160deg,#2b1a4a,#1a3a5c); border-radius:16px; padding:18px 16px;
+    color:white; margin-bottom:14px; text-align:center; box-shadow:0 6px 20px rgba(0,0,0,0.2);
+  }
+  .sg-welcome-title { font-size:15px; font-weight:800; margin-bottom:4px; }
+  .sg-welcome-duration { font-size:12px; opacity:0.8; margin-bottom:12px; }
+  .sg-welcome-xp-box {
+    background:rgba(255,255,255,0.1); border-radius:12px; padding:12px; margin-bottom:10px;
+  }
+  .sg-welcome-xp-label { font-size:11px; opacity:0.75; }
+  .sg-welcome-xp-num { font-size:24px; font-weight:800; color:#7ED9A8; margin-top:2px; }
+  .sg-welcome-drops-box {
+    background:rgba(255,255,255,0.08); border-radius:12px; padding:10px 12px; margin-bottom:12px; text-align:left;
+  }
+  .sg-welcome-drops-title { font-size:12px; font-weight:800; margin-bottom:6px; text-align:center; }
+  .sg-welcome-drop-row { font-size:11px; padding:3px 0; display:flex; justify-content:space-between; gap:8px; }
+  .sg-welcome-btn-row { display:flex; gap:8px; }
+  .sg-welcome-btn {
+    flex:1; padding:10px; border:none; border-radius:10px; font-size:12px; font-weight:800;
+    cursor:pointer; font-family:inherit;
+  }
+  .sg-welcome-btn.primary { background:#FFD700; color:#4a2a00; }
+  .sg-welcome-btn.secondary { background:rgba(255,255,255,0.15); color:white; }
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -2912,6 +2937,7 @@ function openSlimeGame() {
   sg._offlineGain = offlineGain;
   sg._offlineSec = elapsedSec;
   sg._offlineDoubled = false;
+  sg._offlineChecked = elapsedSec > 5;
   sg._offlineDrops = elapsedSec > 5 ? sgRollOfflineDrops(cappedSec/3600) : [];
 
   document.getElementById('slimeGameOverlay').classList.add('open');
@@ -3028,20 +3054,40 @@ function sgRender() {
   const effClick = sgEffClickPower();
 
   const offlineDrops = sg._offlineDrops || [];
-  const offlineDropsHtml = offlineDrops.length ? `
-    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(45,122,62,0.3);">
-      <div style="font-weight:800;margin-bottom:4px;">🎁 離開期間開了 ${offlineDrops.length} 個寶箱！</div>
+  const showWelcome = sg._offlineGain > 0 || offlineDrops.length > 0 || sg._offlineChecked;
+  const canDouble = sg._offlineGain > 0 && !sg._offlineDoubled && sg.dailyDoubleDate !== sgTodayStr();
+
+  const dropsBoxHtml = offlineDrops.length ? `
+    <div class="sg-welcome-drops-box">
+      <div class="sg-welcome-drops-title">🎁 期間自動開啟了 ${offlineDrops.length} 個寶箱！</div>
       ${offlineDrops.map(r => {
         const meta = SG_RARITY_META[r.itemDef.rarity];
-        return `<div style="font-size:11px;color:${meta.color};">・${meta.label}｜${r.itemDef.name}${r.duplicate?`（重複+${r.crystalGain}💠）`:'（新獲得）'}</div>`;
+        const suffix = r.duplicate ? `<span style="color:#FFD700;">重複+${r.crystalGain}💠</span>` : `<span style="color:#7ED9A8;">新獲得</span>`;
+        return `<div class="sg-welcome-drop-row"><span style="color:${meta.color==='#8B9AA8'?'#C8CDD2':meta.color};">[${meta.label}] ${r.itemDef.name}</span>${suffix}</div>`;
       }).join('')}
-    </div>` : '';
+    </div>` : (sg._offlineChecked ? `
+    <div class="sg-welcome-drops-box" style="text-align:center;">
+      <div class="sg-welcome-drops-title">📦 本次冒險未取得寶箱，需再接再厲！</div>
+      <div style="font-size:10px;opacity:0.75;line-height:1.6;">
+        寶箱有機會在<b>點擊</b>、<b>放置</b>、<b>離線</b>時隨機出現，<br>
+        持續遊玩就有機會開到更多稀有道具 🍀
+      </div>
+    </div>` : '');
 
-  const offlineHtml = (sg._offlineGain > 0 || offlineDrops.length > 0) ? `
-    <div class="sg-offline-toast">
-      ${sg._offlineGain > 0 ? `🎉 離開了 ${sgFormatDuration(sg._offlineSec)}，蝸牛小弟們幫你賺了 <b>+${sgFormatNum(sg._offlineGain)}</b> 經驗！` : `👋 歡迎回來！離開了 ${sgFormatDuration(sg._offlineSec)}`}
-      ${sg._offlineGain > 0 && !sg._offlineDoubled && sg.dailyDoubleDate !== sgTodayStr() ? `<br><button class="sg-buy-btn" style="margin-top:8px;" onclick="sgDoubleOffline()">🎬 再領一次雙倍（每日一次）</button>` : ''}
-      ${offlineDropsHtml}
+  const offlineHtml = showWelcome ? `
+    <div class="sg-welcome-panel">
+      <div class="sg-welcome-title">💤 歡迎回來，守護者！</div>
+      <div class="sg-welcome-duration">在你離線的 ${sgFormatDuration(sg._offlineSec)} 裡…</div>
+      ${sg._offlineGain > 0 ? `
+      <div class="sg-welcome-xp-box">
+        <div class="sg-welcome-xp-label">史萊姆們默默工作，產出了</div>
+        <div class="sg-welcome-xp-num">+${sgFormatNum(sg._offlineGain)} XP</div>
+      </div>` : ''}
+      ${dropsBoxHtml}
+      <div class="sg-welcome-btn-row">
+        ${canDouble ? `<button class="sg-welcome-btn primary" onclick="sgDoubleOffline()">🎬 雙倍領取（每日一次）</button>` : ''}
+        <button class="sg-welcome-btn secondary" onclick="sgDismissWelcome()">${canDouble ? '直接收下' : '收下獎勵'}</button>
+      </div>
     </div>` : '';
 
   document.getElementById('sgBody').innerHTML = `
@@ -3333,6 +3379,14 @@ function sgAchvTabHtml() {
   }).join('');
   const totalTiers = SG_ACHV_CATEGORIES.reduce((s,c)=>s+sgAchvTier(c),0);
   return `<div style="font-size:11px;color:#999;text-align:center;margin-bottom:10px;">成就無上限，數值越高加成越強</div>${rows}<div style="font-size:11px;color:#aaa;text-align:center;margin-top:8px;">總計已達成 ${totalTiers} 階</div>`;
+}
+
+function sgDismissWelcome() {
+  sg._offlineGain = 0;
+  sg._offlineDrops = [];
+  sg._offlineChecked = false;
+  sgSave();
+  sgRender();
 }
 
 function sgDoubleOffline() {
