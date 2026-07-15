@@ -2551,14 +2551,24 @@ function sgCheckAchvTierUps() {
 
 
 const SG_SHOP = [
-  { id:'click',  name:'💪 點擊力訓練', desc:'每次點擊 +1 經驗', baseCost:10,  costMul:1.15, effect:'click', amount:1 },
-  { id:'helper1',name:'🐌 蝸牛小弟',   desc:'+1 經驗/秒',       baseCost:25,  costMul:1.13, effect:'rate',  amount:1 },
-  { id:'helper2',name:'🐢 烏龜工班',   desc:'+5 經驗/秒',       baseCost:150, costMul:1.14, effect:'rate',  amount:5 },
-  { id:'helper3',name:'🔧 維修小隊',   desc:'+20 經驗/秒',      baseCost:800, costMul:1.15, effect:'rate',  amount:20 },
-  { id:'helper4',name:'🏗️ 營繕大隊',   desc:'+100 經驗/秒',     baseCost:4000,costMul:1.16, effect:'rate',  amount:100 },
-  { id:'helper5',name:'🚁 空拋支援',   desc:'+500 經驗/秒',     baseCost:20000,   costMul:1.16, effect:'rate', amount:500 },
-  { id:'helper6',name:'🏭 史萊姆工廠', desc:'+2500 經驗/秒',    baseCost:120000,  costMul:1.17, effect:'rate', amount:2500 },
-  { id:'helper7',name:'🛰️ 衛星維修站', desc:'+12000 經驗/秒',   baseCost:800000,  costMul:1.18, effect:'rate', amount:12000 },
+  { id:'click',   category:'maintenance', name:'💪 點擊力訓練',   desc:'每次點擊 +1 經驗',  baseCost:10,      costMul:1.15,  effect:'click', amount:1 },
+  { id:'helper1', category:'maintenance', name:'🐌 蝸牛小弟',     desc:'+1 經驗/秒',        baseCost:25,      costMul:1.13,  effect:'rate',  amount:1 },
+  { id:'click2',  category:'hotel',       name:'🧳 行李員',       desc:'每次點擊 +2 經驗',  baseCost:60,      costMul:1.14,  effect:'click', amount:2 },
+  { id:'helper2', category:'maintenance', name:'🐢 烏龜工班',     desc:'+5 經驗/秒',        baseCost:150,     costMul:1.14,  effect:'rate',  amount:5 },
+  { id:'click3',  category:'hotel',       name:'🍽️ 餐飲部主管',   desc:'每次點擊 +3 經驗',  baseCost:300,     costMul:1.15,  effect:'click', amount:3 },
+  { id:'helper8', category:'hotel',       name:'🛎️ 房務阿姨',     desc:'+10 經驗/秒',       baseCost:400,     costMul:1.135, effect:'rate',  amount:10 },
+  { id:'helper3', category:'maintenance', name:'🔧 維修小隊',     desc:'+20 經驗/秒',       baseCost:800,     costMul:1.15,  effect:'rate',  amount:20 },
+  { id:'click4',  category:'hotel',       name:'🎩 禮賓部',       desc:'每次點擊 +8 經驗',  baseCost:1500,    costMul:1.16,  effect:'click', amount:8 },
+  { id:'helper9', category:'hotel',       name:'🏨 櫃台接待',     desc:'+50 經驗/秒',       baseCost:2000,    costMul:1.145, effect:'rate',  amount:50 },
+  { id:'helper4', category:'maintenance', name:'🏗️ 營繕大隊',     desc:'+100 經驗/秒',      baseCost:4000,    costMul:1.16,  effect:'rate',  amount:100 },
+  { id:'click5',  category:'hotel',       name:'💆 SPA技師',      desc:'每次點擊 +20 經驗', baseCost:8000,    costMul:1.17,  effect:'click', amount:20 },
+  { id:'helper10',category:'hotel',       name:'🚪 客房整理組',   desc:'+250 經驗/秒',      baseCost:10000,   costMul:1.155, effect:'rate',  amount:250 },
+  { id:'helper5', category:'maintenance', name:'🚁 空拋支援',     desc:'+500 經驗/秒',      baseCost:20000,   costMul:1.16,  effect:'rate',  amount:500 },
+  { id:'helper11',category:'hotel',       name:'🏊 泳池救生員',   desc:'+1200 經驗/秒',     baseCost:50000,   costMul:1.165, effect:'rate',  amount:1200 },
+  { id:'helper6', category:'maintenance', name:'🏭 史萊姆工廠',   desc:'+2500 經驗/秒',     baseCost:120000,  costMul:1.17,  effect:'rate',  amount:2500 },
+  { id:'helper12',category:'hotel',       name:'🎪 宴會廳團隊',   desc:'+6000 經驗/秒',     baseCost:300000,  costMul:1.175, effect:'rate',  amount:6000 },
+  { id:'helper7', category:'maintenance', name:'🛰️ 衛星維修站',   desc:'+12000 經驗/秒',    baseCost:800000,  costMul:1.18,  effect:'rate',  amount:12000 },
+  { id:'helper13',category:'hotel',       name:'👔 總經理',       desc:'+60000 經驗/秒',    baseCost:3000000, costMul:1.19,  effect:'rate',  amount:60000 },
 ];
 
 const SG_COLLECTION = [
@@ -2570,6 +2580,8 @@ const SG_COLLECTION = [
   { id:'f6', emoji:'🦎', name:'蜥蜴神射手', stat:'crit',      perLevel:1,   baseCost:5,  costMul:1.65, statLabel:'會心機率' },
   { id:'f7', emoji:'🐿️', name:'松鼠快手',   stat:'autoclick', perLevel:0.3, baseCost:8,  costMul:1.7,  statLabel:'自動點擊/秒' },
   { id:'f8', emoji:'🦫', name:'河狸工程師', stat:'offlinecap',perLevel:1,   baseCost:6,  costMul:1.6,  statLabel:'離線上限(hr)' },
+  { id:'f9', emoji:'🦜', name:'大廳鸚鵡',   stat:'hotelBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'旅館商品加成' },
+  { id:'f10',emoji:'🐝', name:'領班蜜蜂',   stat:'maintBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'維修商品加成' },
 ];
 
 const SG_RARITY_CHANCE = { legendary:5, rare:25, common:70 };
@@ -2622,6 +2634,7 @@ function sgDefaultState() {
     maxCombo: 0,
     lastClickTime: 0,
     achvSeenTiers: {},  // 各成就分類已通知過的最高階層 { catId: tier }
+    _migratedShopCalc: false,  // 舊存檔載入時會觸發一次遷移(見 sgLoad)
     crystals: 0,
     prestigeCount: 0,
     crystalClickLv: 0,  // 永久點擊強化等級
@@ -2659,6 +2672,13 @@ function sgLoad() {
   if (!sg.charMult) sg.charMult = {};
   // 舊存檔沒有 lifetimeXp 欄位時，用目前 totalXp 補上底線(保守估計)
   if (!sg.lifetimeXp || sg.lifetimeXp < sg.totalXp) sg.lifetimeXp = sg.totalXp;
+  // 商店改為依 owned 數量即時計算（含分類加成），舊存檔的 clickPower/ratePerSec
+  // 是歷史累加值，遷移時重置為基底值，避免與新計算重複疊加
+  if (!sg._migratedShopCalc) {
+    sg.clickPower = 1;
+    sg.ratePerSec = 0;
+    sg._migratedShopCalc = true;
+  }
 }
 
 function sgSave() {
@@ -2807,8 +2827,21 @@ function sgShowDropBanner(result) {
   setTimeout(()=>{ banner.classList.add('sg-drop-out'); setTimeout(()=>banner.remove(), 300); }, 2600);
 }
 
+function sgCategoryBoost(category) {
+  return category==='hotel' ? sgCollectionStatSum('hotelBoost') : sgCollectionStatSum('maintBoost');
+}
+
+function sgShopContribution(effectType) {
+  return SG_SHOP.filter(i=>i.effect===effectType).reduce((sum,item) => {
+    const owned = sg.owned[item.id] || 0;
+    if (!owned) return sum;
+    const mult = 1 + sgCategoryBoost(item.category);
+    return sum + owned * item.amount * mult;
+  }, 0);
+}
+
 function sgEffClickPower() {
-  const base = sg.clickPower + sgCollectionClickBonus();
+  const base = sg.clickPower + sgShopContribution('click') + sgCollectionClickBonus();
   const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
   const itemMult = 1 + (sg.itemGlobalClickBonus||0);
   const achvMult = 1 + sgAchvBonusSum('click');
@@ -2816,7 +2849,7 @@ function sgEffClickPower() {
 }
 
 function sgEffRate() {
-  const base = sg.ratePerSec + sgCollectionRateBonus();
+  const base = sg.ratePerSec + sgShopContribution('rate') + sgCollectionRateBonus();
   const crystalMult = 1 + 0.08*(sg.crystalRateLv||0);
   const itemMult = 1 + (sg.itemGlobalRateBonus||0);
   const achvMult = 1 + sgAchvBonusSum('rate');
@@ -3091,7 +3124,7 @@ function sgShopTabHtml() {
           ${owned>0?`<div class="sg-shop-owned">已擁有 ${owned}</div>`:''}
         </div>
         <div class="sg-buy-row">
-          <button class="sg-buy-btn" data-item="${item.id}" ${canAfford?'':'disabled'} onclick="sgBuyBatch('${item.id}',1)">x1<br>${sgFormatNum(cost)}💠</button>
+          <button class="sg-buy-btn" data-item="${item.id}" ${canAfford?'':'disabled'} onclick="sgBuyBatch('${item.id}',1)">x1<br>✨${sgFormatNum(cost)}</button>
           <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',10)">x10</button>
           <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',100)">x100</button>
           <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',Infinity)">MAX</button>
@@ -3127,8 +3160,6 @@ function sgBuyBatch(itemId, qty) {
   if (count <= 0) { showToast('經驗值不足'); return; }
   sg.xp -= cost;
   sg.owned[itemId] = (sg.owned[itemId]||0) + count;
-  if (item.effect === 'click') sg.clickPower += item.amount * count;
-  if (item.effect === 'rate') sg.ratePerSec += item.amount * count;
   sgEnsureDailyReset();
   sg.daily.buys++;
   const tierUps = sgCheckAchvTierUps();
@@ -3211,7 +3242,8 @@ function sgCollectionTabHtml() {
     const cost = Math.floor(c.baseCost * Math.pow(c.costMul, lv));
     const canAfford = sg.crystals >= cost;
     const totalBonus = lv * c.perLevel;
-    const bonusDisplay = c.stat==='autoclick' ? totalBonus.toFixed(1) : totalBonus;
+    const isPercentType = c.stat==='hotelBoost' || c.stat==='maintBoost';
+    const bonusDisplay = c.stat==='autoclick' ? totalBonus.toFixed(1) : (isPercentType ? Math.round(totalBonus*100)+'%' : totalBonus);
     return `
       <div class="sg-collect-item${lv>0?'':' locked'}">
         <div class="sg-collect-emoji">${lv>0?c.emoji:'❓'}</div>
@@ -3460,8 +3492,6 @@ function sgBuy(itemId, silent) {
   if (sg.xp < cost) return;
   sg.xp -= cost;
   sg.owned[itemId] = (sg.owned[itemId]||0) + 1;
-  if (item.effect === 'click') sg.clickPower += item.amount;
-  if (item.effect === 'rate') sg.ratePerSec += item.amount;
   sgEnsureDailyReset();
   sg.daily.buys++;
   const tierUps = sgCheckAchvTierUps();
