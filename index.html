@@ -510,10 +510,32 @@
   }
   .sg-daily-claim:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
   .sg-stage-name { font-size:13px; color:#E8761A; font-weight:700; margin-top:8px; }
+  .sg-job-rank { margin-top:8px; padding-top:8px; border-top:1px dashed #f0e0d0; }
+  .sg-job-rank-name { font-size:12px; color:#444; font-weight:700; }
+  .sg-job-rank-tier { font-size:10px; color:#8B5CF6; font-weight:800; }
+  .sg-job-rank-track { height:5px; background:#f0ece0; border-radius:3px; overflow:hidden; margin:6px 0 4px; }
+  .sg-job-rank-fill { height:100%; background:linear-gradient(90deg,#8B5CF6,#5B3FA8); border-radius:3px; transition:width 0.3s; }
+  .sg-job-rank-next { font-size:10px; color:#aaa; }
+
+  /* 職級點擊特效：中階主管(2) 星星爆發 */
+  .sg-click-fx-tier2 { position:absolute; font-size:16px; pointer-events:none; animation:sgFxTier2 0.7s ease-out forwards; }
+  @keyframes sgFxTier2 { 0%{opacity:1; transform:translate(0,0) scale(0.6);} 100%{opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.3) rotate(180deg);} }
+  /* 職級點擊特效：高階主管(3) 金幣飛濺 */
+  .sg-click-fx-tier3 { position:absolute; font-size:18px; pointer-events:none; animation:sgFxTier3 0.8s ease-out forwards; }
+  @keyframes sgFxTier3 { 0%{opacity:1; transform:translate(0,0) scale(0.7) rotate(0deg);} 100%{opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.1) rotate(360deg);} }
+  /* 職級點擊特效：集團高層(4) 金色光環脈衝 */
+  .sg-click-fx-tier4-ring {
+    position:absolute; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
+    border-radius:50%; border:3px solid #FFD700; pointer-events:none;
+    animation:sgFxTier4Ring 0.6s ease-out forwards;
+  }
+  @keyframes sgFxTier4Ring { 0%{opacity:0.9; transform:scale(0.5);} 100%{opacity:0; transform:scale(4);} }
   .sg-xp-row { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-top:10px; }
   .sg-xp-num { font-size:24px; font-weight:800; color:#1a1a1a; }
   .sg-xp-label { font-size:12px; color:#aaa; }
   .sg-xp-rate { font-size:11px; color:#2D7A3E; margin-top:4px; font-weight:600; }
+  .sg-secondary-stats { display:flex; justify-content:center; gap:14px; margin-top:4px; font-size:10px; color:#888; }
+  .sg-secondary-stats b { color:#5B3FA8; font-size:11px; }
   .sg-float { position:absolute; font-size:14px; font-weight:800; color:#E8761A; pointer-events:none; animation:sgFloat 0.8s ease-out forwards; }
   @keyframes sgFloat { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-40px);} }
   .sg-section-label { font-size:11px; font-weight:700; color:#999; text-transform:uppercase; letter-spacing:0.06em; margin:14px 0 8px; }
@@ -526,6 +548,22 @@
   .sg-shop-name { font-size:13px; font-weight:700; color:#1a1a1a; display:flex; align-items:center; gap:6px; }
   .sg-shop-desc { font-size:11px; color:#aaa; margin-top:2px; }
   .sg-shop-owned { font-size:11px; color:#2D7A3E; font-weight:700; margin-top:2px; }
+  .sg-shop-locked { opacity:0.6; background:#f5f3ef; }
+  .sg-shop-locked .sg-shop-name { color:#aaa; }
+  .sg-shop-locked .sg-shop-desc { color:#bbb; }
+  .sg-shop-cat-tag {
+    font-size:9px; font-weight:700; color:white; background:#B08968; border-radius:10px;
+    padding:1px 7px; margin-left:4px; vertical-align:middle;
+  }
+  .sg-setbonus-panel {
+    background:linear-gradient(135deg,#2b1a4a,#4a2a7a); border-radius:12px; padding:12px 14px;
+    margin-bottom:12px; color:white;
+  }
+  .sg-setbonus-title { font-size:12px; font-weight:800; margin-bottom:8px; }
+  .sg-setbonus-row { font-size:11px; margin-bottom:6px; }
+  .sg-setbonus-row:last-child { margin-bottom:0; }
+  .sg-setbonus-name { font-weight:700; margin-bottom:2px; }
+  .sg-setbonus-info { opacity:0.9; font-size:10px; }
   .sg-buy-btn {
     flex-shrink:0; padding:8px 14px; border:none; border-radius:10px; font-size:12px; font-weight:700;
     cursor:pointer; font-family:inherit; background:#E8761A; color:white; transition:all 0.15s;
@@ -2552,7 +2590,7 @@ const SG_STAGES = [
 const SG_ACHV_CATEGORIES = [
   { id:'clicks',       icon:'👆', name:'手動點擊次數', statFn:s=>s.manualClicks||0,                                           base:10,  ratio:6,   rewardType:'click',       rewardPerTier:0.03 },
   { id:'autoClicks',   icon:'🐿️', name:'自動點擊次數', statFn:s=>s.autoClicks||0,                                             base:50,  ratio:8,   rewardType:'rate',        rewardPerTier:0.03 },
-  { id:'xp',           icon:'✨', name:'累積經驗',   statFn:s=>s.lifetimeXp||0,                                             base:100, ratio:10,  rewardType:'rate',        rewardPerTier:0.03 },
+  { id:'xp',           icon:'✨', name:'累積薪水',   statFn:s=>s.lifetimeXp||0,                                             base:100, ratio:10,  rewardType:'rate',        rewardPerTier:0.03 },
   { id:'prestige',     icon:'🔮', name:'轉生次數',   statFn:s=>s.prestigeCount||0,                                          base:1,   ratio:2,   rewardType:'crystalGain', rewardPerTier:0.05 },
   { id:'colleagueLv', icon:'📖', name:'同事總等級', statFn:s=>Object.values(s.colleagueLv||{}).reduce((a,b)=>a+b,0),      base:5,   ratio:3,   rewardType:'click',       rewardPerTier:0.03 },
   { id:'items',        icon:'🎒', name:'道具收集數', statFn:s=>Object.keys(s.itemInventory||{}).length,                    base:3,   ratio:1.7, rewardType:'rate',        rewardPerTier:0.04 },
@@ -2588,24 +2626,32 @@ function sgCheckAchvTierUps() {
 
 
 const SG_SHOP = [
-  { id:'click',   category:'maintenance', name:'💪 點擊力訓練',   desc:'每次點擊 +1 經驗',  baseCost:10,      costMul:1.15,  effect:'click', amount:1 },
-  { id:'helper1', category:'maintenance', name:'🐌 蝸牛小弟',     desc:'+1 經驗/秒',        baseCost:25,      costMul:1.13,  effect:'rate',  amount:1 },
-  { id:'click2',  category:'hotel',       name:'🧳 行李員',       desc:'每次點擊 +2 經驗',  baseCost:60,      costMul:1.14,  effect:'click', amount:2 },
-  { id:'helper2', category:'maintenance', name:'🐢 烏龜工班',     desc:'+5 經驗/秒',        baseCost:150,     costMul:1.14,  effect:'rate',  amount:5 },
-  { id:'click3',  category:'hotel',       name:'🍽️ 餐飲部主管',   desc:'每次點擊 +3 經驗',  baseCost:300,     costMul:1.15,  effect:'click', amount:3 },
-  { id:'helper8', category:'hotel',       name:'🛎️ 房務阿姨',     desc:'+10 經驗/秒',       baseCost:400,     costMul:1.135, effect:'rate',  amount:10 },
-  { id:'helper3', category:'maintenance', name:'🔧 維修小隊',     desc:'+20 經驗/秒',       baseCost:800,     costMul:1.15,  effect:'rate',  amount:20 },
-  { id:'click4',  category:'hotel',       name:'🎩 禮賓部',       desc:'每次點擊 +8 經驗',  baseCost:1500,    costMul:1.16,  effect:'click', amount:8 },
-  { id:'helper9', category:'hotel',       name:'🏨 櫃台接待',     desc:'+50 經驗/秒',       baseCost:2000,    costMul:1.145, effect:'rate',  amount:50 },
-  { id:'helper4', category:'maintenance', name:'🏗️ 營繕大隊',     desc:'+100 經驗/秒',      baseCost:4000,    costMul:1.16,  effect:'rate',  amount:100 },
-  { id:'click5',  category:'hotel',       name:'💆 SPA技師',      desc:'每次點擊 +20 經驗', baseCost:8000,    costMul:1.17,  effect:'click', amount:20 },
-  { id:'helper10',category:'hotel',       name:'🚪 客房整理組',   desc:'+250 經驗/秒',      baseCost:10000,   costMul:1.155, effect:'rate',  amount:250 },
-  { id:'helper5', category:'maintenance', name:'🚁 空拋支援',     desc:'+500 經驗/秒',      baseCost:20000,   costMul:1.16,  effect:'rate',  amount:500 },
-  { id:'helper11',category:'hotel',       name:'🏊 泳池救生員',   desc:'+1200 經驗/秒',     baseCost:50000,   costMul:1.165, effect:'rate',  amount:1200 },
-  { id:'helper6', category:'maintenance', name:'🏭 史萊姆工廠',   desc:'+2500 經驗/秒',     baseCost:120000,  costMul:1.17,  effect:'rate',  amount:2500 },
-  { id:'helper12',category:'hotel',       name:'🎪 宴會廳團隊',   desc:'+6000 經驗/秒',     baseCost:300000,  costMul:1.175, effect:'rate',  amount:6000 },
-  { id:'helper7', category:'maintenance', name:'🛰️ 衛星維修站',   desc:'+12000 經驗/秒',    baseCost:800000,  costMul:1.18,  effect:'rate',  amount:12000 },
-  { id:'helper13',category:'hotel',       name:'👔 總經理',       desc:'+60000 經驗/秒',    baseCost:3000000, costMul:1.19,  effect:'rate',  amount:60000 },
+  { id:'click',   category:'maintenance', name:'💪 點擊力訓練',   desc:'每次點擊 +1 薪水',  baseCost:10,      costMul:1.15,  effect:'click', amount:1 },
+  { id:'helper1', category:'maintenance', name:'🐌 蝸牛小弟',     desc:'+1 薪水/秒',        baseCost:25,      costMul:1.13,  effect:'rate',  amount:1 },
+  { id:'adm1',    category:'admin',       name:'📠 傳真機',       desc:'每次點擊 +1.5 薪水',baseCost:45,      costMul:1.15,  effect:'click', amount:1.5, unlockReq:{itemId:'helper1',count:15} },
+  { id:'click2',  category:'hotel',       name:'🧳 行李員',       desc:'每次點擊 +2 薪水',  baseCost:60,      costMul:1.14,  effect:'click', amount:2, unlockReq:{itemId:'adm1',count:15} },
+  { id:'helper2', category:'maintenance', name:'🐢 烏龜工班',     desc:'+5 薪水/秒',        baseCost:150,     costMul:1.14,  effect:'rate',  amount:5, unlockReq:{itemId:'click2',count:15} },
+  { id:'click3',  category:'hotel',       name:'🍽️ 餐飲部主管',   desc:'每次點擊 +3 薪水',  baseCost:300,     costMul:1.15,  effect:'click', amount:3, unlockReq:{itemId:'helper2',count:15} },
+  { id:'helper8', category:'hotel',       name:'🛎️ 房務阿姨',     desc:'+10 薪水/秒',       baseCost:400,     costMul:1.135, effect:'rate',  amount:10, unlockReq:{itemId:'click3',count:15} },
+  { id:'adm2',    category:'admin',       name:'🗂️ 檔案管理員',   desc:'+15 薪水/秒',       baseCost:700,     costMul:1.14,  effect:'rate',  amount:15, unlockReq:{itemId:'helper8',count:15} },
+  { id:'helper3', category:'maintenance', name:'🔧 維修小隊',     desc:'+20 薪水/秒',       baseCost:800,     costMul:1.15,  effect:'rate',  amount:20, unlockReq:{itemId:'adm2',count:15} },
+  { id:'click4',  category:'hotel',       name:'🎩 禮賓部',       desc:'每次點擊 +8 薪水',  baseCost:1500,    costMul:1.16,  effect:'click', amount:8, unlockReq:{itemId:'helper3',count:15} },
+  { id:'helper9', category:'hotel',       name:'🏨 櫃台接待',     desc:'+50 薪水/秒',       baseCost:2000,    costMul:1.145, effect:'rate',  amount:50, unlockReq:{itemId:'click4',count:15} },
+  { id:'adm3',    category:'admin',       name:'💼 人資專員',     desc:'每次點擊 +12 薪水', baseCost:2500,    costMul:1.16,  effect:'click', amount:12, unlockReq:{itemId:'helper9',count:15} },
+  { id:'helper4', category:'maintenance', name:'🏗️ 營繕大隊',     desc:'+100 薪水/秒',      baseCost:4000,    costMul:1.16,  effect:'rate',  amount:100, unlockReq:{itemId:'adm3',count:15} },
+  { id:'adm4',    category:'admin',       name:'🏦 出納員',       desc:'+80 薪水/秒',       baseCost:6000,    costMul:1.165, effect:'rate',  amount:80, unlockReq:{itemId:'helper4',count:15} },
+  { id:'click5',  category:'hotel',       name:'💆 SPA技師',      desc:'每次點擊 +20 薪水', baseCost:8000,    costMul:1.17,  effect:'click', amount:20, unlockReq:{itemId:'adm4',count:15} },
+  { id:'helper10',category:'hotel',       name:'🚪 客房整理組',   desc:'+250 薪水/秒',      baseCost:10000,   costMul:1.155, effect:'rate',  amount:250, unlockReq:{itemId:'click5',count:15} },
+  { id:'adm5',    category:'admin',       name:'📝 行政助理',     desc:'每次點擊 +30 薪水', baseCost:15000,   costMul:1.17,  effect:'click', amount:30, unlockReq:{itemId:'helper10',count:15} },
+  { id:'helper5', category:'maintenance', name:'🚁 空拋支援',     desc:'+500 薪水/秒',      baseCost:20000,   costMul:1.16,  effect:'rate',  amount:500, unlockReq:{itemId:'adm5',count:15} },
+  { id:'adm6',    category:'admin',       name:'👔 秘書',         desc:'+400 薪水/秒',      baseCost:35000,   costMul:1.175, effect:'rate',  amount:400, unlockReq:{itemId:'helper5',count:15} },
+  { id:'helper11',category:'hotel',       name:'🏊 泳池救生員',   desc:'+1200 薪水/秒',     baseCost:50000,   costMul:1.165, effect:'rate',  amount:1200, unlockReq:{itemId:'adm6',count:15} },
+  { id:'helper6', category:'maintenance', name:'🏭 史萊姆工廠',   desc:'+2500 薪水/秒',     baseCost:120000,  costMul:1.17,  effect:'rate',  amount:2500, unlockReq:{itemId:'helper11',count:15} },
+  { id:'adm7',    category:'admin',       name:'🖋️ 法務顧問',     desc:'每次點擊 +60 薪水', baseCost:150000,  costMul:1.18,  effect:'click', amount:60, unlockReq:{itemId:'helper6',count:15} },
+  { id:'helper12',category:'hotel',       name:'🎪 宴會廳團隊',   desc:'+6000 薪水/秒',     baseCost:300000,  costMul:1.175, effect:'rate',  amount:6000, unlockReq:{itemId:'adm7',count:15} },
+  { id:'helper7', category:'maintenance', name:'🛰️ 衛星維修站',   desc:'+12000 薪水/秒',    baseCost:800000,  costMul:1.18,  effect:'rate',  amount:12000, unlockReq:{itemId:'helper12',count:15} },
+  { id:'adm8',    category:'admin',       name:'🏛️ 行政副總',     desc:'+20000 薪水/秒',    baseCost:1000000, costMul:1.185, effect:'rate',  amount:20000, unlockReq:{itemId:'helper7',count:15} },
+  { id:'helper13',category:'hotel',       name:'👔 總經理',       desc:'+60000 薪水/秒',    baseCost:3000000, costMul:1.19,  effect:'rate',  amount:60000, unlockReq:{itemId:'adm8',count:15} },
 ];
 
 const SG_COLLEAGUES = [
@@ -2619,6 +2665,7 @@ const SG_COLLEAGUES = [
   { id:'f8', emoji:'🦫', name:'河狸工程師', stat:'offlinecap',perLevel:1,   baseCost:6,  costMul:1.6,  statLabel:'離線上限(hr)' },
   { id:'f9', emoji:'🦜', name:'大廳鸚鵡',   stat:'hotelBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'旅館商品加成' },
   { id:'f10',emoji:'🐝', name:'領班蜜蜂',   stat:'maintBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'維修商品加成' },
+  { id:'f11',emoji:'🦉', name:'智慧貓頭鷹', stat:'adminBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'行政商品加成' },
 ];
 
 const SG_RARITY_CHANCE = { legendary:5, rare:25, common:70 };
@@ -2627,7 +2674,7 @@ const SG_DUPLICATE_CRYSTAL = { common:2, rare:8, legendary:30 };
 const SG_GLOBAL_ITEMS = [
   { id:'g_c1', rarity:'common', name:'產能藥水', desc:'全體產能永久+5%', type:'globalRate', value:0.05 },
   { id:'g_c2', rarity:'common', name:'點擊手套', desc:'全體點擊力永久+5%', type:'globalClick', value:0.05 },
-  { id:'g_c3', rarity:'common', name:'經驗結晶', desc:'立即獲得大量經驗', type:'instantXp', value:0.05 },
+  { id:'g_c3', rarity:'common', name:'薪水結晶', desc:'立即獲得大量薪水', type:'instantXp', value:0.05 },
   { id:'g_c4', rarity:'common', name:'慣性齒輪', desc:'自動點擊永久+0.2次/秒', type:'autoClickBonus', value:0.2 },
   { id:'g_r1', rarity:'rare', name:'產能精華', desc:'全體產能永久+15%', type:'globalRate', value:0.15 },
   { id:'g_r2', rarity:'rare', name:'狂暴符文', desc:'會心倍率永久+0.5倍', type:'critMultBonus', value:0.5 },
@@ -2646,6 +2693,40 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_c11', rarity:'common', name:'電工膠帶', desc:'全體產能永久+4%', type:'globalRate', value:0.04 },
   { id:'g_r5', rarity:'rare', name:'鉤式電流表', desc:'全體產能永久+12%', type:'globalRate', value:0.12 },
   { id:'g_r6', rarity:'rare', name:'安全掛鎖與掛牌（LOTO）', desc:'離線收益上限永久+1小時', type:'offlineHrBonus', value:1 },
+  // ── 30個新道具：掉落率提升／重新入職水晶加成／技術力磁場能量／連擊突破等 ──
+  // 普通(10)
+  { id:'g_c12', rarity:'common', name:'掉落雷達',     desc:'寶箱掉落機率永久+0.05%',   type:'dropRateBonus', value:0.0005 },
+  { id:'g_c13', rarity:'common', name:'幸運符',       desc:'幸運史萊姆出現機率永久+3%', type:'luckySpawnBonus', value:0.03 },
+  { id:'g_c14', rarity:'common', name:'入職禮金',     desc:'立即獲得 5 水晶',           type:'crystalInstant', value:5 },
+  { id:'g_c15', rarity:'common', name:'技術手冊',     desc:'立即獲得 5 技術力',         type:'techPowerInstant', value:5 },
+  { id:'g_c16', rarity:'common', name:'團隊建設券',   desc:'立即獲得 5 磁場能量',       type:'auraEnergyInstant', value:5 },
+  { id:'g_c17', rarity:'common', name:'加班津貼',     desc:'每日任務水晶獎勵永久+10%',  type:'dailyRewardBonus', value:0.10 },
+  { id:'g_c18', rarity:'common', name:'復盤筆記',     desc:'重新入職水晶量永久+5%',     type:'crystalGainBonus', value:0.05 },
+  { id:'g_c19', rarity:'common', name:'連擊延伸貼',   desc:'連擊時間窗永久+0.1秒',      type:'comboWindowBonus', value:100 },
+  { id:'g_c20', rarity:'common', name:'磁場感應器',   desc:'寶箱掉落機率永久+0.03%',    type:'dropRateBonus', value:0.0003 },
+  { id:'g_c21', rarity:'common', name:'小確幸禮包',   desc:'立即獲得 3 水晶',           type:'crystalInstant', value:3 },
+  // 稀有(10)
+  { id:'g_r7',  rarity:'rare', name:'高階掃描儀',     desc:'寶箱掉落機率永久+0.15%',    type:'dropRateBonus', value:0.0015 },
+  { id:'g_r8',  rarity:'rare', name:'資深人脈卡',     desc:'重新入職水晶量永久+15%',    type:'crystalGainBonus', value:0.15 },
+  { id:'g_r9',  rarity:'rare', name:'進修證書',       desc:'立即獲得 30 技術力',        type:'techPowerInstant', value:30 },
+  { id:'g_r10', rarity:'rare', name:'團建基金',       desc:'立即獲得 20 磁場能量',      type:'auraEnergyInstant', value:20 },
+  { id:'g_r11', rarity:'rare', name:'幸運護符',       desc:'幸運史萊姆出現機率永久+8%', type:'luckySpawnBonus', value:0.08 },
+  { id:'g_r12', rarity:'rare', name:'稀有度探測器',   desc:'寶箱掉落機率永久+0.2%',     type:'dropRateBonus', value:0.002 },
+  { id:'g_r13', rarity:'rare', name:'業務獎金',       desc:'每日任務水晶獎勵永久+25%',  type:'dailyRewardBonus', value:0.25 },
+  { id:'g_r14', rarity:'rare', name:'連擊突破卡',     desc:'連擊加成上限永久+30%',      type:'comboCapBonus', value:0.30 },
+  { id:'g_r15', rarity:'rare', name:'會心透鏡',       desc:'會心倍率永久+0.8倍',        type:'critMultBonus', value:0.8 },
+  { id:'g_r16', rarity:'rare', name:'水晶錢包',       desc:'立即獲得 25 水晶',          type:'crystalInstant', value:25 },
+  // 傳說(10)
+  { id:'g_l5',  rarity:'legendary', name:'頂級雷達',       desc:'寶箱掉落機率永久+0.4%',     type:'dropRateBonus', value:0.004 },
+  { id:'g_l6',  rarity:'legendary', name:'金牌獵頭',       desc:'重新入職水晶量永久+40%',    type:'crystalGainBonus', value:0.40 },
+  { id:'g_l7',  rarity:'legendary', name:'博士學位證書',   desc:'立即獲得 150 技術力',       type:'techPowerInstant', value:150 },
+  { id:'g_l8',  rarity:'legendary', name:'企業文化獎章',   desc:'立即獲得 100 磁場能量',     type:'auraEnergyInstant', value:100 },
+  { id:'g_l9',  rarity:'legendary', name:'幸運女神加持',   desc:'幸運史萊姆出現機率永久+20%', type:'luckySpawnBonus', value:0.20 },
+  { id:'g_l10', rarity:'legendary', name:'傳說水晶礦',     desc:'立即獲得 150 水晶',         type:'crystalInstant', value:150 },
+  { id:'g_l11', rarity:'legendary', name:'無限連擊卡',     desc:'連擊加成上限永久+100%',     type:'comboCapBonus', value:1.00 },
+  { id:'g_l12', rarity:'legendary', name:'至尊會心珠',     desc:'會心倍率永久+2倍',          type:'critMultBonus', value:2.0 },
+  { id:'g_l13', rarity:'legendary', name:'年終分紅',       desc:'每日任務水晶獎勵永久+50%',  type:'dailyRewardBonus', value:0.50 },
+  { id:'g_l14', rarity:'legendary', name:'命運轉輪',       desc:'寶箱掉落機率永久+0.6%',     type:'dropRateBonus', value:0.006 },
 ];
 
 const SG_CHAR_ITEMS = SG_COLLEAGUES.flatMap(c => [
@@ -2663,7 +2744,7 @@ const SG_RARITY_META = {
 };
 
 // ── 🎽 裝備與證照系統 ──
-// 裝備：基礎工具，用經驗值購買，買了永久生效(不需穿脫，全部同時作用)
+// 裝備：基礎工具，用薪水購買，買了永久生效(不需穿脫，全部同時作用)
 const SG_GEAR = [
   { id:'g1',  emoji:'⛑️', name:'工程安全帽',     cost:500,  currency:'xp', bonuses:[{type:'rate', value:0.03}] },
   { id:'g2',  emoji:'🧤', name:'絕緣工作手套',   cost:900,  currency:'xp', bonuses:[{type:'click', value:0.04}] },
@@ -2683,40 +2764,53 @@ const SG_GEAR_VISUAL = { head:'g1', hand:'g10' };
 
 // 證照：全部用水晶購買，買了永久生效，可同時持有全部
 const SG_CERTIFICATIONS = [
-  // 甲級
-  { id:'cert1',  tier:'甲', emoji:'🔌', name:'甲級室內配線技術士',           cost:350, bonuses:[{type:'rate', value:0.15}] },
-  { id:'cert2',  tier:'甲', emoji:'❄️', name:'甲級冷凍空調裝修技術士',       cost:350, bonuses:[{type:'rate', value:0.15}] },
-  { id:'cert3',  tier:'甲', emoji:'🦺', name:'甲級職業安全衛生業務主管',     cost:350, bonuses:[{type:'offlinehr', value:3}] },
-  { id:'cert4',  tier:'甲', emoji:'🏗️', name:'營造業甲種職業安全衛生業務主管',cost:350, bonuses:[{type:'offlinehr', value:3}] },
-  // 乙級
-  { id:'cert5',  tier:'乙', emoji:'🔌', name:'乙級室內配線技術士',           cost:150, bonuses:[{type:'rate', value:0.08}] },
-  { id:'cert6',  tier:'乙', emoji:'🏭', name:'乙級工業配線技術士',           cost:150, bonuses:[{type:'rate', value:0.08}] },
-  { id:'cert7',  tier:'乙', emoji:'❄️', name:'乙級冷凍空調裝修技術士',       cost:150, bonuses:[{type:'rate', value:0.08}] },
-  { id:'cert8',  tier:'乙', emoji:'🚰', name:'乙級自來水管配管技術士',       cost:150, bonuses:[{type:'rate', value:0.08}] },
-  { id:'cert9',  tier:'乙', emoji:'🔥', name:'乙級氣體燃料導管配管技術士',   cost:150, bonuses:[{type:'rate', value:0.08}] },
-  { id:'cert10', tier:'乙', emoji:'🛗', name:'乙級升降機裝修技術士',         cost:150, bonuses:[{type:'autoclick', value:0.10}] },
-  { id:'cert11', tier:'乙', emoji:'⚙️', name:'乙級機電整合技術士',           cost:150, bonuses:[{type:'click', value:0.08}] },
-  { id:'cert12', tier:'乙', emoji:'🔋', name:'乙級用電設備檢驗技術士',       cost:150, bonuses:[{type:'autoclick', value:0.10}] },
-  { id:'cert13', tier:'乙', emoji:'🏢', name:'乙級建築物室內裝修工程管理技術士',cost:150, bonuses:[{type:'click', value:0.08}] },
-  { id:'cert14', tier:'乙', emoji:'📐', name:'乙級建築物室內設計技術士',     cost:150, bonuses:[{type:'click', value:0.08}] },
-  { id:'cert15', tier:'乙', emoji:'🦺', name:'乙級職業安全衛生業務主管',     cost:150, bonuses:[{type:'offlinehr', value:1.5}] },
-  { id:'cert16', tier:'乙', emoji:'🏗️', name:'營造業乙種職業安全衛生業務主管',cost:150, bonuses:[{type:'offlinehr', value:1.5}] },
-  // 丙級
-  { id:'cert17', tier:'丙', emoji:'🔌', name:'丙級室內配線技術士',           cost:60,  bonuses:[{type:'rate', value:0.04}] },
-  { id:'cert18', tier:'丙', emoji:'🏭', name:'丙級工業配線技術士',           cost:60,  bonuses:[{type:'rate', value:0.04}] },
-  { id:'cert19', tier:'丙', emoji:'❄️', name:'丙級冷凍空調裝修技術士',       cost:60,  bonuses:[{type:'rate', value:0.04}] },
-  { id:'cert20', tier:'丙', emoji:'🚰', name:'丙級自來水管配管技術士',       cost:60,  bonuses:[{type:'rate', value:0.04}] },
-  { id:'cert21', tier:'丙', emoji:'🔥', name:'丙級氣體燃料導管配管技術士',   cost:60,  bonuses:[{type:'rate', value:0.04}] },
-  { id:'cert22', tier:'丙', emoji:'🛗', name:'丙級升降機裝修技術士',         cost:60,  bonuses:[{type:'autoclick', value:0.05}] },
-  { id:'cert23', tier:'丙', emoji:'⚙️', name:'丙級機電整合技術士',           cost:60,  bonuses:[{type:'click', value:0.04}] },
-  { id:'cert24', tier:'丙', emoji:'🔥', name:'丙級特定瓦斯器具裝修技術士',   cost:60,  bonuses:[{type:'rate', value:0.04}] },
-  { id:'cert25', tier:'丙', emoji:'🦺', name:'丙級職業安全衛生業務主管',     cost:60,  bonuses:[{type:'offlinehr', value:1}] },
-  { id:'cert26', tier:'丙', emoji:'🏗️', name:'營造業丙種職業安全衛生業務主管',cost:60,  bonuses:[{type:'offlinehr', value:1}] },
-  // 專業證照／訓練證書
-  { id:'cert27', tier:'特殊', emoji:'🔥', name:'防火管理人',                cost:200, bonuses:[{type:'crit', value:3}] },
-  { id:'cert28', tier:'特殊', emoji:'🚒', name:'消防設備師',                cost:280, bonuses:[{type:'crit', value:5}] },
-  { id:'cert29', tier:'特殊', emoji:'🧯', name:'消防設備士',                cost:220, bonuses:[{type:'crit', value:3}] },
-  { id:'cert30', tier:'特殊', emoji:'🦺', name:'職業安全衛生管理員',        cost:200, bonuses:[{type:'offlinehr', value:2}] },
+  // 甲級（每級 baseCost x1.4 成長）
+  { id:'cert1',  tier:'甲', emoji:'🔌', name:'甲級室內配線技術士',           baseCost:350, costMul:1.4, bonuses:[{type:'rate', value:0.03}] },
+  { id:'cert2',  tier:'甲', emoji:'❄️', name:'甲級冷凍空調裝修技術士',       baseCost:350, costMul:1.4, bonuses:[{type:'rate', value:0.03}] },
+  { id:'cert3',  tier:'甲', emoji:'🦺', name:'甲級職業安全衛生業務主管',     baseCost:350, costMul:1.4, bonuses:[{type:'offlinehr', value:0.5}] },
+  { id:'cert4',  tier:'甲', emoji:'🏗️', name:'營造業甲種職業安全衛生業務主管',baseCost:350, costMul:1.4, bonuses:[{type:'offlinehr', value:0.5}] },
+  // 乙級（每級 baseCost x1.35 成長）
+  { id:'cert5',  tier:'乙', emoji:'🔌', name:'乙級室內配線技術士',           baseCost:150, costMul:1.35, bonuses:[{type:'rate', value:0.02}] },
+  { id:'cert6',  tier:'乙', emoji:'🏭', name:'乙級工業配線技術士',           baseCost:150, costMul:1.35, bonuses:[{type:'rate', value:0.02}] },
+  { id:'cert7',  tier:'乙', emoji:'❄️', name:'乙級冷凍空調裝修技術士',       baseCost:150, costMul:1.35, bonuses:[{type:'rate', value:0.02}] },
+  { id:'cert8',  tier:'乙', emoji:'🚰', name:'乙級自來水管配管技術士',       baseCost:150, costMul:1.35, bonuses:[{type:'rate', value:0.02}] },
+  { id:'cert9',  tier:'乙', emoji:'🔥', name:'乙級氣體燃料導管配管技術士',   baseCost:150, costMul:1.35, bonuses:[{type:'rate', value:0.02}] },
+  { id:'cert10', tier:'乙', emoji:'🛗', name:'乙級升降機裝修技術士',         baseCost:150, costMul:1.35, bonuses:[{type:'autoclick', value:0.025}] },
+  { id:'cert11', tier:'乙', emoji:'⚙️', name:'乙級機電整合技術士',           baseCost:150, costMul:1.35, bonuses:[{type:'click', value:0.02}] },
+  { id:'cert12', tier:'乙', emoji:'🔋', name:'乙級用電設備檢驗技術士',       baseCost:150, costMul:1.35, bonuses:[{type:'autoclick', value:0.025}] },
+  { id:'cert13', tier:'乙', emoji:'🏢', name:'乙級建築物室內裝修工程管理技術士',baseCost:150, costMul:1.35, bonuses:[{type:'click', value:0.02}] },
+  { id:'cert14', tier:'乙', emoji:'📐', name:'乙級建築物室內設計技術士',     baseCost:150, costMul:1.35, bonuses:[{type:'click', value:0.02}] },
+  { id:'cert15', tier:'乙', emoji:'🦺', name:'乙級職業安全衛生業務主管',     baseCost:150, costMul:1.35, bonuses:[{type:'offlinehr', value:0.3}] },
+  { id:'cert16', tier:'乙', emoji:'🏗️', name:'營造業乙種職業安全衛生業務主管',baseCost:150, costMul:1.35, bonuses:[{type:'offlinehr', value:0.3}] },
+  // 丙級（每級 baseCost x1.3 成長）
+  { id:'cert17', tier:'丙', emoji:'🔌', name:'丙級室內配線技術士',           baseCost:60,  costMul:1.3, bonuses:[{type:'rate', value:0.01}] },
+  { id:'cert18', tier:'丙', emoji:'🏭', name:'丙級工業配線技術士',           baseCost:60,  costMul:1.3, bonuses:[{type:'rate', value:0.01}] },
+  { id:'cert19', tier:'丙', emoji:'❄️', name:'丙級冷凍空調裝修技術士',       baseCost:60,  costMul:1.3, bonuses:[{type:'rate', value:0.01}] },
+  { id:'cert20', tier:'丙', emoji:'🚰', name:'丙級自來水管配管技術士',       baseCost:60,  costMul:1.3, bonuses:[{type:'rate', value:0.01}] },
+  { id:'cert21', tier:'丙', emoji:'🔥', name:'丙級氣體燃料導管配管技術士',   baseCost:60,  costMul:1.3, bonuses:[{type:'rate', value:0.01}] },
+  { id:'cert22', tier:'丙', emoji:'🛗', name:'丙級升降機裝修技術士',         baseCost:60,  costMul:1.3, bonuses:[{type:'autoclick', value:0.015}] },
+  { id:'cert23', tier:'丙', emoji:'⚙️', name:'丙級機電整合技術士',           baseCost:60,  costMul:1.3, bonuses:[{type:'click', value:0.01}] },
+  { id:'cert24', tier:'丙', emoji:'🔥', name:'丙級特定瓦斯器具裝修技術士',   baseCost:60,  costMul:1.3, bonuses:[{type:'rate', value:0.01}] },
+  { id:'cert25', tier:'丙', emoji:'🦺', name:'丙級職業安全衛生業務主管',     baseCost:60,  costMul:1.3, bonuses:[{type:'offlinehr', value:0.2}] },
+  { id:'cert26', tier:'丙', emoji:'🏗️', name:'營造業丙種職業安全衛生業務主管',baseCost:60,  costMul:1.3, bonuses:[{type:'offlinehr', value:0.2}] },
+  // 專業證照／訓練證書（每級 baseCost x1.4 成長）
+  { id:'cert27', tier:'特殊', emoji:'🔥', name:'防火管理人',                baseCost:200, costMul:1.4, bonuses:[{type:'crit', value:0.5}] },
+  { id:'cert28', tier:'特殊', emoji:'🚒', name:'消防設備師',                baseCost:280, costMul:1.4, bonuses:[{type:'crit', value:0.8}] },
+  { id:'cert29', tier:'特殊', emoji:'🧯', name:'消防設備士',                baseCost:220, costMul:1.4, bonuses:[{type:'crit', value:0.5}] },
+  { id:'cert30', tier:'特殊', emoji:'🦺', name:'職業安全衛生管理員',        baseCost:200, costMul:1.4, bonuses:[{type:'offlinehr', value:0.4}] },
+  { id:'cert31', tier:'特殊', emoji:'📎', name:'行政管理師',                baseCost:220, costMul:1.4, bonuses:[{type:'click', value:0.015}] },
+];
+
+// 辦公室裝潢：水晶購買，無限升級，全部同時生效
+const SG_OFFICE_DECOR = [
+  { id:'office1', emoji:'🖥️', name:'辦公桌',     baseCost:20, costMul:1.4,  bonuses:[{type:'rate', value:0.02}] },
+  { id:'office2', emoji:'🪴', name:'盆栽',       baseCost:15, costMul:1.35, bonuses:[{type:'click', value:0.015}] },
+  { id:'office3', emoji:'☕', name:'咖啡機',     baseCost:30, costMul:1.4,  bonuses:[{type:'crit', value:0.3}] },
+  { id:'office4', emoji:'🖨️', name:'影印機',     baseCost:25, costMul:1.4,  bonuses:[{type:'autoclick', value:0.03}] },
+  { id:'office5', emoji:'🏋️', name:'健身房',     baseCost:40, costMul:1.45, bonuses:[{type:'offlinehr', value:0.2}] },
+  { id:'office6', emoji:'🛋️', name:'休息室',     baseCost:35, costMul:1.4,  bonuses:[{type:'rate', value:0.025}] },
+  { id:'office7', emoji:'📺', name:'會議室設備', baseCost:30, costMul:1.4,  bonuses:[{type:'click', value:0.02}] },
+  { id:'office8', emoji:'🏆', name:'榮譽榜',     baseCost:50, costMul:1.45, bonuses:[{type:'rate', value:0.03}] },
 ];
 
 function sgEquipBonus(type) {
@@ -2726,15 +2820,111 @@ function sgEquipBonus(type) {
     g.bonuses.forEach(b => { if (b.type===type) sum += b.value; });
   });
   SG_CERTIFICATIONS.forEach(c => {
-    if (!sg.certOwned || !sg.certOwned[c.id]) return;
-    c.bonuses.forEach(b => { if (b.type===type) sum += b.value; });
+    const lv = (sg.certLv && sg.certLv[c.id]) || 0;
+    if (!lv) return;
+    c.bonuses.forEach(b => { if (b.type===type) sum += b.value * lv; });
+  });
+  SG_OFFICE_DECOR.forEach(o => {
+    const lv = (sg.officeLv && sg.officeLv[o.id]) || 0;
+    if (!lv) return;
+    o.bonuses.forEach(b => { if (b.type===type) sum += b.value * lv; });
   });
   return sum;
 }
 
+// ── 🏢 職級系統：20階，依累積薪水(lifetimeXp)晉升，分4組視覺特效 ──
+const SG_JOB_RANKS = [
+  { rank:1,  name:'工讀生',         threshold:50,          techReq:0,    auraReq:0 },
+  { rank:2,  name:'實習生',         threshold:150,         techReq:2,    auraReq:1 },
+  { rank:3,  name:'約聘專員',       threshold:450,         techReq:3,    auraReq:2 },
+  { rank:4,  name:'專員',           threshold:1350,        techReq:5,    auraReq:2 },
+  { rank:5,  name:'高級專員',       threshold:4050,        techReq:8,    auraReq:4 },
+  { rank:6,  name:'副組長',         threshold:12150,       techReq:13,   auraReq:6 },
+  { rank:7,  name:'組長',           threshold:36450,       techReq:21,   auraReq:9 },
+  { rank:8,  name:'副課長',         threshold:109350,      techReq:34,   auraReq:14 },
+  { rank:9,  name:'課長',           threshold:328050,      techReq:54,   auraReq:21 },
+  { rank:10, name:'副理',           threshold:984150,      techReq:86,   auraReq:33 },
+  { rank:11, name:'經理',           threshold:2952450,     techReq:137,  auraReq:52 },
+  { rank:12, name:'資深經理',       threshold:8857350,     techReq:220,  auraReq:80 },
+  { rank:13, name:'協理',           threshold:26572050,    techReq:352,  auraReq:124 },
+  { rank:14, name:'副總經理',       threshold:79716150,    techReq:563,  auraReq:192 },
+  { rank:15, name:'總經理',         threshold:239148450,   techReq:901,  auraReq:298 },
+  { rank:16, name:'執行副總裁',     threshold:717445350,   techReq:1441, auraReq:462 },
+  { rank:17, name:'集團副總裁',     threshold:2152336050,  techReq:2306, auraReq:716 },
+  { rank:18, name:'集團資深副總裁', threshold:6457008150,  techReq:3689, auraReq:1110 },
+  { rank:19, name:'集團總裁',       threshold:19371024450, techReq:5903, auraReq:1720 },
+  { rank:20, name:'集團CEO',        threshold:58113073350, techReq:9445, auraReq:2667 },
+];
+
+// 4組視覺特效分級：1-5基層／6-10中階主管／11-15高階主管／16-20集團高層
+function sgJobRankTier(rank) {
+  if (rank <= 5) return 1;
+  if (rank <= 10) return 2;
+  if (rank <= 15) return 3;
+  return 4;
+}
+
+// 職級判定為三維複合條件：薪水、技術力、磁場能量必須同時達標才能晉升到該階
+function sgRankMet(r) {
+  return (sg.lifetimeXp||0) >= r.threshold && (sg.techPower||0) >= r.techReq && (sg.auraEnergy||0) >= r.auraReq;
+}
+
+function sgGetJobRank() {
+  let current = SG_JOB_RANKS[0];
+  for (const r of SG_JOB_RANKS) { if (sgRankMet(r)) current = r; }
+  return current;
+}
+
+function sgJobRankProgress() {
+  const current = sgGetJobRank();
+  const idx = SG_JOB_RANKS.findIndex(r=>r.rank===current.rank);
+  const next = SG_JOB_RANKS[idx+1];
+  if (!next) return { current, next:null, pct:100 };
+  const xpSpan = next.threshold - current.threshold;
+  const xpDone = (sg.lifetimeXp||0) - current.threshold;
+  const xpPct = Math.min(100, Math.max(0, Math.round(xpDone/xpSpan*100)));
+  const techPct = next.techReq>0 ? Math.min(100, Math.round((sg.techPower||0)/next.techReq*100)) : 100;
+  const auraPct = next.auraReq>0 ? Math.min(100, Math.round((sg.auraEnergy||0)/next.auraReq*100)) : 100;
+  // 綜合進度取三者最小值：任何一項沒跟上，整體進度就卡在那一項
+  const pct = Math.min(xpPct, techPct, auraPct);
+  return { current, next, pct, xpPct, techPct, auraPct };
+}
+
+function sgJobRankHtml() {
+  const { current, next, xpPct, techPct, auraPct } = sgJobRankProgress();
+  const tierLabel = {1:'基層', 2:'中階主管', 3:'高階主管', 4:'集團高層'}[sgJobRankTier(current.rank)];
+  if (!next) {
+    return `
+      <div class="sg-job-rank-name">🏢 ${current.name}　<span class="sg-job-rank-tier">[${tierLabel}]</span></div>
+      <div class="sg-job-rank-next" style="color:#E0A800;font-weight:800;">👑 已達到職涯巔峰！</div>
+    `;
+  }
+  const missingParts = [];
+  if (xpPct < 100) missingParts.push('薪水');
+  if (techPct < 100) missingParts.push('技術力');
+  if (auraPct < 100) missingParts.push('磁場能量');
+  const hintText = missingParts.length
+    ? `似乎還有進步空間：${missingParts.join('、')}尚未達標，繼續努力吧`
+    : `即將迎來升遷的好消息…`;
+  return `
+    <div class="sg-job-rank-name">🏢 ${current.name}　<span class="sg-job-rank-tier">[${tierLabel}]</span></div>
+    <div class="sg-job-rank-next">${hintText}</div>
+  `;
+}
+
+// 檢查是否升職，回傳新職級(若無升職則回傳null)
+function sgCheckJobPromotion() {
+  const current = sgGetJobRank();
+  if (current.rank > (sg.seenJobRank||1)) {
+    sg.seenJobRank = current.rank;
+    return current;
+  }
+  return null;
+}
+
 const SG_DAILY_TEMPLATES = [
   { id:'d1', name:'今日點擊 50 次',     type:'clicks',   target:50, rewardCrystal:2 },
-  { id:'d2', name:'今日賺取指定經驗',   type:'xpEarned', dynamicTarget:true, rewardCrystal:5 },
+  { id:'d2', name:'今日賺取指定薪水',   type:'xpEarned', dynamicTarget:true, rewardCrystal:5 },
   { id:'d3', name:'購買 3 次升級',      type:'buys',     target:3, rewardCrystal:3 },
 ];
 
@@ -2756,6 +2946,7 @@ function sgDefaultState() {
     lastClickTime: 0,
     achvSeenTiers: {},  // 各成就分類已通知過的最高階層 { catId: tier }
     _migratedShopCalc: false,  // 舊存檔載入時會觸發一次遷移(見 sgLoad)
+    _migratedTechAura: false,  // 技術力/磁場能量回填遷移旗標
     crystals: 0,
     prestigeCount: 0,
     crystalClickLv: 0,  // 永久點擊強化等級
@@ -2765,7 +2956,12 @@ function sgDefaultState() {
     itemCritMultBonus: 0,   // 道具帶來的永久會心倍率加成(基礎3倍+此值)
     itemComboWindowBonus: 0,// 道具帶來的永久連擊時間窗加成(毫秒)
     gearOwned: {},    // 已購買的裝備 { id: true }（全部同時生效，不需穿戴切換）
-    certOwned: {},    // 已取得的證照 { id: true }
+    certLv: {},       // 證照等級 { id: level }（無限升級，取代舊版一次性 certOwned）
+    officeLv: {},     // 辦公室裝潢等級 { id: level }
+    seenJobRank: 1,   // 已通知過的最高職級（用於升職提示）
+    seenSetBonuses: {}, // 已通知過的套裝加成 { 'category_threshold': true }
+    techPower: 0,     // 技術力(來自證照升級累積)
+    auraEnergy: 0,    // 磁場能量(來自辦公室裝潢升級累積)
     legacyColleagueArray: [],    // (舊版相容用，已棄用)
     colleagueLv: {},  // 圖鑑夥伴等級 { id: level }
     itemInventory: {}, // 已獲得道具 { itemId: count }
@@ -2774,11 +2970,15 @@ function sgDefaultState() {
     itemCritBonus: 0,      // 百分點
     itemOfflineBonus: 0,   // 小數(0.5=+50%)
     itemOfflineHrBonus: 0, // 道具帶來的離線收益上限加成(小時)
+    itemDropRateBonus: 0,     // 道具帶來的寶箱掉落機率加成(小數)
+    itemCrystalGainBonus: 0,  // 道具帶來的重新入職水晶量加成(小數)
+    itemLuckySpawnBonus: 0,   // 道具帶來的幸運史萊姆出現機率加成(小數)
+    itemDailyRewardBonus: 0,  // 道具帶來的每日任務水晶獎勵加成(小數)
+    itemComboCapBonus: 0,     // 道具帶來的連擊加成上限突破(小數，疊加在原本100%封頂上)
     charMult: {},          // 角色專屬加成 { charId: 累計比例 }
     burstClicksRemaining: 0,
     burstMult: 1,
     guaranteedCritUntil: 0,
-    autoBuy: false,
     dailyDoubleDate: '',   // 上次使用雙倍離線收益的日期
     daily: { date:'', clicks:0, xpEarned:0, buys:0, claimed:[] },
     luckyClickCount: 0,
@@ -2800,8 +3000,32 @@ function sgLoad() {
   if (!sg.colleagueLv) sg.colleagueLv = {};
   if (!sg.itemInventory) sg.itemInventory = {};
   if (!sg.gearOwned) sg.gearOwned = {};
-  if (!sg.certOwned) sg.certOwned = {};
+  if (!sg.certLv) sg.certLv = {};
+  if (!sg.officeLv) sg.officeLv = {};
+  // 舊版一次性證照(certOwned布林值)遷移為等級1
+  if (sg.certOwned && typeof sg.certOwned === 'object') {
+    Object.keys(sg.certOwned).forEach(id => {
+      if (sg.certOwned[id] && !sg.certLv[id]) sg.certLv[id] = 1;
+    });
+  }
+  if (!sg.seenJobRank) sg.seenJobRank = 1;
+  if (!sg.seenSetBonuses) sg.seenSetBonuses = {};
   if (!sg.charMult) sg.charMult = {};
+  if (typeof sg.techPower !== 'number') sg.techPower = 0;
+  if (typeof sg.auraEnergy !== 'number') sg.auraEnergy = 0;
+  // 技術力/磁場能量是本次新增的追蹤欄位，回填既有已升級的證照/裝潢對應點數(只執行一次)
+  if (!sg._migratedTechAura) {
+    let techBackfill = 0;
+    Object.keys(sg.certLv||{}).forEach(id => {
+      const def = SG_CERTIFICATIONS.find(c=>c.id===id);
+      if (def) techBackfill += sgCertTechGain(def.tier) * sg.certLv[id];
+    });
+    let auraBackfill = 0;
+    Object.keys(sg.officeLv||{}).forEach(id => { auraBackfill += sg.officeLv[id]; });
+    sg.techPower += techBackfill;
+    sg.auraEnergy += auraBackfill;
+    sg._migratedTechAura = true;
+  }
   // 舊存檔沒有 lifetimeXp 欄位時，用目前 totalXp 補上底線(保守估計)
   if (!sg.lifetimeXp || sg.lifetimeXp < sg.totalXp) sg.lifetimeXp = sg.totalXp;
   // 舊存檔沒有自動點擊功能，過去累積的 totalClicks 全部視為手動點擊
@@ -2831,6 +3055,11 @@ function sgGetStage() {
 function sgShopCost(item) {
   const owned = sg.owned[item.id] || 0;
   return Math.floor(item.baseCost * Math.pow(item.costMul, owned));
+}
+
+function sgIsShopItemUnlocked(item) {
+  if (!item.unlockReq) return true;
+  return (sg.owned[item.unlockReq.itemId] || 0) >= item.unlockReq.count;
 }
 
 function sgTodayStr() {
@@ -2916,6 +3145,30 @@ function sgApplyItemEffect(itemDef) {
       sg.itemGlobalRateBonus = (sg.itemGlobalRateBonus||0) + 0.10;
       sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + 0.10;
       break;
+    case 'dropRateBonus':
+      sg.itemDropRateBonus = (sg.itemDropRateBonus||0) + itemDef.value;
+      break;
+    case 'crystalGainBonus':
+      sg.itemCrystalGainBonus = (sg.itemCrystalGainBonus||0) + itemDef.value;
+      break;
+    case 'luckySpawnBonus':
+      sg.itemLuckySpawnBonus = (sg.itemLuckySpawnBonus||0) + itemDef.value;
+      break;
+    case 'dailyRewardBonus':
+      sg.itemDailyRewardBonus = (sg.itemDailyRewardBonus||0) + itemDef.value;
+      break;
+    case 'comboCapBonus':
+      sg.itemComboCapBonus = (sg.itemComboCapBonus||0) + itemDef.value;
+      break;
+    case 'techPowerInstant':
+      sg.techPower = (sg.techPower||0) + itemDef.value;
+      break;
+    case 'auraEnergyInstant':
+      sg.auraEnergy = (sg.auraEnergy||0) + itemDef.value;
+      break;
+    case 'crystalInstant':
+      sg.crystals = (sg.crystals||0) + itemDef.value;
+      break;
   }
 }
 
@@ -2934,7 +3187,8 @@ function sgObtainItem(itemDef) {
 }
 
 function sgTryDropItem(source, silent) {
-  const chance = source==='click' ? 0.002 : 0.001; // 點擊：僅手動點擊觸發；tick：放置本身固定機率
+  const baseChance = source==='click' ? 0.002 : 0.001; // 點擊：僅手動點擊觸發；tick：放置本身固定機率
+  const chance = baseChance + (sg.itemDropRateBonus||0);
   if (Math.random() >= chance) return null;
   const rarity = sgRollRarity();
   const itemDef = sgRollItemOfRarity(rarity);
@@ -2981,8 +3235,43 @@ function sgShowDropBanner(result) {
 }
 
 // 批次點擊(自動點擊一次tick內)如果同時開出多個寶箱，合併成單一橫幅顯示，避免多個橫幅疊在同一位置
+// 套裝加成：持有同分類商品達到門檻時觸發的加成
+const SG_SET_BONUSES = [
+  { category:'maintenance', threshold:500,  bonus:0.10, name:'維修天團' },
+  { category:'maintenance', threshold:1000, bonus:0.15, name:'維修傳奇' },
+  { category:'hotel',       threshold:500,  bonus:0.10, name:'五星服務' },
+  { category:'hotel',       threshold:1000, bonus:0.15, name:'金牌旅館' },
+  { category:'admin',       threshold:500,  bonus:0.10, name:'行政效率' },
+  { category:'admin',       threshold:1000, bonus:0.15, name:'行政典範' },
+];
+
+function sgCategoryOwnedTotal(category) {
+  return SG_SHOP.filter(i=>i.category===category).reduce((s,i)=>s+(sg.owned[i.id]||0), 0);
+}
+
+function sgSetBonusSum(category) {
+  const total = sgCategoryOwnedTotal(category);
+  return SG_SET_BONUSES.filter(b=>b.category===category && total>=b.threshold).reduce((s,b)=>s+b.bonus, 0);
+}
+
 function sgCategoryBoost(category) {
-  return category==='hotel' ? sgColleagueStatSum('hotelBoost') : sgColleagueStatSum('maintBoost');
+  const colleagueStat = category==='hotel' ? 'hotelBoost' : (category==='admin' ? 'adminBoost' : 'maintBoost');
+  return sgColleagueStatSum(colleagueStat) + sgSetBonusSum(category);
+}
+
+// 檢查套裝加成是否剛跨過新門檻，回傳新啟動的套裝清單(用於顯示通知)
+function sgCheckSetBonusUnlocks() {
+  if (!sg.seenSetBonuses) sg.seenSetBonuses = {};
+  const newlyActive = [];
+  SG_SET_BONUSES.forEach(b => {
+    const key = b.category + '_' + b.threshold;
+    const total = sgCategoryOwnedTotal(b.category);
+    if (total >= b.threshold && !sg.seenSetBonuses[key]) {
+      sg.seenSetBonuses[key] = true;
+      newlyActive.push(b);
+    }
+  });
+  return newlyActive;
 }
 
 function sgShopContribution(effectType) {
@@ -2994,13 +3283,29 @@ function sgShopContribution(effectType) {
   }, 0);
 }
 
+// 水晶持有加成：即使不花掉，光是持有水晶本身就有被動全體加成(無上限，係數極低)
+function sgCrystalHoldBonus() {
+  return Math.sqrt(sg.crystals||0) * 0.002;
+}
+
+// 技術力被動加成(來自證照升級累積，無上限，係數極低，優先度低於同事系統)
+function sgTechPowerBonus() {
+  return Math.sqrt(sg.techPower||0) * 0.001;
+}
+
+// 磁場能量被動加成(來自辦公室裝潢升級累積，無上限，係數極低，優先度低於同事系統)
+function sgAuraEnergyBonus() {
+  return Math.sqrt(sg.auraEnergy||0) * 0.001;
+}
+
 function sgEffClickPower() {
   const base = sg.clickPower + sgShopContribution('click') + sgColleagueClickBonus();
   const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
   const itemMult = 1 + (sg.itemGlobalClickBonus||0);
   const achvMult = 1 + sgAchvBonusSum('click');
   const equipMult = 1 + sgEquipBonus('click');
-  return base * crystalMult * itemMult * achvMult * equipMult;
+  const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult;
 }
 
 function sgEffRate() {
@@ -3009,7 +3314,8 @@ function sgEffRate() {
   const itemMult = 1 + (sg.itemGlobalRateBonus||0);
   const achvMult = 1 + sgAchvBonusSum('rate');
   const equipMult = 1 + sgEquipBonus('rate');
-  return base * crystalMult * itemMult * achvMult * equipMult;
+  const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult;
 }
 
 function sgTotalAutoClickPerSec() {
@@ -3044,7 +3350,7 @@ function sgPrestigeThreshold() {
 
 function sgPrestigeCrystalGain() {
   const base = Math.floor(Math.sqrt(sg.totalXp / 1000));
-  const mult = 1 + sgAchvBonusSum('crystalGain');
+  const mult = 1 + sgAchvBonusSum('crystalGain') + (sg.itemCrystalGainBonus||0);
   return Math.floor(base * mult);
 }
 
@@ -3052,7 +3358,7 @@ function onSlimeIconClick() {
   sgClickCount++;
   clearTimeout(sgClickTimer);
   sgClickTimer = setTimeout(()=>{ sgClickCount = 0; }, 1500);
-  if (sgClickCount >= 7) {
+  if (sgClickCount >= 2) {
     sgClickCount = 0;
     openSlimeGame();
   }
@@ -3090,26 +3396,23 @@ function openSlimeGame() {
     if (rate > 0) {
       sgAddXp(rate);
       sgUpdateNumbers();
+      const promotion = sgCheckJobPromotion();
+      if (promotion) {
+        showToast(`🎉 恭喜升職！你現在是「${promotion.name}」了！`);
+        sgRender();
+      } else {
+        const jobRankEl = document.getElementById('sgJobRank');
+        if (jobRankEl) jobRankEl.innerHTML = sgJobRankHtml();
+      }
     }
     sgTryDropItem('tick');    // 放置本身的寶箱機率(與點擊分開)
     sgAutoClickTick();        // 自動點擊(松鼠/水晶/道具)：模擬真實點擊，各自吃點擊寶箱機率
-    if (sg.autoBuy) sgAutoBuyTick();
   }, 1000);
 
   if (sgLuckyInterval) clearInterval(sgLuckyInterval);
   sgLuckyInterval = setInterval(()=>{
-    if (!sg._luckyActive && Math.random() < 0.22) sgSpawnLucky();
+    if (!sg._luckyActive && Math.random() < (0.22 + (sg.itemLuckySpawnBonus||0))) sgSpawnLucky();
   }, 5000);
-}
-
-function sgAutoBuyTick() {
-  // 買得起的項目中，挑最便宜的自動購買
-  let cheapest = null, cheapestCost = Infinity;
-  SG_SHOP.forEach(item => {
-    const cost = sgShopCost(item);
-    if (sg.xp >= cost && cost < cheapestCost) { cheapest = item; cheapestCost = cost; }
-  });
-  if (cheapest) sgBuy(cheapest.id, true);
 }
 
 function closeSlimeGame() {
@@ -3235,9 +3538,14 @@ function sgRender() {
     <div class="sg-stage" id="sgStage">
       <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgSlimeSvg(stage)}${sgEquipOverlayHtml(stage)}</div>
       <div class="sg-stage-name">${stage.name}</div>
+      <div class="sg-job-rank" id="sgJobRank">${sgJobRankHtml()}</div>
       <div class="sg-xp-row">
         <span class="sg-xp-num" id="sgXpNum">${sgFormatNum(sg.xp)}</span>
-        <span class="sg-xp-label">經驗值</span>
+        <span class="sg-xp-label">薪水</span>
+      </div>
+      <div class="sg-secondary-stats" id="sgSecondaryStats">
+        <span>🧠 技術力 <b id="sgTechNum">${sgFormatNum(sg.techPower||0)}</b></span>
+        <span>🌀 磁場能量 <b id="sgAuraNum">${sgFormatNum(sg.auraEnergy||0)}</b></span>
       </div>
       <div class="sg-xp-rate" id="sgXpRate">+${sgFormatNum(effRate)}/秒　｜　點擊 +${sgFormatNum(effClick)}</div>
       <div class="sg-combo-bar"><div class="sg-combo-fill" id="sgComboFill"></div></div>
@@ -3245,7 +3553,7 @@ function sgRender() {
     </div>
     <div class="sg-tabs">
       <button class="sg-tab-btn${sgActiveTab==='shop'?' active':''}" onclick="sgSwitchTab('shop',this)">🛒 商店</button>
-      <button class="sg-tab-btn${sgActiveTab==='prestige'?' active':''}" onclick="sgSwitchTab('prestige',this)">🔮 轉生</button>
+      <button class="sg-tab-btn${sgActiveTab==='prestige'?' active':''}" onclick="sgSwitchTab('prestige',this)">🔮 重新入職</button>
       <button class="sg-tab-btn${sgActiveTab==='colleague'?' active':''}" onclick="sgSwitchTab('colleague',this)">📖 同事</button>
       <button class="sg-tab-btn${sgActiveTab==='equip'?' active':''}" onclick="sgSwitchTab('equip',this)">🎽 裝備</button>
       <button class="sg-tab-btn${sgActiveTab==='inventory'?' active':''}" onclick="sgSwitchTab('inventory',this)">🎒 道具</button>
@@ -3301,13 +3609,26 @@ function sgInventoryTabHtml() {
 
 function sgShopTabHtml() {
   const shopHtml = SG_SHOP.map(item => {
+    const unlocked = sgIsShopItemUnlocked(item);
+    if (!unlocked) {
+      const reqItem = SG_SHOP.find(s=>s.id===item.unlockReq.itemId);
+      const reqOwned = sg.owned[item.unlockReq.itemId] || 0;
+      return `
+      <div class="sg-shop-item sg-shop-locked">
+        <div class="sg-shop-info">
+          <div class="sg-shop-name">🔒 未解鎖</div>
+          <div class="sg-shop-desc">擁有 ${item.unlockReq.count} 個「${reqItem?reqItem.name.replace(/^\S+\s/,''):'?'}」即可解鎖（目前 ${reqOwned}）</div>
+        </div>
+      </div>`;
+    }
     const owned = sg.owned[item.id] || 0;
     const cost = sgShopCost(item);
     const canAfford = sg.xp >= cost;
+    const catLabel = {maintenance:'維修', hotel:'旅館', admin:'行政'}[item.category];
     return `
       <div class="sg-shop-item">
         <div class="sg-shop-info">
-          <div class="sg-shop-name">${item.name}</div>
+          <div class="sg-shop-name">${item.name} <span class="sg-shop-cat-tag">${catLabel}</span></div>
           <div class="sg-shop-desc">${item.desc}</div>
           ${owned>0?`<div class="sg-shop-owned">已擁有 ${owned}</div>`:''}
         </div>
@@ -3320,11 +3641,30 @@ function sgShopTabHtml() {
       </div>`;
   }).join('');
   return `
-    <label style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#666;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-      🤖 自動購買最便宜升級
-      <input type="checkbox" ${sg.autoBuy?'checked':''} onchange="sgToggleAutoBuy(this.checked)" style="width:18px;height:18px;accent-color:#E8761A;">
-    </label>
+    ${sgSetBonusPanelHtml()}
     ${shopHtml}`;
+}
+
+// 套裝加成面板：顯示各分類目前持有總數與門檻進度
+function sgSetBonusPanelHtml() {
+  const cats = ['maintenance','hotel','admin'];
+  const catLabel = {maintenance:'🔧 維修天團', hotel:'🏨 五星服務', admin:'🏛️ 行政效率'};
+  const rows = cats.map(cat => {
+    const total = sgCategoryOwnedTotal(cat);
+    const bonuses = SG_SET_BONUSES.filter(b=>b.category===cat);
+    const activeBonuses = bonuses.filter(b=>total>=b.threshold);
+    const nextBonus = bonuses.find(b=>total<b.threshold);
+    const activeSum = activeBonuses.reduce((s,b)=>s+b.bonus,0);
+    return `
+      <div class="sg-setbonus-row">
+        <div class="sg-setbonus-name">${catLabel[cat]}</div>
+        <div class="sg-setbonus-info">
+          持有 ${sgFormatNum(total)} 件　${activeSum>0?`<span style="color:#2D7A3E;font-weight:800;">已啟動+${Math.round(activeSum*100)}%</span>`:''}
+          ${nextBonus?`<span style="color:#aaa;"> ｜ 下一階門檻 ${sgFormatNum(nextBonus.threshold)}</span>`:''}
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="sg-setbonus-panel"><div class="sg-setbonus-title">🎖️ 套裝效果</div>${rows}</div>`;
 }
 
 function sgCalcBuyQty(item, qty) {
@@ -3345,21 +3685,18 @@ function sgBuyBatch(itemId, qty) {
   const item = SG_SHOP.find(s=>s.id===itemId);
   if (!item) return;
   const { count, cost } = sgCalcBuyQty(item, qty);
-  if (count <= 0) { showToast('經驗值不足'); return; }
+  if (count <= 0) { showToast('薪水不足'); return; }
   sg.xp -= cost;
   sg.owned[itemId] = (sg.owned[itemId]||0) + count;
   sgEnsureDailyReset();
   sg.daily.buys++;
   const tierUps = sgCheckAchvTierUps();
+  const setBonusUps = sgCheckSetBonusUnlocks();
   sgSave();
   sgRender();
   showToast(`✓ 購買「${item.name.replace(/^\S+\s/,'')}」x${count}`);
   tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
-}
-
-function sgToggleAutoBuy(checked) {
-  sg.autoBuy = checked;
-  sgSave();
+  setBonusUps.forEach(b => showToast(`🎖️ 套裝效果啟動：${b.name}！${({maintenance:'維修',hotel:'旅館',admin:'行政'})[b.category]}類產能額外+${Math.round(b.bonus*100)}%`));
 }
 
 function sgPrestigeTabHtml() {
@@ -3376,13 +3713,14 @@ function sgPrestigeTabHtml() {
     <div class="sg-prestige-box">
       <div style="font-size:11px;opacity:0.8;">💎 目前水晶</div>
       <div class="sg-prestige-crystal">${sg.crystals} 💠</div>
+      <div style="font-size:12px;color:#7ED9A8;font-weight:700;margin-top:2px;">持有加成：全體薪水/點擊力 +${Math.round(sgCrystalHoldBonus()*100)}%（無需花費，光是持有即生效，上限50%）</div>
       <div class="sg-prestige-desc">
-        轉生會重置經驗值、點擊力、產能與已購買升級，換取「水晶」。<br>
-        累積經驗達 <b>${sgFormatNum(threshold)}</b> 才能轉生（目前進度 ${progress}%）。<br>
-        本次轉生預計可獲得 <b>${crystalGain} 💠</b>
+        重新入職會重置薪水、點擊力、產能與已購買升級，換取「水晶」。<br>
+        累積薪水達 <b>${sgFormatNum(threshold)}</b> 才能重新入職（目前進度 ${progress}%）。<br>
+        本次重新入職預計可獲得 <b>${crystalGain} 💠</b>
       </div>
       <button class="sg-prestige-btn" ${canPrestige?'':'disabled'} onclick="sgDoPrestige()">
-        ${canPrestige ? '✨ 立即轉生' : `尚未達成（${progress}%）`}
+        ${canPrestige ? '✨ 立即重新入職' : `尚未達成（${progress}%）`}
       </button>
 
       <div class="sg-talent-current" style="margin-top:14px; text-align:left;">
@@ -3410,26 +3748,32 @@ function sgPrestigeTabHtml() {
         </div>
       </div>
     </div>
-    <div style="font-size:11px;color:#aaa;text-align:center;">已轉生 ${sg.prestigeCount} 次</div>
+    <div style="font-size:11px;color:#aaa;text-align:center;">已重新入職 ${sg.prestigeCount} 次</div>
   `;
 }
 
 function sgUpdateStageDisplay() {
   const rateEl = document.getElementById('sgXpRate');
   if (rateEl) rateEl.textContent = `+${sgFormatNum(sgEffRate())}/秒　｜　點擊 +${sgFormatNum(sgEffClickPower())}`;
+  const techEl = document.getElementById('sgTechNum');
+  if (techEl) techEl.textContent = sgFormatNum(sg.techPower||0);
+  const auraEl = document.getElementById('sgAuraNum');
+  if (auraEl) auraEl.textContent = sgFormatNum(sg.auraEnergy||0);
+  const jobRankEl = document.getElementById('sgJobRank');
+  if (jobRankEl) jobRankEl.innerHTML = sgJobRankHtml();
 }
 
 function sgDoPrestige() {
   const threshold = sgPrestigeThreshold();
   if (sg.totalXp < threshold) return;
   const gain = sgPrestigeCrystalGain();
-  if (!confirm(`確定要轉生嗎？\n\n將重置經驗值、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n同事、成就、道具不會重置。`)) return;
+  if (!confirm(`確定要重新入職嗎？\n\n將重置薪水、點擊力、產能與商店升級。\n獲得 ${gain} 💠 水晶（永久保留）。\n\n同事、成就、道具不會重置。`)) return;
   sg.crystals += gain;
   sg.prestigeCount++;
   sg.xp = 0; sg.totalXp = 0; sg.clickPower = 1; sg.ratePerSec = 0; sg.owned = {};
   sgSave();
   sgRender();
-  showToast(`✨ 轉生成功！獲得 ${gain} 💠 水晶`);
+  showToast(`✨ 重新入職成功！獲得 ${gain} 💠 水晶`);
 }
 
 function sgColleagueTabHtml() {
@@ -3440,7 +3784,7 @@ function sgColleagueTabHtml() {
     const totalBonus = lv * c.perLevel;
     const isPercentType = c.stat==='hotelBoost' || c.stat==='maintBoost';
     const bonusDisplay = c.stat==='autoclick' ? totalBonus.toFixed(1) : (isPercentType ? Math.round(totalBonus*100)+'%' : totalBonus);
-    const lockedClass = lv>0 ? '' : ' locked';
+    const lockedClass = (lv>0 || canAfford) ? '' : ' locked';
     const affordClass = canAfford ? ' can-afford' : '';
     return `
       <div class="sg-colleague-item${lockedClass}${affordClass}">
@@ -3453,7 +3797,7 @@ function sgColleagueTabHtml() {
   }).join('');
   return `
     <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠</div>
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受轉生影響、無等級上限</div>
+    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受重新入職影響、無等級上限</div>
     <div class="sg-colleague-grid">${items}</div>
   `;
 }
@@ -3488,15 +3832,49 @@ function sgBuyGear(id) {
   showToast(`🎽 已購買「${def.name}」，效果永久生效！`);
 }
 
-function sgBuyCertification(id) {
+function sgCertCost(def) {
+  const lv = (sg.certLv && sg.certLv[def.id]) || 0;
+  return Math.floor(def.baseCost * Math.pow(def.costMul, lv));
+}
+
+// 各證照等級每升一級所獲得的技術力點數
+function sgCertTechGain(tier) {
+  return { '甲':3, '乙':2, '丙':1, '特殊':2 }[tier] || 1;
+}
+
+function sgUpgradeCertification(id) {
   const def = SG_CERTIFICATIONS.find(c=>c.id===id);
-  if (!def || sg.certOwned[id] || sg.crystals < def.cost) return;
-  sg.crystals -= def.cost;
-  sg.certOwned[id] = true;
+  if (!def) return;
+  const cost = sgCertCost(def);
+  if (sg.crystals < cost) return;
+  sg.crystals -= cost;
+  const lv = (sg.certLv[id]||0) + 1;
+  sg.certLv[id] = lv;
+  sg.techPower = (sg.techPower||0) + sgCertTechGain(def.tier);
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
   sgUpdateStageDisplay();
-  showToast(`📋 已取得「${def.name}」，效果永久生效！`);
+  showToast(`📋 「${def.name}」升級到 Lv.${lv}！技術力 +${sgCertTechGain(def.tier)}`);
+}
+
+function sgOfficeCost(def) {
+  const lv = (sg.officeLv && sg.officeLv[def.id]) || 0;
+  return Math.floor(def.baseCost * Math.pow(def.costMul, lv));
+}
+
+function sgUpgradeOffice(id) {
+  const def = SG_OFFICE_DECOR.find(o=>o.id===id);
+  if (!def) return;
+  const cost = sgOfficeCost(def);
+  if (sg.crystals < cost) return;
+  sg.crystals -= cost;
+  const lv = (sg.officeLv[id]||0) + 1;
+  sg.officeLv[id] = lv;
+  sg.auraEnergy = (sg.auraEnergy||0) + 1;
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateStageDisplay();
+  showToast(`🏢 「${def.name}」升級到 Lv.${lv}！磁場能量 +1`);
 }
 
 // 重新渲染史萊姆本體(含裝備視覺代表)，不整頁重繪
@@ -3536,7 +3914,7 @@ function sgEquipTabHtml() {
     const canAfford = budget >= def.cost;
     const costLabel = def.currency==='xp' ? `${sgFormatNum(def.cost)} ✨` : `${def.cost} 💠`;
     return `
-      <div class="sg-colleague-item${owned?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
+      <div class="sg-colleague-item${(owned||canAfford)?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
         <div class="sg-colleague-emoji">${owned?def.emoji:'❓'}</div>
         <div class="sg-colleague-name">${owned?def.name:'未購買'}</div>
         <div class="sg-colleague-bonus">${bonusLabel(def.bonuses)}</div>
@@ -3547,34 +3925,52 @@ function sgEquipTabHtml() {
   };
 
   const renderCertCard = (def) => {
-    const owned = !!sg.certOwned[def.id];
-    const canAfford = sg.crystals >= def.cost;
+    const lv = (sg.certLv && sg.certLv[def.id]) || 0;
+    const cost = sgCertCost(def);
+    const canAfford = sg.crystals >= cost;
+    const totalBonus = def.bonuses.map(b=>({type:b.type, value:b.value*lv}));
     return `
-      <div class="sg-colleague-item${owned?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
-        <div class="sg-colleague-emoji">${owned?def.emoji:'❓'}</div>
-        <div class="sg-colleague-name">${owned?def.name:'未取得'}<span style="font-size:9px;color:#999;font-weight:400;"> [${def.tier}]</span></div>
-        <div class="sg-colleague-bonus">${bonusLabel(def.bonuses)}</div>
-        ${owned
-          ? `<div class="sg-shop-owned" style="text-align:center;margin-top:8px;">✓ 已取得（永久生效）</div>`
-          : `<div class="sg-colleague-cost">${def.cost} 💠</div><button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgBuyCertification('${def.id}')">考取</button>`}
+      <div class="sg-colleague-item${(lv>0||canAfford)?'':' locked'}${canAfford?' can-afford':''}">
+        <div class="sg-colleague-emoji">${lv>0?def.emoji:'❓'}</div>
+        <div class="sg-colleague-name">${lv>0?def.name:'未考取'}${lv>0?' Lv.'+lv:''}<span style="font-size:9px;color:#999;font-weight:400;"> [${def.tier}]</span></div>
+        <div class="sg-colleague-bonus">${lv>0?bonusLabel(totalBonus):bonusLabel(def.bonuses)+'/級'}</div>
+        <div class="sg-colleague-cost">${cost} 💠</div>
+        <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeCertification('${def.id}')">${lv>0?'升級':'考取'}</button>
+      </div>`;
+  };
+
+  const renderOfficeCard = (def) => {
+    const lv = (sg.officeLv && sg.officeLv[def.id]) || 0;
+    const cost = sgOfficeCost(def);
+    const canAfford = sg.crystals >= cost;
+    const totalBonus = def.bonuses.map(b=>({type:b.type, value:b.value*lv}));
+    return `
+      <div class="sg-colleague-item${(lv>0||canAfford)?'':' locked'}${canAfford?' can-afford':''}">
+        <div class="sg-colleague-emoji">${lv>0?def.emoji:'❓'}</div>
+        <div class="sg-colleague-name">${lv>0?def.name:'未購買'}${lv>0?' Lv.'+lv:''}</div>
+        <div class="sg-colleague-bonus">${lv>0?bonusLabel(totalBonus):bonusLabel(def.bonuses)+'/級'}</div>
+        <div class="sg-colleague-cost">${cost} 💠</div>
+        <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeOffice('${def.id}')">${lv>0?'升級':'購買'}</button>
       </div>`;
   };
 
   const certByTier = (tier) => SG_CERTIFICATIONS.filter(c=>c.tier===tier);
 
   return `
-    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　✨ 目前經驗：${sgFormatNum(sg.xp)}</div>
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">全部裝備與證照買了即永久生效，可同時持有全部、無需切換</div>
-    <div class="sg-section-label">🎽 基礎裝備（經驗值購買）</div>
+    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　✨ 目前薪水：${sgFormatNum(sg.xp)}</div>
+    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">全部裝備、證照、裝潢買了即永久生效，證照與裝潢可無限升級</div>
+    <div class="sg-section-label">🎽 基礎裝備（薪水購買）</div>
     <div class="sg-colleague-grid">${SG_GEAR.map(renderGearCard).join('')}</div>
-    <div class="sg-section-label">📋 甲級證照（水晶購買）</div>
+    <div class="sg-section-label">📋 甲級證照（水晶升級，無上限）</div>
     <div class="sg-colleague-grid">${certByTier('甲').map(renderCertCard).join('')}</div>
-    <div class="sg-section-label">📋 乙級證照（水晶購買）</div>
+    <div class="sg-section-label">📋 乙級證照（水晶升級，無上限）</div>
     <div class="sg-colleague-grid">${certByTier('乙').map(renderCertCard).join('')}</div>
-    <div class="sg-section-label">📋 丙級證照（水晶購買）</div>
+    <div class="sg-section-label">📋 丙級證照（水晶升級，無上限）</div>
     <div class="sg-colleague-grid">${certByTier('丙').map(renderCertCard).join('')}</div>
-    <div class="sg-section-label">📋 專業證照／訓練證書（水晶購買）</div>
+    <div class="sg-section-label">📋 專業證照／訓練證書（水晶升級，無上限）</div>
     <div class="sg-colleague-grid">${certByTier('特殊').map(renderCertCard).join('')}</div>
+    <div class="sg-section-label">🏢 辦公室裝潢（水晶升級，無上限）</div>
+    <div class="sg-colleague-grid">${SG_OFFICE_DECOR.map(renderOfficeCard).join('')}</div>
   `;
 }
 
@@ -3599,7 +3995,7 @@ function sgDailyTabHtml() {
         </button>
       </div>`;
   }).join('');
-  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">每日 00:00 重置，經驗目標依你目前產能自動調整</div>${items}`;
+  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">每日 00:00 重置，薪水目標依你目前產能自動調整</div>${items}`;
 }
 
 function sgClaimDaily(id) {
@@ -3609,10 +4005,11 @@ function sgClaimDaily(id) {
   const progress = sg.daily[q.type] || 0;
   if (progress < target || sg.daily.claimed.includes(id)) return;
   sg.daily.claimed.push(id);
-  sg.crystals += q.rewardCrystal;
+  const reward = Math.floor(q.rewardCrystal * (1 + (sg.itemDailyRewardBonus||0)));
+  sg.crystals += reward;
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
-  showToast(`✅ 完成每日任務！+${q.rewardCrystal} 💠`);
+  showToast(`✅ 完成每日任務！+${reward} 💠`);
 }
 
 function sgAchvTabHtml() {
@@ -3655,7 +4052,7 @@ function sgDoubleOffline() {
   sg._offlineDoubled = true;
   sgSave();
   sgRender();
-  showToast(`🎬 雙倍領取成功！再 +${sgFormatNum(sg._offlineGain)} 經驗`);
+  showToast(`🎬 雙倍領取成功！再 +${sgFormatNum(sg._offlineGain)} 薪水`);
 }
 
 function sgSpawnLucky() {
@@ -3683,7 +4080,7 @@ function sgClickLucky(el) {
   sg.luckyClickCount = (sg.luckyClickCount||0) + 1;
   sgUpdateNumbers();
   sgSave();
-  showToast(`🍀 幸運史萊姆！+${sgFormatNum(reward)} 經驗`);
+  showToast(`🍀 幸運史萊姆！+${sgFormatNum(reward)} 薪水`);
 }
 
 function sgUpdateNumbers() {
@@ -3698,7 +4095,7 @@ function sgUpdateNumbers() {
   });
 }
 
-// 點擊核心邏輯（手動與自動點擊共用）：計算會心、道具爆發、經驗、每日任務、寶箱掉落
+// 點擊核心邏輯（手動與自動點擊共用）：計算會心、道具爆發、薪水、每日任務、寶箱掉落
 // isAuto=true 時不消耗狂暴符文次數（狂暴符文僅限手動點擊觸發的爆發感）
 function sgPerformClick(opts) {
   const isAuto = !!(opts && opts.isAuto);
@@ -3743,7 +4140,8 @@ function sgClick(evt) {
   if (sg.combo > sg.maxCombo) sg.maxCombo = sg.combo;
 
   // 連擊加成：每5連擊 +10% 加成，上限100%
-  const comboMult = 1 + Math.min(Math.floor(sg.combo/5)*0.1, 1.0);
+  const comboCap = 1.0 + (sg.itemComboCapBonus||0);
+  const comboMult = 1 + Math.min(Math.floor(sg.combo/5)*0.1, comboCap);
 
   const { gain, isCrit } = sgPerformClick({ isAuto:false, comboMult });
 
@@ -3784,6 +4182,52 @@ function sgClick(evt) {
     }
   }
 
+  // 職級點擊特效：依目前職級分4組(基層無額外特效／中階星星／高階金幣／集團高層光環)
+  const jobTier = sgJobRankTier(sgGetJobRank().rank);
+  const fxCx = rect.left - boxRect.left + rect.width/2;
+  const fxCy = rect.top - boxRect.top + rect.height/2;
+  if (jobTier === 2) {
+    for (let i=0; i<2; i++) {
+      const sp = document.createElement('div');
+      sp.className = 'sg-click-fx-tier2';
+      sp.textContent = '⭐';
+      sp.style.left = fxCx + 'px';
+      sp.style.top = fxCy + 'px';
+      sp.style.setProperty('--sx', (Math.random()*50-25)+'px');
+      sp.style.setProperty('--sy', (Math.random()*-45-10)+'px');
+      stageBox.appendChild(sp);
+      setTimeout(()=>sp.remove(), 700);
+    }
+  } else if (jobTier === 3) {
+    for (let i=0; i<3; i++) {
+      const sp = document.createElement('div');
+      sp.className = 'sg-click-fx-tier3';
+      sp.textContent = '💰';
+      sp.style.left = fxCx + 'px';
+      sp.style.top = fxCy + 'px';
+      sp.style.setProperty('--sx', (Math.random()*70-35)+'px');
+      sp.style.setProperty('--sy', (Math.random()*-60-15)+'px');
+      stageBox.appendChild(sp);
+      setTimeout(()=>sp.remove(), 800);
+    }
+  } else if (jobTier === 4) {
+    const ring = document.createElement('div');
+    ring.className = 'sg-click-fx-tier4-ring';
+    ring.style.left = fxCx + 'px';
+    ring.style.top = fxCy + 'px';
+    stageBox.appendChild(ring);
+    setTimeout(()=>ring.remove(), 600);
+    const sp = document.createElement('div');
+    sp.className = 'sg-click-fx-tier3';
+    sp.textContent = '👑';
+    sp.style.left = fxCx + 'px';
+    sp.style.top = fxCy + 'px';
+    sp.style.setProperty('--sx', '0px');
+    sp.style.setProperty('--sy', '-40px');
+    stageBox.appendChild(sp);
+    setTimeout(()=>sp.remove(), 800);
+  }
+
   // 連擊條更新
   const comboFill = document.getElementById('sgComboFill');
   const comboLabel = document.getElementById('sgComboLabel');
@@ -3802,12 +4246,21 @@ function sgClick(evt) {
   // 檢查成就階層提升
   const tierUps = sgCheckAchvTierUps();
 
+  // 檢查職級升遷
+  const promotion = sgCheckJobPromotion();
+
   if (stageChanged) {
     sgRender();
     showToast('✨ 史萊姆進化成「'+newStage.name+'」了！');
+  } else if (promotion) {
+    sgRender();
+    showToast(`🎉 恭喜升職！你現在是「${promotion.name}」了！`);
   } else if (tierUps.length) {
     sgRender();
     tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
+  } else {
+    const jobRankEl = document.getElementById('sgJobRank');
+    if (jobRankEl) jobRankEl.innerHTML = sgJobRankHtml();
   }
 
   if (sg.totalClicks % 5 === 0) sgSave();
@@ -3851,6 +4304,14 @@ function sgAutoClickTick() {
     sgUpdateNumbers();
     const tierUps = sgCheckAchvTierUps();
     tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
+    const promotion = sgCheckJobPromotion();
+    if (promotion) {
+      showToast(`🎉 恭喜升職！你現在是「${promotion.name}」了！`);
+      sgRender();
+    } else {
+      const jobRankEl = document.getElementById('sgJobRank');
+      if (jobRankEl) jobRankEl.innerHTML = sgJobRankHtml();
+    }
   }
 }
 
