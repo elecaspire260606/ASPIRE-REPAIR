@@ -592,6 +592,10 @@
     background:#FDECEA; color:#C0392B; border-radius:8px; padding:8px 12px; margin-bottom:10px;
     font-size:11px; font-weight:700; text-align:center; border-left:3px solid #C0392B;
   }
+  .sg-stock-buff-alert {
+    background:#EEF7F0; color:#246332; border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #2D7A3E;
+  }
   .sg-shop-subtab {
     flex:1; padding:8px; border:none; border-radius:10px; background:#f0ece0; color:#888;
     font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
@@ -2725,7 +2729,7 @@ const SG_COLLEAGUES = [
 ];
 
 const SG_RARITY_CHANCE = { legendary:5, rare:25, common:70 };
-const SG_DUPLICATE_CRYSTAL = { common:2, rare:8, legendary:30 };
+const SG_DUPLICATE_MANNIU = { common:2, rare:8, legendary:30 };
 
 const SG_GLOBAL_ITEMS = [
   { id:'g_c1', rarity:'common', name:'產能藥水', desc:'全體產能永久+5%', type:'globalRate', value:0.05 },
@@ -3009,11 +3013,11 @@ function sgCheckJobPromotion() {
 // ── 📈 股票（賭博機制）──
 // 結果表：機率總和100%，水晶/部門完全沒有下檔風險，薪水端小賺小賠打平略正，整體期望值為正
 const SG_STOCK_OUTCOMES = [
-  { id:'smallWin',  weight:20, type:'rateBonus',    seconds:30,  label:'小賺',  tone:'good' },
-  { id:'medWin',    weight:10, type:'crystalScaled', min:15, max:25,  pct:0.05, label:'中賺',  tone:'good' },
-  { id:'bigWin',    weight:5,  type:'crystalScaled', min:60, max:120, pct:0.20, label:'大賺',  tone:'good' },
-  { id:'jackpot',   weight:2,  type:'jackpot',       min:200, max:400, pct:0.50, deptMin:10, deptMax:25, label:'頭獎', tone:'good' },
-  { id:'deptGift',  weight:8,  type:'deptGift',      min:3, max:10, label:'部門加碼',  tone:'good' },
+  { id:'smallWin',  weight:20, type:'rateBonus',    seconds:30,  buffMult:1.05, buffSec:15, label:'小賺',  tone:'good' },
+  { id:'medWin',    weight:10, type:'crystalScaled', min:15, max:25,  pct:0.05, buffMult:1.10, buffSec:20, label:'中賺',  tone:'good' },
+  { id:'bigWin',    weight:5,  type:'crystalScaled', min:60, max:120, pct:0.20, buffMult:1.15, buffSec:30, label:'大賺',  tone:'good' },
+  { id:'jackpot',   weight:2,  type:'jackpot',       min:200, max:400, pct:0.50, deptMin:10, deptMax:25, buffMult:1.25, buffSec:45, label:'頭獎', tone:'good' },
+  { id:'deptGift',  weight:8,  type:'deptGift',      min:3, max:10, buffMult:1.08, buffSec:20, label:'部門加碼',  tone:'good' },
   { id:'smallLoss', weight:30, type:'xpPct',         value:-0.04, debuffMult:0.95, debuffSec:15, label:'小賠',  tone:'bad' },
   { id:'medLoss',   weight:12, type:'xpPct',         value:-0.10, debuffMult:0.90, debuffSec:30, label:'中賠',  tone:'bad' },
   { id:'crash',     weight:3,  type:'xpPct',         value:-0.18, debuffMult:0.80, debuffSec:60, label:'慘賠',  tone:'bad' },
@@ -3036,7 +3040,16 @@ function sgStockHeatDecay() {
 
 function sgStockCost() {
   sgStockHeatDecay();
-  return Math.floor(SG_STOCK_BASE_COST * Math.pow(SG_STOCK_COST_MUL, sg.stockPlayCount||0));
+  const heatCost = SG_STOCK_BASE_COST * Math.pow(SG_STOCK_COST_MUL, sg.stockPlayCount||0);
+  const salaryBasedCost = sg.xp * 0.0002; // 隨薪水規模成長的下限,避免後期成本形同虛設
+  let cost = Math.max(heatCost, salaryBasedCost);
+  // debuff期間額外加價：削弱越嚴重，加價越兇，避免賠了就立刻加倍下注翻本
+  const debuffMult = sgStockDebuffMult();
+  if (debuffMult < 1) {
+    const deficit = 1 - debuffMult;
+    cost *= (1 + deficit*3);
+  }
+  return Math.floor(cost);
 }
 
 // 股票debuff：暫時削弱產能/點擊力，打在「賺錢能力」而非「現有存款」，避免本金少時懲罰無感
@@ -3047,6 +3060,17 @@ function sgStockDebuffMult() {
 
 function sgStockDebuffSecondsLeft() {
   const left = Math.ceil(((sg.stockDebuffUntil||0) - Date.now()) / 1000);
+  return left > 0 ? left : 0;
+}
+
+// 股票buff：贏面對稱效果，暫時提升產能/點擊力
+function sgStockBuffMult() {
+  if (Date.now() < (sg.stockBuffUntil||0)) return sg.stockBuffMult || 1;
+  return 1;
+}
+
+function sgStockBuffSecondsLeft() {
+  const left = Math.ceil(((sg.stockBuffUntil||0) - Date.now()) / 1000);
   return left > 0 ? left : 0;
 }
 
@@ -3086,11 +3110,6 @@ function sgPlayStock() {
     const delta = Math.floor(sg.xp * outcome.value);
     sg.xp = Math.max(0, sg.xp + delta);
     resultMsg = `${outcome.label}！薪水${delta>=0?'+':''}${sgFormatNum(delta)}`;
-    if (outcome.debuffMult) {
-      sg.stockDebuffMult = outcome.debuffMult;
-      sg.stockDebuffUntil = Date.now() + outcome.debuffSec*1000;
-      resultMsg += `　產能/點擊力削弱${Math.round((1-outcome.debuffMult)*100)}%（${outcome.debuffSec}秒）`;
-    }
   } else if (outcome.type === 'crystalScaled') {
     const gain = sgStockScaledCrystal(outcome.min, outcome.max, outcome.pct);
     sg.crystals += gain;
@@ -3130,6 +3149,36 @@ function sgPlayStock() {
     }
   }
 
+  // debuff：取「更嚴重」的倍率與「更晚」的到期時間，避免被新一輪較輕的結果洗掉
+  if (outcome.debuffMult) {
+    const now = Date.now();
+    const currentlyActive = now < (sg.stockDebuffUntil||0);
+    const newUntil = now + outcome.debuffSec*1000;
+    if (currentlyActive) {
+      sg.stockDebuffMult = Math.min(sg.stockDebuffMult, outcome.debuffMult);
+      sg.stockDebuffUntil = Math.max(sg.stockDebuffUntil, newUntil);
+    } else {
+      sg.stockDebuffMult = outcome.debuffMult;
+      sg.stockDebuffUntil = newUntil;
+    }
+    resultMsg += `　產能/點擊力削弱${Math.round((1-sg.stockDebuffMult)*100)}%（還剩${sgStockDebuffSecondsLeft()}秒）`;
+  }
+
+  // buff：對稱debuff，取「更高」的倍率與「更晚」的到期時間
+  if (outcome.buffMult) {
+    const now = Date.now();
+    const currentlyActive = now < (sg.stockBuffUntil||0);
+    const newUntil = now + outcome.buffSec*1000;
+    if (currentlyActive) {
+      sg.stockBuffMult = Math.max(sg.stockBuffMult, outcome.buffMult);
+      sg.stockBuffUntil = Math.max(sg.stockBuffUntil, newUntil);
+    } else {
+      sg.stockBuffMult = outcome.buffMult;
+      sg.stockBuffUntil = newUntil;
+    }
+    resultMsg += `　產能/點擊力提升${Math.round((sg.stockBuffMult-1)*100)}%（還剩${sgStockBuffSecondsLeft()}秒）`;
+  }
+
   sgSave();
   sgUpdateNumbers();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
@@ -3142,19 +3191,22 @@ function sgStockTabHtml() {
   const canAfford = sg.xp >= cost;
   const heat = sg.stockPlayCount || 0;
   const debuffLeft = sgStockDebuffSecondsLeft();
+  const buffLeft = sgStockBuffSecondsLeft();
   const rows = SG_STOCK_OUTCOMES.map(o => {
     const debuffDesc = o.debuffMult ? `　產能/點擊力-${Math.round((1-o.debuffMult)*100)}%(${o.debuffSec}秒)` : '';
-    const desc = o.type==='rateBonus' ? `相當於${o.seconds}秒產能的薪水`
+    const buffDesc = o.buffMult ? `　產能/點擊力+${Math.round((o.buffMult-1)*100)}%(${o.buffSec}秒)` : '';
+    const desc = o.type==='rateBonus' ? `相當於${o.seconds}秒產能的薪水${buffDesc}`
       : o.type==='xpPct' ? `薪水${o.value>0?'+':''}${Math.round(o.value*100)}%${debuffDesc}`
-      : o.type==='crystalScaled' ? `+${o.min}~${o.max} 💠（隨進度成長，取重新入職預期量${Math.round(o.pct*100)}%）`
-      : o.type==='deptGift' ? `免費部門商品 +${o.min}~${o.max} 件`
+      : o.type==='crystalScaled' ? `+${o.min}~${o.max} 💠（隨進度成長，取重新入職預期量${Math.round(o.pct*100)}%）${buffDesc}`
+      : o.type==='deptGift' ? `免費部門商品 +${o.min}~${o.max} 件${buffDesc}`
       : o.type==='deptLoss' ? `隨機部門商品裁撤 -${Math.round(o.pct*100)}%`
-      : `+${o.min}~${o.max} 💠（隨進度成長）加碼免費部門商品`;
+      : `+${o.min}~${o.max} 💠（隨進度成長）加碼免費部門商品${buffDesc}`;
     return `<div class="sg-stock-row ${o.tone}"><span>${o.label}（${o.weight}%）</span><span>${desc}</span></div>`;
   }).join('');
   return `
     <div class="sg-colleague-crystal-bar">✨ 薪水：${sgFormatNum(sg.xp)}　｜　💎 水晶：${sg.crystals}</div>
     ${debuffLeft>0?`<div class="sg-stock-debuff-alert">⚠️ 投資失利中：產能/點擊力削弱 ${Math.round((1-sg.stockDebuffMult)*100)}%，還剩 ${debuffLeft} 秒</div>`:''}
+    ${buffLeft>0?`<div class="sg-stock-buff-alert">🎉 投資得利中：產能/點擊力提升 ${Math.round((sg.stockBuffMult-1)*100)}%，還剩 ${buffLeft} 秒</div>`:''}
     <div class="sg-stock-panel">
       <div class="sg-stock-title">📈 上班看股票</div>
       <div class="sg-stock-desc">花一點薪水賭一把，水晶/部門獎勵永遠沒有下檔風險；輸的話薪水小虧，且會暫時削弱產能/點擊力</div>
@@ -3214,12 +3266,16 @@ function sgDefaultState() {
     stockPlays: 0,       // 累計遊玩次數(統計用)
     stockDebuffUntil: 0, // 產能/點擊力削弱debuff到期時間戳
     stockDebuffMult: 1,  // debuff倍率(例如0.8=削弱20%)
+    stockBuffMult: 1,    // buff倍率(例如1.25=提升25%)
+    stockBuffUntil: 0,   // buff到期時間戳
     autoBuy: false,   // 自動購買開關(每10秒觸發一次,買CP值最高的商品)
     techPower: 0,     // 技術力(來自證照升級累積)
     auraEnergy: 0,    // 辦公家具(來自辦公室裝潢升級累積)
     legacyColleagueArray: [],    // (舊版相容用，已棄用)
     colleagueLv: {},  // 圖鑑夥伴等級 { id: level }
     itemInventory: {}, // 已獲得道具 { itemId: count }
+    manNiu: 0,         // 蠻牛(來自重複道具轉換)
+    itemLv: {},        // 道具升級等級 { itemId: level }(用蠻牛升級,強化該道具原本效果)
     itemGlobalRateBonus: 0,
     itemGlobalClickBonus: 0,
     itemCritBonus: 0,      // 百分點
@@ -3440,13 +3496,70 @@ function sgApplyItemEffect(itemDef) {
   }
 }
 
+// 一次性即時效果道具無法升級(升級沒有意義)，其餘持續性加成道具皆可用蠻牛升級
+const SG_ITEM_INSTANT_TYPES = ['instantXp','burst','guaranteedCrit','crystalInstant','techPowerInstant','auraEnergyInstant'];
+
+function sgIsItemUpgradeable(itemDef) {
+  return !SG_ITEM_INSTANT_TYPES.includes(itemDef.type);
+}
+
+function sgItemUpgradeCost(itemId) {
+  const lv = (sg.itemLv && sg.itemLv[itemId]) || 0;
+  return Math.floor(5 * Math.pow(1.25, lv));
+}
+
+// 依道具原本效果類型，將指定的增量疊加進對應的持續性數值(升級用,delta為每級增量)
+function sgApplyItemEffectDelta(itemDef, value) {
+  switch(itemDef.type) {
+    case 'globalRate':  sg.itemGlobalRateBonus  = (sg.itemGlobalRateBonus||0) + value; break;
+    case 'globalClick': sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + value; break;
+    case 'critBonus':   sg.itemCritBonus = (sg.itemCritBonus||0) + value; break;
+    case 'offlineMult': sg.itemOfflineBonus = (sg.itemOfflineBonus||0) + value; break;
+    case 'charMult':
+      sg.charMult = sg.charMult || {};
+      sg.charMult[itemDef.charId] = (sg.charMult[itemDef.charId]||0) + value;
+      break;
+    case 'autoClickBonus':    sg.itemAutoClickBonus  = (sg.itemAutoClickBonus||0) + value; break;
+    case 'offlineHrBonus':    sg.itemOfflineHrBonus  = (sg.itemOfflineHrBonus||0) + value; break;
+    case 'critMultBonus':     sg.itemCritMultBonus   = (sg.itemCritMultBonus||0) + value; break;
+    case 'comboWindowBonus':  sg.itemComboWindowBonus= (sg.itemComboWindowBonus||0) + value; break;
+    case 'dropRateBonus':     sg.itemDropRateBonus   = (sg.itemDropRateBonus||0) + value; break;
+    case 'crystalGainBonus':  sg.itemCrystalGainBonus= (sg.itemCrystalGainBonus||0) + value; break;
+    case 'luckySpawnBonus':   sg.itemLuckySpawnBonus = (sg.itemLuckySpawnBonus||0) + value; break;
+    case 'dailyRewardBonus':  sg.itemDailyRewardBonus= (sg.itemDailyRewardBonus||0) + value; break;
+    case 'comboCapBonus':     sg.itemComboCapBonus   = (sg.itemComboCapBonus||0) + value; break;
+    case 'hourglass':
+      sg.itemComboWindowBonus = (sg.itemComboWindowBonus||0) + value;
+      sg.itemGlobalRateBonus = (sg.itemGlobalRateBonus||0) + value*0.5;
+      sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + value*0.5;
+      break;
+  }
+}
+
+function sgUpgradeItem(itemId) {
+  const itemDef = SG_ITEMS.find(i=>i.id===itemId);
+  if (!itemDef || !sgIsItemUpgradeable(itemDef)) return;
+  if (!sg.itemInventory[itemId]) { showToast('尚未擁有此道具，無法升級'); return; }
+  const cost = sgItemUpgradeCost(itemId);
+  if ((sg.manNiu||0) < cost) { showToast('🐂 蠻牛不足'); return; }
+  sg.manNiu -= cost;
+  const lv = (sg.itemLv[itemId]||0) + 1;
+  sg.itemLv[itemId] = lv;
+  const deltaValue = itemDef.value * 0.15; // 每級增加原效果的15%
+  sgApplyItemEffectDelta(itemDef, deltaValue);
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  sgUpdateStageDisplay();
+  showToast(`💪 「${itemDef.name}」升級到 Lv.${lv}！`);
+}
+
 function sgObtainItem(itemDef) {
   const owned = sg.itemInventory[itemDef.id] || 0;
   if (owned > 0) {
-    const crystalGain = SG_DUPLICATE_CRYSTAL[itemDef.rarity];
-    sg.crystals += crystalGain;
+    const manNiuGain = SG_DUPLICATE_MANNIU[itemDef.rarity];
+    sg.manNiu = (sg.manNiu||0) + manNiuGain;
     sg.itemInventory[itemDef.id] = owned + 1;
-    return { itemDef, duplicate:true, crystalGain };
+    return { itemDef, duplicate:true, manNiuGain };
   } else {
     sg.itemInventory[itemDef.id] = 1;
     sgApplyItemEffect(itemDef);
@@ -3492,7 +3605,7 @@ function sgShowDropBanner(result) {
   banner.style.background = meta.bg;
   banner.style.color = meta.color;
   banner.style.borderColor = meta.color;
-  const dupText = result.duplicate ? `（重複，轉換 ${result.crystalGain} 💠）` : '（新獲得！）';
+  const dupText = result.duplicate ? `（重複，轉換 ${result.manNiuGain} 🐂 蠻牛）` : '（新獲得！）';
   banner.innerHTML = `
     <div class="sg-drop-rarity">🎁 ${meta.label}道具${dupText}</div>
     <div class="sg-drop-name">${result.itemDef.name}</div>
@@ -3575,7 +3688,8 @@ function sgEffClickPower() {
   const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
   const colleagueMult = 1 + sgColleagueClickMultBonus();
   const debuffMult = sgStockDebuffMult();
-  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult * debuffMult;
+  const buffMult = sgStockBuffMult();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult * debuffMult * buffMult;
 }
 
 function sgEffRate() {
@@ -3587,7 +3701,8 @@ function sgEffRate() {
   const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
   const colleagueMult = 1 + sgColleagueRateMultBonus();
   const debuffMult = sgStockDebuffMult();
-  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult * debuffMult;
+  const buffMult = sgStockBuffMult();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult * debuffMult * buffMult;
 }
 
 function sgTotalAutoClickPerSec() {
@@ -3813,7 +3928,7 @@ function sgRender() {
       <div class="sg-welcome-drops-title">🎁 期間自動開啟了 ${offlineDrops.length} 個寶箱！</div>
       ${offlineDrops.map(r => {
         const meta = SG_RARITY_META[r.itemDef.rarity];
-        const suffix = r.duplicate ? `<span style="color:#FFD700;">重複+${r.crystalGain}💠</span>` : `<span style="color:#7ED9A8;">新獲得</span>`;
+        const suffix = r.duplicate ? `<span style="color:#FFD700;">重複+${r.manNiuGain}🐂</span>` : `<span style="color:#7ED9A8;">新獲得</span>`;
         return `<div class="sg-welcome-drop-row"><span style="color:${meta.color==='#8B9AA8'?'#C8CDD2':meta.color};">[${meta.label}] ${r.itemDef.name}</span>${suffix}</div>`;
       }).join('')}
     </div>` : (sg._offlineChecked ? `
@@ -3898,8 +4013,9 @@ function sgTabContentHtml() {
 
 function sgInventoryTabHtml() {
   const owned = SG_ITEMS.filter(it => (sg.itemInventory[it.id]||0) > 0);
+  const manNiuBar = `<div class="sg-colleague-crystal-bar">🐂 目前蠻牛：${sgFormatNum(sg.manNiu||0)}</div>`;
   if (!owned.length) {
-    return `<div class="empty-state" style="padding:30px 0;color:#ccc;">尚未獲得任何道具<br>點擊、放置或離線都有機會開到寶箱 🎁</div>`;
+    return manNiuBar + `<div class="empty-state" style="padding:30px 0;color:#ccc;">尚未獲得任何道具<br>點擊、放置或離線都有機會開到寶箱 🎁</div>`;
   }
   const sorted = owned.sort((a,b) => {
     const order = {legendary:0, rare:1, common:2};
@@ -3908,16 +4024,23 @@ function sgInventoryTabHtml() {
   const html = sorted.map(it => {
     const meta = SG_RARITY_META[it.rarity];
     const count = sg.itemInventory[it.id];
+    const upgradeable = sgIsItemUpgradeable(it);
+    const lv = (sg.itemLv && sg.itemLv[it.id]) || 0;
+    const cost = upgradeable ? sgItemUpgradeCost(it.id) : 0;
+    const canAfford = upgradeable && (sg.manNiu||0) >= cost;
     return `
       <div class="sg-inventory-item" style="border-left-color:${meta.color};">
         <div style="flex:1;min-width:0;">
-          <div class="sg-inv-name">${it.name} <span style="font-size:9px;color:${meta.color};font-weight:800;">[${meta.label}]</span></div>
+          <div class="sg-inv-name">${it.name} <span style="font-size:9px;color:${meta.color};font-weight:800;">[${meta.label}]</span>${lv>0?` <span style="font-size:9px;color:#8B5CF6;font-weight:800;">Lv.${lv}</span>`:''}</div>
           <div class="sg-inv-desc">${it.desc}</div>
         </div>
-        <div class="sg-inv-count" style="color:${meta.color};">x${count}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div class="sg-inv-count" style="color:${meta.color};">x${count}</div>
+          ${upgradeable ? `<button class="sg-colleague-buy" style="font-size:10px;padding:5px 10px;" ${canAfford?'':'disabled'} onclick="sgUpgradeItem('${it.id}')">升級 ${cost}🐂</button>` : ''}
+        </div>
       </div>`;
   }).join('');
-  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具</div>${html}`;
+  return manNiuBar + `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具　｜　重複道具會轉換成蠻牛，用來升級已擁有的道具</div>${html}`;
 }
 
 let sgShopSubCat = 'maintenance'; // 公司分頁目前顯示的子分類(不儲存,每次開啟預設維修類)
