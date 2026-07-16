@@ -561,6 +561,11 @@
     font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
   }
   .sg-shop-subtab.active { background:#E8761A; color:white; }
+  .sg-setbonus-mini {
+    background:#f0ece0; border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:11px; color:#666; cursor:pointer; text-align:center; font-weight:600;
+  }
+  .sg-setbonus-mini:hover { background:#e5ddd0; }
   .sg-setbonus-panel {
     background:linear-gradient(135deg,#2b1a4a,#4a2a7a); border-radius:12px; padding:12px 14px;
     margin-bottom:12px; color:white;
@@ -2604,6 +2609,11 @@ const SG_ACHV_CATEGORIES = [
   { id:'lucky',        icon:'🍀', name:'幸運史萊姆', statFn:s=>s.luckyClickCount||0,                                        base:3,   ratio:2.2, rewardType:'crit',        rewardPerTier:1 },
   { id:'crit',         icon:'🎯', name:'會心一擊',   statFn:s=>s.critCount||0,                                              base:10,  ratio:3,   rewardType:'click',       rewardPerTier:0.02 },
   { id:'combo',        icon:'🔥', name:'最高連擊',   statFn:s=>s.maxCombo||0,                                               base:10,  ratio:1.6, rewardType:'rate',        rewardPerTier:0.02 },
+  { id:'certLv',       icon:'📋', name:'證照總等級', statFn:s=>Object.values(s.certLv||{}).reduce((a,b)=>a+b,0),           base:5,   ratio:2.5, rewardType:'click',       rewardPerTier:0.025 },
+  { id:'officeLv',     icon:'🏢', name:'裝潢總等級', statFn:s=>Object.values(s.officeLv||{}).reduce((a,b)=>a+b,0),         base:5,   ratio:2.5, rewardType:'rate',        rewardPerTier:0.025 },
+  { id:'propertyLv',   icon:'🏠', name:'房地產總等級', statFn:s=>Object.values(s.propertyLv||{}).reduce((a,b)=>a+b,0),     base:2,   ratio:2.5, rewardType:'rate',        rewardPerTier:0.03 },
+  { id:'companySize',  icon:'🏭', name:'公司規模',   statFn:s=>Object.values(s.owned||{}).reduce((a,b)=>a+b,0),           base:50,  ratio:4,   rewardType:'rate',        rewardPerTier:0.03 },
+  { id:'jobRank',      icon:'💼', name:'職級',       statFn:s=>sgGetJobRank().rank,                                        base:1,   ratio:1.4, rewardType:'crystalGain', rewardPerTier:0.03 },
 ];
 
 function sgAchvTier(cat) {
@@ -3730,9 +3740,24 @@ function sgShopTabHtml() {
       🤖 自動購買CP值最高升級（每10秒觸發一次）
       <input type="checkbox" ${sg.autoBuy?'checked':''} onchange="sgToggleAutoBuy(this.checked)" style="width:18px;height:18px;accent-color:#E8761A;">
     </label>
-    ${sgSetBonusPanelHtml()}
+    ${sgSetBonusMiniHintHtml()}
     <div class="sg-shop-subtabs">${subTabs}</div>
     ${shopHtml}`;
+}
+
+// 極簡套裝提示：只顯示一行摘要，完整面板移到成就分頁查看
+function sgSetBonusMiniHintHtml() {
+  const cats = ['maintenance','hotel','admin'];
+  const activeCount = cats.filter(cat => sgSetBonusSum(cat) > 0).length;
+  const totalCats = SG_SET_BONUSES.length;
+  return `<div class="sg-setbonus-mini" onclick="sgGoToAchvTab()">
+    🎖️ 套裝效果：已啟動 ${activeCount}/3 個分類，共 ${SG_SET_BONUSES.filter(b=>sgCategoryOwnedTotal(b.category)>=b.threshold).length}/${totalCats} 階　<span style="opacity:0.6;">前往成就查看詳情 ›</span>
+  </div>`;
+}
+
+function sgGoToAchvTab() {
+  sgActiveTab = 'achv';
+  sgRender();
 }
 
 function sgSwitchShopSubCat(cat) {
@@ -4190,7 +4215,12 @@ function sgAchvTabHtml() {
       </div>`;
   }).join('');
   const totalTiers = SG_ACHV_CATEGORIES.reduce((s,c)=>s+sgAchvTier(c),0);
-  return `<div style="font-size:11px;color:#999;text-align:center;margin-bottom:10px;">成就無上限，數值越高加成越強</div>${rows}<div style="font-size:11px;color:#aaa;text-align:center;margin-top:8px;">總計已達成 ${totalTiers} 階</div>`;
+  return `
+    <div style="font-size:11px;color:#999;text-align:center;margin-bottom:10px;">成就無上限，數值越高加成越強</div>
+    ${rows}
+    <div style="font-size:11px;color:#aaa;text-align:center;margin:8px 0 14px;">總計已達成 ${totalTiers} 階</div>
+    ${sgSetBonusPanelHtml()}
+  `;
 }
 
 function sgDismissWelcome() {
