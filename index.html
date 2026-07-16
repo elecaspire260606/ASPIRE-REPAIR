@@ -567,6 +567,31 @@
     padding:1px 7px; margin-left:4px; vertical-align:middle;
   }
   .sg-shop-subtabs { display:flex; gap:6px; margin-bottom:10px; }
+
+  /* 股票賭博機制 */
+  .sg-stock-panel {
+    background:linear-gradient(135deg,#1a3a2e,#2d5a45); border-radius:14px; padding:16px;
+    text-align:center; color:white; margin-bottom:14px;
+  }
+  .sg-stock-title { font-size:15px; font-weight:800; margin-bottom:4px; }
+  .sg-stock-desc { font-size:11px; opacity:0.8; margin-bottom:12px; line-height:1.5; }
+  .sg-stock-btn {
+    width:100%; padding:14px; border:none; border-radius:12px; font-size:14px; font-weight:800;
+    cursor:pointer; font-family:inherit; background:#FFD700; color:#2b1a00;
+    box-shadow:0 4px 12px rgba(255,215,0,0.3);
+  }
+  .sg-stock-btn:disabled { background:rgba(255,255,255,0.2); color:rgba(255,255,255,0.4); box-shadow:none; cursor:not-allowed; }
+  .sg-stock-heat { font-size:11px; opacity:0.75; margin-top:10px; }
+  .sg-stock-stats { font-size:10px; opacity:0.6; margin-top:4px; }
+  .sg-stock-table { background:white; border-radius:10px; padding:6px 10px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
+  .sg-stock-row { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid #f2ede8; }
+  .sg-stock-row:last-child { border-bottom:none; }
+  .sg-stock-row.good { color:#2D7A3E; }
+  .sg-stock-row.bad { color:#C0392B; }
+  .sg-stock-debuff-alert {
+    background:#FDECEA; color:#C0392B; border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #C0392B;
+  }
   .sg-shop-subtab {
     flex:1; padding:8px; border:none; border-radius:10px; background:#f0ece0; color:#888;
     font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
@@ -2981,6 +3006,169 @@ function sgCheckJobPromotion() {
   return null;
 }
 
+// ── 📈 股票（賭博機制）──
+// 結果表：機率總和100%，水晶/部門完全沒有下檔風險，薪水端小賺小賠打平略正，整體期望值為正
+const SG_STOCK_OUTCOMES = [
+  { id:'smallWin',  weight:20, type:'rateBonus',    seconds:30,  label:'小賺',  tone:'good' },
+  { id:'medWin',    weight:10, type:'crystalScaled', min:15, max:25,  pct:0.05, label:'中賺',  tone:'good' },
+  { id:'bigWin',    weight:5,  type:'crystalScaled', min:60, max:120, pct:0.20, label:'大賺',  tone:'good' },
+  { id:'jackpot',   weight:2,  type:'jackpot',       min:200, max:400, pct:0.50, deptMin:10, deptMax:25, label:'頭獎', tone:'good' },
+  { id:'deptGift',  weight:8,  type:'deptGift',      min:3, max:10, label:'部門加碼',  tone:'good' },
+  { id:'smallLoss', weight:30, type:'xpPct',         value:-0.04, debuffMult:0.95, debuffSec:15, label:'小賠',  tone:'bad' },
+  { id:'medLoss',   weight:12, type:'xpPct',         value:-0.10, debuffMult:0.90, debuffSec:30, label:'中賠',  tone:'bad' },
+  { id:'crash',     weight:3,  type:'xpPct',         value:-0.18, debuffMult:0.80, debuffSec:60, label:'慘賠',  tone:'bad' },
+  { id:'deptLoss',  weight:10, type:'deptLoss',      pct:0.08, label:'部門裁撤',  tone:'bad' },
+];
+
+const SG_STOCK_BASE_COST = 100;      // 基礎成本(薪水)
+const SG_STOCK_COST_MUL = 1.15;      // 連續遊玩每次成本上漲15%
+const SG_STOCK_DECAY_SEC = 20;       // 每20秒未遊玩，熱度衰減1次
+
+function sgStockHeatDecay() {
+  const now = Date.now();
+  const elapsed = (now - (sg.lastStockPlayTime||0)) / 1000;
+  const decaySteps = Math.floor(elapsed / SG_STOCK_DECAY_SEC);
+  if (decaySteps > 0) {
+    sg.stockPlayCount = Math.max(0, (sg.stockPlayCount||0) - decaySteps);
+    sg.lastStockPlayTime = now - (elapsed % SG_STOCK_DECAY_SEC) * 1000;
+  }
+}
+
+function sgStockCost() {
+  sgStockHeatDecay();
+  return Math.floor(SG_STOCK_BASE_COST * Math.pow(SG_STOCK_COST_MUL, sg.stockPlayCount||0));
+}
+
+// 股票debuff：暫時削弱產能/點擊力，打在「賺錢能力」而非「現有存款」，避免本金少時懲罰無感
+function sgStockDebuffMult() {
+  if (Date.now() < (sg.stockDebuffUntil||0)) return sg.stockDebuffMult || 1;
+  return 1;
+}
+
+function sgStockDebuffSecondsLeft() {
+  const left = Math.ceil(((sg.stockDebuffUntil||0) - Date.now()) / 1000);
+  return left > 0 ? left : 0;
+}
+
+// 動態水晶獎勵：取「隨機基礎值」與「重新入職預期量的一定比例」兩者較大值，確保獎勵隨進度成長不會被固定數字拖垮
+function sgStockScaledCrystal(min, max, pct) {
+  const randomFloor = min + Math.random()*(max-min);
+  const scaled = sgPrestigeCrystalGain() * pct;
+  return Math.floor(Math.max(randomFloor, scaled));
+}
+
+function sgRollStockOutcome() {
+  const totalWeight = SG_STOCK_OUTCOMES.reduce((s,o)=>s+o.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const o of SG_STOCK_OUTCOMES) {
+    if (r < o.weight) return o;
+    r -= o.weight;
+  }
+  return SG_STOCK_OUTCOMES[0];
+}
+
+function sgPlayStock() {
+  const cost = sgStockCost();
+  if (sg.xp < cost) { showToast('薪水不足，無法上班看股票'); return; }
+  sg.xp -= cost;
+  sg.stockPlayCount = (sg.stockPlayCount||0) + 1;
+  sg.lastStockPlayTime = Date.now();
+  sg.stockPlays = (sg.stockPlays||0) + 1;
+
+  const outcome = sgRollStockOutcome();
+  let resultMsg = '';
+
+  if (outcome.type === 'rateBonus') {
+    const gain = Math.floor(sgEffRate() * outcome.seconds);
+    sgAddXp(gain);
+    resultMsg = `${outcome.label}！相當於${outcome.seconds}秒產能，薪水+${sgFormatNum(gain)}`;
+  } else if (outcome.type === 'xpPct') {
+    const delta = Math.floor(sg.xp * outcome.value);
+    sg.xp = Math.max(0, sg.xp + delta);
+    resultMsg = `${outcome.label}！薪水${delta>=0?'+':''}${sgFormatNum(delta)}`;
+    if (outcome.debuffMult) {
+      sg.stockDebuffMult = outcome.debuffMult;
+      sg.stockDebuffUntil = Date.now() + outcome.debuffSec*1000;
+      resultMsg += `　產能/點擊力削弱${Math.round((1-outcome.debuffMult)*100)}%（${outcome.debuffSec}秒）`;
+    }
+  } else if (outcome.type === 'crystalScaled') {
+    const gain = sgStockScaledCrystal(outcome.min, outcome.max, outcome.pct);
+    sg.crystals += gain;
+    resultMsg = `${outcome.label}！獲得 ${sgFormatNum(gain)} 💠`;
+  } else if (outcome.type === 'jackpot') {
+    const crystalGain = sgStockScaledCrystal(outcome.min, outcome.max, outcome.pct);
+    sg.crystals += crystalGain;
+    const deptCount = Math.floor(outcome.deptMin + Math.random()*(outcome.deptMax-outcome.deptMin));
+    const unlockedItems = SG_SHOP.filter(i=>sgIsShopItemUnlocked(i));
+    let deptMsg = '';
+    if (unlockedItems.length) {
+      const pick = unlockedItems[Math.floor(Math.random()*unlockedItems.length)];
+      sg.owned[pick.id] = (sg.owned[pick.id]||0) + deptCount;
+      deptMsg = `　免費「${pick.name.replace(/^\S+\s/,'')}」x${deptCount}`;
+    }
+    resultMsg = `🎉 ${outcome.label}！獲得 ${sgFormatNum(crystalGain)} 💠${deptMsg}`;
+  } else if (outcome.type === 'deptGift') {
+    const unlockedItems = SG_SHOP.filter(i=>sgIsShopItemUnlocked(i));
+    const deptCount = Math.floor(outcome.min + Math.random()*(outcome.max-outcome.min));
+    if (unlockedItems.length) {
+      const pick = unlockedItems[Math.floor(Math.random()*unlockedItems.length)];
+      sg.owned[pick.id] = (sg.owned[pick.id]||0) + deptCount;
+      resultMsg = `${outcome.label}！免費獲得「${pick.name.replace(/^\S+\s/,'')}」x${deptCount}`;
+    } else {
+      resultMsg = `${outcome.label}！但目前尚無可加碼的部門`;
+    }
+  } else if (outcome.type === 'deptLoss') {
+    const ownedItems = SG_SHOP.filter(i => (sg.owned[i.id]||0) > 0);
+    if (ownedItems.length) {
+      const pick = ownedItems[Math.floor(Math.random()*ownedItems.length)];
+      const current = sg.owned[pick.id];
+      const lose = Math.max(1, Math.floor(current * outcome.pct));
+      sg.owned[pick.id] = Math.max(0, current - lose);
+      resultMsg = `${outcome.label}！「${pick.name.replace(/^\S+\s/,'')}」裁撤 -${lose}`;
+    } else {
+      resultMsg = `${outcome.label}！但目前尚無部門可裁撤，逃過一劫`;
+    }
+  }
+
+  sgSave();
+  sgUpdateNumbers();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  showToast((outcome.tone==='good' ? '📈 ' : '📉 ') + resultMsg);
+}
+
+function sgStockTabHtml() {
+  sgStockHeatDecay();
+  const cost = sgStockCost();
+  const canAfford = sg.xp >= cost;
+  const heat = sg.stockPlayCount || 0;
+  const debuffLeft = sgStockDebuffSecondsLeft();
+  const rows = SG_STOCK_OUTCOMES.map(o => {
+    const debuffDesc = o.debuffMult ? `　產能/點擊力-${Math.round((1-o.debuffMult)*100)}%(${o.debuffSec}秒)` : '';
+    const desc = o.type==='rateBonus' ? `相當於${o.seconds}秒產能的薪水`
+      : o.type==='xpPct' ? `薪水${o.value>0?'+':''}${Math.round(o.value*100)}%${debuffDesc}`
+      : o.type==='crystalScaled' ? `+${o.min}~${o.max} 💠（隨進度成長，取重新入職預期量${Math.round(o.pct*100)}%）`
+      : o.type==='deptGift' ? `免費部門商品 +${o.min}~${o.max} 件`
+      : o.type==='deptLoss' ? `隨機部門商品裁撤 -${Math.round(o.pct*100)}%`
+      : `+${o.min}~${o.max} 💠（隨進度成長）加碼免費部門商品`;
+    return `<div class="sg-stock-row ${o.tone}"><span>${o.label}（${o.weight}%）</span><span>${desc}</span></div>`;
+  }).join('');
+  return `
+    <div class="sg-colleague-crystal-bar">✨ 薪水：${sgFormatNum(sg.xp)}　｜　💎 水晶：${sg.crystals}</div>
+    ${debuffLeft>0?`<div class="sg-stock-debuff-alert">⚠️ 投資失利中：產能/點擊力削弱 ${Math.round((1-sg.stockDebuffMult)*100)}%，還剩 ${debuffLeft} 秒</div>`:''}
+    <div class="sg-stock-panel">
+      <div class="sg-stock-title">📈 上班看股票</div>
+      <div class="sg-stock-desc">花一點薪水賭一把，水晶/部門獎勵永遠沒有下檔風險；輸的話薪水小虧，且會暫時削弱產能/點擊力</div>
+      <button class="sg-stock-btn" ${canAfford?'':'disabled'} onclick="sgPlayStock()">
+        上班看股票　花費 ${sgFormatNum(cost)} ✨
+      </button>
+      <div class="sg-stock-heat">🔥 目前熱度 Lv.${heat}（連續遊玩成本上漲，${SG_STOCK_DECAY_SEC}秒未玩會冷卻）</div>
+      <div class="sg-stock-stats">已上班看股票 ${sg.stockPlays||0} 次</div>
+    </div>
+    <div class="sg-section-label">🎲 賠率表（僅供參考，實際結果隨機）</div>
+    <div class="sg-stock-table">${rows}</div>
+  `;
+}
+
 const SG_DAILY_TEMPLATES = [
   { id:'d1', name:'今日點擊 50 次',     type:'clicks',   target:50, rewardCrystal:2 },
   { id:'d2', name:'今日賺取指定薪水',   type:'xpEarned', dynamicTarget:true, rewardCrystal:5 },
@@ -3021,6 +3209,11 @@ function sgDefaultState() {
     assets: 0,        // 資產貨幣(來自房地產,不受轉生影響)
     seenJobRank: 1,   // 已通知過的最高職級（用於升職提示）
     seenSetBonuses: {}, // 已通知過的套裝加成 { 'category_threshold': true }
+    stockPlayCount: 0,  // 目前連續遊玩熱度(影響成本)
+    lastStockPlayTime: 0,
+    stockPlays: 0,       // 累計遊玩次數(統計用)
+    stockDebuffUntil: 0, // 產能/點擊力削弱debuff到期時間戳
+    stockDebuffMult: 1,  // debuff倍率(例如0.8=削弱20%)
     autoBuy: false,   // 自動購買開關(每10秒觸發一次,買CP值最高的商品)
     techPower: 0,     // 技術力(來自證照升級累積)
     auraEnergy: 0,    // 辦公家具(來自辦公室裝潢升級累積)
@@ -3381,7 +3574,8 @@ function sgEffClickPower() {
   const equipMult = 1 + sgEquipBonus('click');
   const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
   const colleagueMult = 1 + sgColleagueClickMultBonus();
-  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult;
+  const debuffMult = sgStockDebuffMult();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult * debuffMult;
 }
 
 function sgEffRate() {
@@ -3392,7 +3586,8 @@ function sgEffRate() {
   const equipMult = 1 + sgEquipBonus('rate');
   const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
   const colleagueMult = 1 + sgColleagueRateMultBonus();
-  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult;
+  const debuffMult = sgStockDebuffMult();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult * debuffMult;
 }
 
 function sgTotalAutoClickPerSec() {
@@ -3669,6 +3864,7 @@ function sgRender() {
       <button class="sg-tab-btn${sgActiveTab==='shop'?' active':''}" onclick="sgSwitchTab('shop',this)">🏢 公司</button>
       <button class="sg-tab-btn${sgActiveTab==='prestige'?' active':''}" onclick="sgSwitchTab('prestige',this)">🔮 重新入職</button>
       <button class="sg-tab-btn${sgActiveTab==='colleague'?' active':''}" onclick="sgSwitchTab('colleague',this)">📖 同事</button>
+      <button class="sg-tab-btn${sgActiveTab==='stock'?' active':''}" onclick="sgSwitchTab('stock',this)">📈 股票</button>
       <button class="sg-tab-btn${sgActiveTab==='equip'?' active':''}" onclick="sgSwitchTab('equip',this)">🎽 裝備</button>
       <button class="sg-tab-btn${sgActiveTab==='realestate'?' active':''}" onclick="sgSwitchTab('realestate',this)">🏠 房地產</button>
       <button class="sg-tab-btn${sgActiveTab==='inventory'?' active':''}" onclick="sgSwitchTab('inventory',this)">🎒 道具</button>
@@ -3691,6 +3887,7 @@ function sgTabContentHtml() {
   if (sgActiveTab === 'shop') return sgShopTabHtml();
   if (sgActiveTab === 'prestige') return sgPrestigeTabHtml();
   if (sgActiveTab === 'colleague') return sgColleagueTabHtml();
+  if (sgActiveTab === 'stock') return sgStockTabHtml();
   if (sgActiveTab === 'equip') return sgEquipTabHtml();
   if (sgActiveTab === 'realestate') return sgRealEstateTabHtml();
   if (sgActiveTab === 'inventory') return sgInventoryTabHtml();
