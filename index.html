@@ -2672,20 +2672,20 @@ const SG_SHOP = [
 ];
 
 const SG_COLLEAGUES = [
-  { id:'f1', emoji:'🐌', name:'蝸牛使者',   stat:'rate',      perLevel:2,   baseCost:1,  costMul:1.6,  statLabel:'產能' },
-  { id:'f2', emoji:'🐢', name:'龜甲工頭',   stat:'rate',      perLevel:8,   baseCost:3,  costMul:1.6,  statLabel:'產能' },
-  { id:'f3', emoji:'🦊', name:'狐狸主管',   stat:'rate',      perLevel:40,  baseCost:10, costMul:1.65, statLabel:'產能' },
-  { id:'f4', emoji:'🐉', name:'守護神龍',   stat:'rate',      perLevel:150, baseCost:30, costMul:1.7,  statLabel:'產能' },
-  { id:'f5', emoji:'🐸', name:'青蛙電工',   stat:'click',     perLevel:3,   baseCost:2,  costMul:1.6,  statLabel:'點擊力' },
-  { id:'f6', emoji:'🦎', name:'蜥蜴神射手', stat:'crit',      perLevel:1,   baseCost:5,  costMul:1.65, statLabel:'會心機率' },
-  { id:'f7', emoji:'🐿️', name:'松鼠快手',   stat:'autoclick', perLevel:0.3, baseCost:8,  costMul:1.7,  statLabel:'自動點擊/秒' },
-  { id:'f8', emoji:'🦫', name:'河狸工程師', stat:'offlinecap',perLevel:1,   baseCost:6,  costMul:1.6,  statLabel:'離線上限(hr)' },
-  { id:'f9', emoji:'🦜', name:'大廳鸚鵡',   stat:'hotelBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'旅館商品加成' },
-  { id:'f10',emoji:'🐝', name:'領班蜜蜂',   stat:'maintBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'維修商品加成' },
-  { id:'f11',emoji:'🦉', name:'智慧貓頭鷹', stat:'adminBoost',perLevel:0.02,baseCost:15, costMul:1.65, statLabel:'行政商品加成' },
-  { id:'f12',emoji:'🦁', name:'首席顧問',   stat:'rate',      perLevel:500, baseCost:100,costMul:1.75, statLabel:'產能' },
-  { id:'f13',emoji:'🐘', name:'資深合夥人', stat:'click',     perLevel:12,  baseCost:60, costMul:1.7,  statLabel:'點擊力' },
-  { id:'f14',emoji:'🦅', name:'空中戰略官', stat:'autoclick', perLevel:1,   baseCost:80, costMul:1.75, statLabel:'自動點擊/秒' },
+  { id:'f1', emoji:'🐌', name:'蝸牛使者',   baseCost:1,  costMul:1.6,  statLabel:'採購折扣', bonuses:[{stat:'rateMult',perLevel:0.005},{stat:'shopDiscount',perLevel:0.001}] },
+  { id:'f2', emoji:'🐢', name:'龜甲工頭',   baseCost:3,  costMul:1.6,  statLabel:'採購折扣', bonuses:[{stat:'rateMult',perLevel:0.01}, {stat:'shopDiscount',perLevel:0.002}] },
+  { id:'f3', emoji:'🦊', name:'狐狸主管',   baseCost:10, costMul:1.65, statLabel:'採購折扣', bonuses:[{stat:'rateMult',perLevel:0.02}, {stat:'shopDiscount',perLevel:0.003}] },
+  { id:'f4', emoji:'🐉', name:'守護神龍',   baseCost:30, costMul:1.7,  statLabel:'採購折扣', bonuses:[{stat:'rateMult',perLevel:0.04}, {stat:'shopDiscount',perLevel:0.005}] },
+  { id:'f5', emoji:'🐸', name:'青蛙電工',   baseCost:2,  costMul:1.6,  statLabel:'點擊力加成', bonuses:[{stat:'clickMult',perLevel:0.01}] },
+  { id:'f6', emoji:'🦎', name:'蜥蜴神射手', baseCost:5,  costMul:1.65, statLabel:'會心機率', bonuses:[{stat:'crit',perLevel:1}] },
+  { id:'f7', emoji:'🐿️', name:'松鼠快手',   baseCost:8,  costMul:1.7,  statLabel:'自動點擊/秒', bonuses:[{stat:'autoclick',perLevel:0.3}] },
+  { id:'f8', emoji:'🦫', name:'河狸工程師', baseCost:6,  costMul:1.6,  statLabel:'離線上限(hr)', bonuses:[{stat:'offlinecap',perLevel:1}] },
+  { id:'f9', emoji:'🦜', name:'大廳鸚鵡',   baseCost:15, costMul:1.65, statLabel:'旅館商品加成', bonuses:[{stat:'hotelBoost',perLevel:0.02}] },
+  { id:'f10',emoji:'🐝', name:'領班蜜蜂',   baseCost:15, costMul:1.65, statLabel:'維修商品加成', bonuses:[{stat:'maintBoost',perLevel:0.02}] },
+  { id:'f11',emoji:'🦉', name:'智慧貓頭鷹', baseCost:15, costMul:1.65, statLabel:'行政商品加成', bonuses:[{stat:'adminBoost',perLevel:0.02}] },
+  { id:'f12',emoji:'🦁', name:'首席顧問',   baseCost:100,costMul:1.75, statLabel:'採購折扣', bonuses:[{stat:'rateMult',perLevel:0.08}, {stat:'shopDiscount',perLevel:0.01}] },
+  { id:'f13',emoji:'🐘', name:'資深合夥人', baseCost:60, costMul:1.7,  statLabel:'點擊力加成', bonuses:[{stat:'clickMult',perLevel:0.03}] },
+  { id:'f14',emoji:'🦅', name:'空中戰略官', baseCost:80, costMul:1.75, statLabel:'自動點擊/秒', bonuses:[{stat:'autoclick',perLevel:1}] },
 ];
 
 const SG_RARITY_CHANCE = { legendary:5, rare:25, common:70 };
@@ -3098,7 +3098,9 @@ function sgGetStage() {
 
 function sgShopCost(item) {
   const owned = sg.owned[item.id] || 0;
-  return Math.floor(item.baseCost * Math.pow(item.costMul, owned));
+  const rawCost = item.baseCost * Math.pow(item.costMul, owned);
+  const discount = sgColleagueShopDiscount();
+  return Math.floor(rawCost * (1 - discount));
 }
 
 function sgIsShopItemUnlocked(item) {
@@ -3122,16 +3124,21 @@ function sgEnsureDailyReset() {
 function sgColleagueLv(id) { return sg.colleagueLv[id] || 0; }
 
 function sgColleagueStatSum(stat) {
-  return SG_COLLEAGUES.filter(c => c.stat === stat)
-    .reduce((sum,c) => {
-      const base = sgColleagueLv(c.id) * c.perLevel;
-      const charBonus = (sg.charMult && sg.charMult[c.id]) || 0;
-      return sum + base * (1 + charBonus);
-    }, 0);
+  return SG_COLLEAGUES.reduce((sum,c) => {
+    const bonus = (c.bonuses||[]).find(b=>b.stat===stat);
+    if (!bonus) return sum;
+    const base = sgColleagueLv(c.id) * bonus.perLevel;
+    const charBonus = (sg.charMult && sg.charMult[c.id]) || 0;
+    return sum + base * (1 + charBonus);
+  }, 0);
 }
 
-function sgColleagueRateBonus()    { return sgColleagueStatSum('rate'); }
-function sgColleagueClickBonus()   { return sgColleagueStatSum('click'); }
+function sgColleagueShopDiscount() {
+  return Math.min(0.9, sgColleagueStatSum('shopDiscount')); // 上限90%折扣，避免商品變免費
+}
+
+function sgColleagueRateMultBonus()  { return sgColleagueStatSum('rateMult'); }
+function sgColleagueClickMultBonus() { return sgColleagueStatSum('clickMult'); }
 function sgColleagueCritBonus()    { return sgColleagueStatSum('crit'); }       // 百分點
 function sgColleagueAutoClickPerSec() { return sgColleagueStatSum('autoclick'); }
 function sgColleagueOfflineCapHours() { return sgColleagueStatSum('offlinecap'); }
@@ -3343,23 +3350,25 @@ function sgAuraEnergyBonus() {
 }
 
 function sgEffClickPower() {
-  const base = sg.clickPower + sgShopContribution('click') + sgColleagueClickBonus();
+  const base = sg.clickPower + sgShopContribution('click');
   const crystalMult = 1 + 0.08*(sg.crystalClickLv||0);
   const itemMult = 1 + (sg.itemGlobalClickBonus||0);
   const achvMult = 1 + sgAchvBonusSum('click');
   const equipMult = 1 + sgEquipBonus('click');
   const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
-  return base * crystalMult * itemMult * achvMult * equipMult * holdMult;
+  const colleagueMult = 1 + sgColleagueClickMultBonus();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult;
 }
 
 function sgEffRate() {
-  const base = sg.ratePerSec + sgShopContribution('rate') + sgColleagueRateBonus();
+  const base = sg.ratePerSec + sgShopContribution('rate');
   const crystalMult = 1 + 0.08*(sg.crystalRateLv||0);
   const itemMult = 1 + (sg.itemGlobalRateBonus||0);
   const achvMult = 1 + sgAchvBonusSum('rate');
   const equipMult = 1 + sgEquipBonus('rate');
   const holdMult = 1 + sgCrystalHoldBonus() + sgTechPowerBonus() + sgAuraEnergyBonus();
-  return base * crystalMult * itemMult * achvMult * equipMult * holdMult;
+  const colleagueMult = 1 + sgColleagueRateMultBonus();
+  return base * crystalMult * itemMult * achvMult * equipMult * holdMult * colleagueMult;
 }
 
 function sgTotalAutoClickPerSec() {
@@ -3905,27 +3914,51 @@ function sgDoPrestige() {
   showToast(`✨ 重新入職成功！獲得 ${gain} 💠 水晶`);
 }
 
+function sgColleagueBonusLabel(bonuses, lv) {
+  const meta = {
+    rateMult:    { name:'產能加成',     fmt:v=>'+'+(v*100).toFixed(1)+'%' },
+    clickMult:   { name:'點擊力加成',   fmt:v=>'+'+(v*100).toFixed(1)+'%' },
+    hotelBoost:  { name:'旅館商品加成', fmt:v=>'+'+(v*100).toFixed(1)+'%' },
+    maintBoost:  { name:'維修商品加成', fmt:v=>'+'+(v*100).toFixed(1)+'%' },
+    adminBoost:  { name:'行政商品加成', fmt:v=>'+'+(v*100).toFixed(1)+'%' },
+    shopDiscount:{ name:'採購折扣',     fmt:v=>'-'+(v*100).toFixed(1)+'%' },
+    crit:        { name:'會心機率',     fmt:v=>'+'+v.toFixed(1)+'%' },
+    autoclick:   { name:'自動點擊/秒',  fmt:v=>'+'+v.toFixed(2) },
+    offlinecap:  { name:'離線上限',     fmt:v=>'+'+v.toFixed(1)+'hr' },
+  };
+  return bonuses.map(b => {
+    const m = meta[b.stat];
+    const total = lv * b.perLevel;
+    return `${m.name}${m.fmt(total)}`;
+  }).join('　');
+}
+
+function sgColleagueBonusPreview(bonuses) {
+  const meta = {
+    rateMult:'產能加成', clickMult:'點擊力加成', hotelBoost:'旅館商品加成', maintBoost:'維修商品加成',
+    adminBoost:'行政商品加成', shopDiscount:'採購折扣', crit:'會心機率', autoclick:'自動點擊/秒', offlinecap:'離線上限',
+  };
+  return bonuses.map(b=>meta[b.stat]).join('　');
+}
+
 function sgColleagueTabHtml() {
   const items = SG_COLLEAGUES.map(c => {
     const lv = sgColleagueLv(c.id);
     const cost = Math.floor(c.baseCost * Math.pow(c.costMul, lv));
     const canAfford = sg.crystals >= cost;
-    const totalBonus = lv * c.perLevel;
-    const isPercentType = c.stat==='hotelBoost' || c.stat==='maintBoost';
-    const bonusDisplay = c.stat==='autoclick' ? totalBonus.toFixed(1) : (isPercentType ? Math.round(totalBonus*100)+'%' : totalBonus);
     const lockedClass = (lv>0 || canAfford) ? '' : ' locked';
     const affordClass = canAfford ? ' can-afford' : '';
     return `
       <div class="sg-colleague-item${lockedClass}${affordClass}">
         <div class="sg-colleague-emoji">${lv>0?c.emoji:'❓'}</div>
         <div class="sg-colleague-name">${lv>0?c.name:'未收集'}${lv>0?' Lv.'+lv:''}</div>
-        <div class="sg-colleague-bonus">${lv>0?`+${bonusDisplay} ${c.statLabel}`:c.statLabel}</div>
+        <div class="sg-colleague-bonus">${lv>0?sgColleagueBonusLabel(c.bonuses, lv):sgColleagueBonusPreview(c.bonuses)}</div>
         <div class="sg-colleague-cost">${cost} 💠</div>
         <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeColleague('${c.id}')">${lv>0?'升級':'收集'}</button>
       </div>`;
   }).join('');
   return `
-    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠</div>
+    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　🛒 目前採購折扣：${(sgColleagueShopDiscount()*100).toFixed(1)}%</div>
     <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受重新入職影響、無等級上限</div>
     <div class="sg-colleague-grid">${items}</div>
   `;
