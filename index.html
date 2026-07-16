@@ -2776,19 +2776,25 @@ const SG_RARITY_META = {
 
 // ── 🎽 裝備與證照系統 ──
 // 裝備：基礎工具，用薪水購買，買了永久生效(不需穿脫，全部同時作用)
+// 裝備：無限升級，前10級用薪水購買，第11級起改用水晶；每級皆需技術力門檻(每3級+1點)
 const SG_GEAR = [
-  { id:'g1',  emoji:'⛑️', name:'工程安全帽',     cost:500,  currency:'xp', bonuses:[{type:'rate', value:0.03}] },
-  { id:'g2',  emoji:'🧤', name:'絕緣工作手套',   cost:900,  currency:'xp', bonuses:[{type:'click', value:0.04}] },
-  { id:'g3',  emoji:'🦺', name:'反光安全背心',   cost:400,  currency:'xp', bonuses:[{type:'rate', value:0.03}] },
-  { id:'g4',  emoji:'👢', name:'鋼頭安全鞋',     cost:600,  currency:'xp', bonuses:[{type:'rate', value:0.03}] },
-  { id:'g5',  emoji:'🥽', name:'護目鏡',         cost:500,  currency:'xp', bonuses:[{type:'click', value:0.03}] },
-  { id:'g6',  emoji:'💡', name:'頭燈',           cost:800,  currency:'xp', bonuses:[{type:'offlinehr', value:0.5}] },
-  { id:'g7',  emoji:'🎒', name:'工具腰帶',       cost:1000, currency:'xp', bonuses:[{type:'autoclick', value:0.05}] },
-  { id:'g8',  emoji:'📻', name:'對講機',         cost:1500, currency:'xp', bonuses:[{type:'autoclick', value:0.08}] },
-  { id:'g9',  emoji:'📏', name:'捲尺',           cost:300,  currency:'xp', bonuses:[{type:'click', value:0.02}] },
-  { id:'g10', emoji:'🔦', name:'手電筒',         cost:700,  currency:'xp', bonuses:[{type:'offlinehr', value:0.5}] },
-  { id:'g11', emoji:'🧰', name:'工具箱',         cost:2000, currency:'xp', bonuses:[{type:'rate', value:0.05}] },
+  { id:'g1',  emoji:'⛑️', name:'工程安全帽',     bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:500, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:20, costMul:1.35} },
+  { id:'g2',  emoji:'🧤', name:'絕緣工作手套',   bonuses:[{type:'click',    value:0.004}], salaryPhase:{baseCost:900, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:25, costMul:1.35} },
+  { id:'g3',  emoji:'🦺', name:'反光安全背心',   bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:400, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:18, costMul:1.35} },
+  { id:'g4',  emoji:'👢', name:'鋼頭安全鞋',     bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:600, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:22, costMul:1.35} },
+  { id:'g5',  emoji:'🥽', name:'護目鏡',         bonuses:[{type:'click',    value:0.003}], salaryPhase:{baseCost:500, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:20, costMul:1.35} },
+  { id:'g6',  emoji:'💡', name:'頭燈',           bonuses:[{type:'offlinehr',value:0.05}],  salaryPhase:{baseCost:800, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:28, costMul:1.4} },
+  { id:'g7',  emoji:'🎒', name:'工具腰帶',       bonuses:[{type:'autoclick',value:0.05}],  salaryPhase:{baseCost:1000,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:30, costMul:1.4} },
+  { id:'g8',  emoji:'📻', name:'對講機',         bonuses:[{type:'autoclick',value:0.08}],  salaryPhase:{baseCost:1500,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:35, costMul:1.4} },
+  { id:'g9',  emoji:'📏', name:'捲尺',           bonuses:[{type:'click',    value:0.002}], salaryPhase:{baseCost:300, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:15, costMul:1.35} },
+  { id:'g10', emoji:'🔦', name:'手電筒',         bonuses:[{type:'offlinehr',value:0.05}],  salaryPhase:{baseCost:700, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:25, costMul:1.4} },
+  { id:'g11', emoji:'🧰', name:'工具箱',         bonuses:[{type:'rate',     value:0.005}], salaryPhase:{baseCost:2000,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:40, costMul:1.4} },
 ];
+
+// 裝備升級技術力門檻：升到第N級需要技術力 >= ceil(N/3)
+function sgGearTechReq(targetLevel) {
+  return Math.ceil(targetLevel / 3);
+}
 
 // 視覺代表：只有這兩項會實際疊圖顯示在史萊姆身上（其餘皆為純數值加成）
 const SG_GEAR_VISUAL = { head:'g1', hand:'g10' };
@@ -2861,8 +2867,9 @@ const SG_REAL_ESTATE = [
 function sgEquipBonus(type) {
   let sum = 0;
   SG_GEAR.forEach(g => {
-    if (!sg.gearOwned || !sg.gearOwned[g.id]) return;
-    g.bonuses.forEach(b => { if (b.type===type) sum += b.value; });
+    const lv = (sg.gearLv && sg.gearLv[g.id]) || 0;
+    if (!lv) return;
+    g.bonuses.forEach(b => { if (b.type===type) sum += b.value * lv; });
   });
   SG_CERTIFICATIONS.forEach(c => {
     const lv = (sg.certLv && sg.certLv[c.id]) || 0;
@@ -3007,7 +3014,7 @@ function sgDefaultState() {
     itemAutoClickBonus: 0,  // 道具帶來的自動點擊次數/秒加成
     itemCritMultBonus: 0,   // 道具帶來的永久會心倍率加成(基礎3倍+此值)
     itemComboWindowBonus: 0,// 道具帶來的永久連擊時間窗加成(毫秒)
-    gearOwned: {},    // 已購買的裝備 { id: true }（全部同時生效，不需穿戴切換）
+    gearLv: {},       // 裝備等級 { id: level }（無限升級，取代舊版一次性 gearOwned）
     certLv: {},       // 證照等級 { id: level }（無限升級，取代舊版一次性 certOwned）
     officeLv: {},     // 辦公室裝潢等級 { id: level }
     propertyLv: {},   // 房地產等級 { id: level }
@@ -3054,7 +3061,13 @@ function sgLoad() {
   }
   if (!sg.colleagueLv) sg.colleagueLv = {};
   if (!sg.itemInventory) sg.itemInventory = {};
-  if (!sg.gearOwned) sg.gearOwned = {};
+  if (!sg.gearLv) sg.gearLv = {};
+  // 舊版一次性裝備(gearOwned布林值)遷移為等級1
+  if (sg.gearOwned && typeof sg.gearOwned === 'object') {
+    Object.keys(sg.gearOwned).forEach(id => {
+      if (sg.gearOwned[id] && !sg.gearLv[id]) sg.gearLv[id] = 1;
+    });
+  }
   if (!sg.certLv) sg.certLv = {};
   if (!sg.officeLv) sg.officeLv = {};
   // 舊版一次性證照(certOwned布林值)遷移為等級1
@@ -3990,19 +4003,34 @@ function sgUpgradeColleague(id) {
 }
 
 // ── 🎽 裝備與證照 ──
-function sgBuyGear(id) {
+// 裝備目前等級對應的花費：前10級用薪水，第11級起改用水晶
+function sgGearCost(def) {
+  const lv = (sg.gearLv && sg.gearLv[def.id]) || 0;
+  if (lv < def.salaryPhase.maxLevel) {
+    return { currency:'xp', cost: Math.floor(def.salaryPhase.baseCost * Math.pow(def.salaryPhase.costMul, lv)) };
+  }
+  const crystalLv = lv - def.salaryPhase.maxLevel;
+  return { currency:'crystal', cost: Math.floor(def.crystalPhase.baseCost * Math.pow(def.crystalPhase.costMul, crystalLv)) };
+}
+
+function sgUpgradeGear(id) {
   const def = SG_GEAR.find(e=>e.id===id);
-  if (!def || sg.gearOwned[id]) return;
-  const budget = def.currency==='xp' ? sg.xp : sg.crystals;
-  if (budget < def.cost) return;
-  if (def.currency==='xp') sg.xp -= def.cost; else sg.crystals -= def.cost;
-  sg.gearOwned[id] = true;
+  if (!def) return;
+  const lv = (sg.gearLv[id]||0);
+  const targetLevel = lv + 1;
+  const techReq = sgGearTechReq(targetLevel);
+  if ((sg.techPower||0) < techReq) { showToast(`🔒 技術力不足！升到 Lv.${targetLevel} 需要技術力 ${techReq}`); return; }
+  const { currency, cost } = sgGearCost(def);
+  const budget = currency==='xp' ? sg.xp : sg.crystals;
+  if (budget < cost) { showToast(currency==='xp' ? '薪水不足' : '水晶不足'); return; }
+  if (currency==='xp') sg.xp -= cost; else sg.crystals -= cost;
+  sg.gearLv[id] = targetLevel;
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
   sgUpdateStageDisplay();
   sgUpdateNumbers();
   sgRerenderStageVisual();
-  showToast(`🎽 已購買「${def.name}」，效果永久生效！`);
+  showToast(`🎽 「${def.name}」升級到 Lv.${targetLevel}！`);
 }
 
 function sgCertCost(def) {
@@ -4015,19 +4043,41 @@ function sgCertTechGain(tier) {
   return { '甲':3, '乙':2, '丙':1, '特殊':2 }[tier] || 1;
 }
 
+// 證照升級的資源門檻：依等級分配需要資產/辦公家具/技術力的組合
+function sgCertResourceReq(tier, targetLevel) {
+  switch(tier) {
+    case '丙':   return { furniture: Math.ceil(targetLevel/4) };
+    case '乙':   return { furniture: Math.ceil(targetLevel/3), asset: Math.ceil(targetLevel/5) };
+    case '甲':   return { asset: Math.ceil(targetLevel/3), tech: Math.ceil(targetLevel/4) };
+    case '特殊': return { asset: Math.ceil(targetLevel/3), furniture: Math.ceil(targetLevel/3) };
+    default: return {};
+  }
+}
+
+function sgCheckResourceReq(req) {
+  if (req.tech && (sg.techPower||0) < req.tech) return `技術力不足(需要${req.tech})`;
+  if (req.furniture && (sg.auraEnergy||0) < req.furniture) return `辦公家具不足(需要${req.furniture})`;
+  if (req.asset && (sg.assets||0) < req.asset) return `資產不足(需要${req.asset})`;
+  return null;
+}
+
 function sgUpgradeCertification(id) {
   const def = SG_CERTIFICATIONS.find(c=>c.id===id);
   if (!def) return;
+  const lv = (sg.certLv[id]||0);
+  const targetLevel = lv + 1;
+  const req = sgCertResourceReq(def.tier, targetLevel);
+  const failMsg = sgCheckResourceReq(req);
+  if (failMsg) { showToast(`🔒 ${failMsg}`); return; }
   const cost = sgCertCost(def);
-  if (sg.crystals < cost) return;
+  if (sg.crystals < cost) { showToast('水晶不足'); return; }
   sg.crystals -= cost;
-  const lv = (sg.certLv[id]||0) + 1;
-  sg.certLv[id] = lv;
+  sg.certLv[id] = targetLevel;
   sg.techPower = (sg.techPower||0) + sgCertTechGain(def.tier);
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
   sgUpdateStageDisplay();
-  showToast(`📋 「${def.name}」升級到 Lv.${lv}！技術力 +${sgCertTechGain(def.tier)}`);
+  showToast(`📋 「${def.name}」升級到 Lv.${targetLevel}！技術力 +${sgCertTechGain(def.tier)}`);
 }
 
 function sgOfficeCost(def) {
@@ -4093,6 +4143,8 @@ function sgJobAuraHtml() {
   return `<div class="sg-job-aura ${auraClass}"></div>`;
 }
 
+let sgEquipSubCat = 'gear'; // 裝備分頁目前顯示的子分類
+
 function sgEquipTabHtml() {
   const bonusLabel = (bonuses) => bonuses.map(b => {
     const name = {rate:'產能', click:'點擊力', autoclick:'自動點擊', offlinehr:'離線上限', crit:'會心機率'}[b.type];
@@ -4101,52 +4153,74 @@ function sgEquipTabHtml() {
   }).join('、');
 
   const renderGearCard = (def) => {
-    const owned = !!sg.gearOwned[def.id];
-    const budget = def.currency==='xp' ? sg.xp : sg.crystals;
-    const canAfford = budget >= def.cost;
-    const costLabel = def.currency==='xp' ? `${sgFormatNum(def.cost)} ✨` : `${def.cost} 💠`;
+    const lv = (sg.gearLv && sg.gearLv[def.id]) || 0;
+    const targetLevel = lv + 1;
+    const techReq = sgGearTechReq(targetLevel);
+    const techOk = (sg.techPower||0) >= techReq;
+    const { currency, cost } = sgGearCost(def);
+    const budget = currency==='xp' ? sg.xp : sg.crystals;
+    const canAfford = budget >= cost && techOk;
+    const costLabel = currency==='xp' ? `${sgFormatNum(cost)} ✨` : `${sgFormatNum(cost)} 💠`;
+    const totalBonus = def.bonuses.map(b=>({type:b.type, value:b.value*lv}));
+    const phaseLabel = currency==='xp' ? '薪水階段' : '水晶階段';
     return `
-      <div class="sg-colleague-item${(owned||canAfford)?'':' locked'}${(!owned&&canAfford)?' can-afford':''}">
-        <div class="sg-colleague-emoji">${owned?def.emoji:'❓'}</div>
-        <div class="sg-colleague-name">${owned?def.name:'未購買'}</div>
-        <div class="sg-colleague-bonus">${bonusLabel(def.bonuses)}</div>
-        ${owned
-          ? `<div class="sg-shop-owned" style="text-align:center;margin-top:8px;">✓ 已擁有（永久生效）</div>`
-          : `<div class="sg-colleague-cost">${costLabel}</div><button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgBuyGear('${def.id}')">購買</button>`}
+      <div class="sg-colleague-item${(lv>0||canAfford)?'':' locked'}${canAfford?' can-afford':''}">
+        <div class="sg-colleague-emoji">${lv>0?def.emoji:'❓'}</div>
+        <div class="sg-colleague-name">${lv>0?def.name:'未購買'}${lv>0?' Lv.'+lv:''}</div>
+        <div class="sg-colleague-bonus">${lv>0?bonusLabel(totalBonus):bonusLabel(def.bonuses)+'/級'}</div>
+        <div class="sg-colleague-bonus" style="color:${techOk?'#999':'#C0392B'};">技術力需求 ${techReq}（目前${sg.techPower||0}）</div>
+        <div class="sg-colleague-cost">${costLabel}　<span style="opacity:0.6;">${phaseLabel}</span></div>
+        <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeGear('${def.id}')">${lv>0?'升級':'購買'}</button>
       </div>`;
   };
 
   const renderCertCard = (def) => {
     const lv = (sg.certLv && sg.certLv[def.id]) || 0;
+    const targetLevel = lv + 1;
+    const req = sgCertResourceReq(def.tier, targetLevel);
+    const reqFailMsg = sgCheckResourceReq(req);
     const cost = sgCertCost(def);
-    const canAfford = sg.crystals >= cost;
+    const canAfford = sg.crystals >= cost && !reqFailMsg;
     const totalBonus = def.bonuses.map(b=>({type:b.type, value:b.value*lv}));
+    const reqParts = [];
+    if (req.tech) reqParts.push(`技術力${req.tech}`);
+    if (req.furniture) reqParts.push(`家具${req.furniture}`);
+    if (req.asset) reqParts.push(`資產${req.asset}`);
     return `
       <div class="sg-colleague-item${(lv>0||canAfford)?'':' locked'}${canAfford?' can-afford':''}">
         <div class="sg-colleague-emoji">${lv>0?def.emoji:'❓'}</div>
         <div class="sg-colleague-name">${lv>0?def.name:'未考取'}${lv>0?' Lv.'+lv:''}<span style="font-size:9px;color:#999;font-weight:400;"> [${def.tier}]</span></div>
         <div class="sg-colleague-bonus">${lv>0?bonusLabel(totalBonus):bonusLabel(def.bonuses)+'/級'}</div>
-        <div class="sg-colleague-cost">${cost} 💠</div>
+        ${reqParts.length?`<div class="sg-colleague-bonus" style="color:${reqFailMsg?'#C0392B':'#999'};">需求：${reqParts.join('、')}</div>`:''}
+        <div class="sg-colleague-cost">${sgFormatNum(cost)} 💠</div>
         <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeCertification('${def.id}')">${lv>0?'升級':'考取'}</button>
       </div>`;
   };
 
   const certByTier = (tier) => SG_CERTIFICATIONS.filter(c=>c.tier===tier);
 
+  const subTabMeta = {
+    gear: { label:'🎽 裝備', render: () => `<div class="sg-colleague-grid">${SG_GEAR.map(renderGearCard).join('')}</div>` },
+    certA:{ label:'📋 甲級', render: () => `<div class="sg-colleague-grid">${certByTier('甲').map(renderCertCard).join('')}</div>` },
+    certB:{ label:'📋 乙級', render: () => `<div class="sg-colleague-grid">${certByTier('乙').map(renderCertCard).join('')}</div>` },
+    certC:{ label:'📋 丙級', render: () => `<div class="sg-colleague-grid">${certByTier('丙').map(renderCertCard).join('')}</div>` },
+    certS:{ label:'📋 專業', render: () => `<div class="sg-colleague-grid">${certByTier('特殊').map(renderCertCard).join('')}</div>` },
+  };
+  const subTabs = Object.keys(subTabMeta).map(key => `
+    <button class="sg-shop-subtab${sgEquipSubCat===key?' active':''}" onclick="sgSwitchEquipSubCat('${key}')">${subTabMeta[key].label}</button>
+  `).join('');
+
   return `
-    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　✨ 目前薪水：${sgFormatNum(sg.xp)}</div>
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">全部裝備、證照買了即永久生效，證照可無限升級</div>
-    <div class="sg-section-label">🎽 基礎裝備（薪水購買）</div>
-    <div class="sg-colleague-grid">${SG_GEAR.map(renderGearCard).join('')}</div>
-    <div class="sg-section-label">📋 甲級證照（水晶升級，無上限）</div>
-    <div class="sg-colleague-grid">${certByTier('甲').map(renderCertCard).join('')}</div>
-    <div class="sg-section-label">📋 乙級證照（水晶升級，無上限）</div>
-    <div class="sg-colleague-grid">${certByTier('乙').map(renderCertCard).join('')}</div>
-    <div class="sg-section-label">📋 丙級證照（水晶升級，無上限）</div>
-    <div class="sg-colleague-grid">${certByTier('丙').map(renderCertCard).join('')}</div>
-    <div class="sg-section-label">📋 專業證照／訓練證書（水晶升級，無上限）</div>
-    <div class="sg-colleague-grid">${certByTier('特殊').map(renderCertCard).join('')}</div>
+    <div class="sg-colleague-crystal-bar">💎 水晶：${sg.crystals} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🧠 技術力：${sgFormatNum(sg.techPower||0)}</div>
+    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">裝備前期用薪水、後期用水晶購買；證照升級需同時滿足水晶與資產／辦公家具／技術力門檻</div>
+    <div class="sg-shop-subtabs">${subTabs}</div>
+    ${subTabMeta[sgEquipSubCat].render()}
   `;
+}
+
+function sgSwitchEquipSubCat(key) {
+  sgEquipSubCat = key;
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
 }
 
 function sgRealEstateTabHtml() {
