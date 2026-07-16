@@ -3455,7 +3455,7 @@ function openSlimeGame() {
 }
 
 function sgAutoBuyTick() {
-  // 買得起的項目中，挑「CP值」(效益/花費比) 最高的自動購買
+  // 找出目前買得起的商品中，CP值(效益/花費比)最高的一項
   let best = null, bestCP = -1;
   SG_SHOP.forEach(item => {
     if (!sgIsShopItemUnlocked(item)) return;
@@ -3464,7 +3464,24 @@ function sgAutoBuyTick() {
     const cp = item.amount / cost;
     if (cp > bestCP) { best = item; bestCP = cp; }
   });
-  if (best) sgBuy(best.id, true);
+  if (!best) return;
+
+  // 用全部可用薪水買到不能再買為止(MAX)，靜默處理不整頁重繪，避免打斷玩家操作
+  const { count, cost } = sgCalcBuyQty(best, Infinity);
+  if (count <= 0) return;
+  sg.xp -= cost;
+  sg.owned[best.id] = (sg.owned[best.id]||0) + count;
+  sgEnsureDailyReset();
+  sg.daily.buys++;
+  const tierUps = sgCheckAchvTierUps();
+  const setBonusUps = sgCheckSetBonusUnlocks();
+  sgSave();
+  sgUpdateNumbers();
+  // 若目前正在商店/公司分頁，更新畫面上的持有數量與按鈕狀態
+  if (sgActiveTab === 'shop') document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+  showToast(`🤖 自動購買「${best.name.replace(/^\S+\s/,'')}」x${count}`);
+  tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
+  setBonusUps.forEach(b => showToast(`🎖️ 套裝效果啟動：${b.name}！${({maintenance:'維修',hotel:'旅館',admin:'行政'})[b.category]}類產能額外+${Math.round(b.bonus*100)}%`));
 }
 
 function closeSlimeGame() {
