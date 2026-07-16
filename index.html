@@ -482,10 +482,21 @@
     font-size:13px; font-weight:800;
   }
 
-  /* 裝備疊圖 */
+  /* 裝備疊圖(視覺已停用,保留樣式避免殘留呼叫報錯) */
   .sg-slime-wrap { position:relative; }
   .sg-equip-head { position:absolute; top:-6px; left:50%; transform:translateX(-50%); font-size:32px; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
   .sg-equip-hand { position:absolute; bottom:6px; right:-4px; font-size:26px; z-index:5; pointer-events:none; transform:rotate(18deg); filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
+
+  /* 職級光環：投資越多、職級越高，光環越強烈，呈現「越來越厲害」的持續視覺感 */
+  .sg-job-aura {
+    position:absolute; top:50%; left:50%; width:100%; height:100%;
+    transform:translate(-50%,-50%); border-radius:50%; z-index:0; pointer-events:none;
+    animation:sgAuraPulse 2.4s ease-in-out infinite;
+  }
+  .sg-job-aura-t2 { box-shadow:0 0 18px 6px rgba(139,92,246,0.35); }
+  .sg-job-aura-t3 { box-shadow:0 0 26px 10px rgba(224,168,0,0.4); }
+  .sg-job-aura-t4 { box-shadow:0 0 36px 16px rgba(255,215,0,0.55); }
+  @keyframes sgAuraPulse { 0%,100%{opacity:0.7; transform:translate(-50%,-50%) scale(0.96);} 50%{opacity:1; transform:translate(-50%,-50%) scale(1.05);} }
   .sg-colleague-emoji { font-size:26px; }
   .sg-colleague-name { font-size:9px; font-weight:700; color:#1a1a1a; margin-top:4px; line-height:1.3; }
   .sg-colleague-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; line-height:1.3; }
@@ -2713,13 +2724,13 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_c11', rarity:'common', name:'電工膠帶', desc:'全體產能永久+4%', type:'globalRate', value:0.04 },
   { id:'g_r5', rarity:'rare', name:'鉤式電流表', desc:'全體產能永久+12%', type:'globalRate', value:0.12 },
   { id:'g_r6', rarity:'rare', name:'安全掛鎖與掛牌（LOTO）', desc:'離線收益上限永久+1小時', type:'offlineHrBonus', value:1 },
-  // ── 30個新道具：掉落率提升／重新入職水晶加成／技術力磁場能量／連擊突破等 ──
+  // ── 30個新道具：掉落率提升／重新入職水晶加成／技術力辦公家具／連擊突破等 ──
   // 普通(10)
   { id:'g_c12', rarity:'common', name:'掉落雷達',     desc:'寶箱掉落機率永久+0.05%',   type:'dropRateBonus', value:0.0005 },
   { id:'g_c13', rarity:'common', name:'幸運符',       desc:'幸運史萊姆出現機率永久+3%', type:'luckySpawnBonus', value:0.03 },
   { id:'g_c14', rarity:'common', name:'入職禮金',     desc:'立即獲得 5 水晶',           type:'crystalInstant', value:5 },
   { id:'g_c15', rarity:'common', name:'技術手冊',     desc:'立即獲得 5 技術力',         type:'techPowerInstant', value:5 },
-  { id:'g_c16', rarity:'common', name:'團隊建設券',   desc:'立即獲得 5 磁場能量',       type:'auraEnergyInstant', value:5 },
+  { id:'g_c16', rarity:'common', name:'團隊建設券',   desc:'立即獲得 5 辦公家具',       type:'auraEnergyInstant', value:5 },
   { id:'g_c17', rarity:'common', name:'加班津貼',     desc:'每日任務水晶獎勵永久+10%',  type:'dailyRewardBonus', value:0.10 },
   { id:'g_c18', rarity:'common', name:'復盤筆記',     desc:'重新入職水晶量永久+5%',     type:'crystalGainBonus', value:0.05 },
   { id:'g_c19', rarity:'common', name:'連擊延伸貼',   desc:'連擊時間窗永久+0.1秒',      type:'comboWindowBonus', value:100 },
@@ -2729,7 +2740,7 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_r7',  rarity:'rare', name:'高階掃描儀',     desc:'寶箱掉落機率永久+0.15%',    type:'dropRateBonus', value:0.0015 },
   { id:'g_r8',  rarity:'rare', name:'資深人脈卡',     desc:'重新入職水晶量永久+15%',    type:'crystalGainBonus', value:0.15 },
   { id:'g_r9',  rarity:'rare', name:'進修證書',       desc:'立即獲得 30 技術力',        type:'techPowerInstant', value:30 },
-  { id:'g_r10', rarity:'rare', name:'團建基金',       desc:'立即獲得 20 磁場能量',      type:'auraEnergyInstant', value:20 },
+  { id:'g_r10', rarity:'rare', name:'團建基金',       desc:'立即獲得 20 辦公家具',      type:'auraEnergyInstant', value:20 },
   { id:'g_r11', rarity:'rare', name:'幸運護符',       desc:'幸運史萊姆出現機率永久+8%', type:'luckySpawnBonus', value:0.08 },
   { id:'g_r12', rarity:'rare', name:'稀有度探測器',   desc:'寶箱掉落機率永久+0.2%',     type:'dropRateBonus', value:0.002 },
   { id:'g_r13', rarity:'rare', name:'業務獎金',       desc:'每日任務水晶獎勵永久+25%',  type:'dailyRewardBonus', value:0.25 },
@@ -2740,7 +2751,7 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_l5',  rarity:'legendary', name:'頂級雷達',       desc:'寶箱掉落機率永久+0.4%',     type:'dropRateBonus', value:0.004 },
   { id:'g_l6',  rarity:'legendary', name:'金牌獵頭',       desc:'重新入職水晶量永久+40%',    type:'crystalGainBonus', value:0.40 },
   { id:'g_l7',  rarity:'legendary', name:'博士學位證書',   desc:'立即獲得 150 技術力',       type:'techPowerInstant', value:150 },
-  { id:'g_l8',  rarity:'legendary', name:'企業文化獎章',   desc:'立即獲得 100 磁場能量',     type:'auraEnergyInstant', value:100 },
+  { id:'g_l8',  rarity:'legendary', name:'企業文化獎章',   desc:'立即獲得 100 辦公家具',     type:'auraEnergyInstant', value:100 },
   { id:'g_l9',  rarity:'legendary', name:'幸運女神加持',   desc:'幸運史萊姆出現機率永久+20%', type:'luckySpawnBonus', value:0.20 },
   { id:'g_l10', rarity:'legendary', name:'傳說水晶礦',     desc:'立即獲得 150 水晶',         type:'crystalInstant', value:150 },
   { id:'g_l11', rarity:'legendary', name:'無限連擊卡',     desc:'連擊加成上限永久+100%',     type:'comboCapBonus', value:1.00 },
@@ -2903,7 +2914,7 @@ function sgJobRankTier(rank) {
   return 4;
 }
 
-// 職級判定為三維複合條件：薪水、技術力、磁場能量必須同時達標才能晉升到該階
+// 職級判定為三維複合條件：薪水、技術力、辦公家具必須同時達標才能晉升到該階
 function sgRankMet(r) {
   return (sg.lifetimeXp||0) >= r.threshold && (sg.techPower||0) >= r.techReq && (sg.auraEnergy||0) >= r.auraReq && (sg.assets||0) >= r.assetReq;
 }
@@ -2942,7 +2953,7 @@ function sgJobRankHtml() {
   const missingParts = [];
   if (xpPct < 100) missingParts.push('薪水');
   if (techPct < 100) missingParts.push('技術力');
-  if (auraPct < 100) missingParts.push('磁場能量');
+  if (auraPct < 100) missingParts.push('辦公家具');
   if (assetPct < 100) missingParts.push('資產');
   const hintText = missingParts.length
     ? `似乎還有進步空間：${missingParts.join('、')}尚未達標，繼續努力吧`
@@ -2987,7 +2998,7 @@ function sgDefaultState() {
     lastClickTime: 0,
     achvSeenTiers: {},  // 各成就分類已通知過的最高階層 { catId: tier }
     _migratedShopCalc: false,  // 舊存檔載入時會觸發一次遷移(見 sgLoad)
-    _migratedTechAura: false,  // 技術力/磁場能量回填遷移旗標
+    _migratedTechAura: false,  // 技術力/辦公家具回填遷移旗標
     crystals: 0,
     prestigeCount: 0,
     crystalClickLv: 0,  // 永久點擊強化等級
@@ -3005,7 +3016,7 @@ function sgDefaultState() {
     seenSetBonuses: {}, // 已通知過的套裝加成 { 'category_threshold': true }
     autoBuy: false,   // 自動購買開關(每10秒觸發一次,買CP值最高的商品)
     techPower: 0,     // 技術力(來自證照升級累積)
-    auraEnergy: 0,    // 磁場能量(來自辦公室裝潢升級累積)
+    auraEnergy: 0,    // 辦公家具(來自辦公室裝潢升級累積)
     legacyColleagueArray: [],    // (舊版相容用，已棄用)
     colleagueLv: {},  // 圖鑑夥伴等級 { id: level }
     itemInventory: {}, // 已獲得道具 { itemId: count }
@@ -3057,7 +3068,7 @@ function sgLoad() {
   if (!sg.charMult) sg.charMult = {};
   if (typeof sg.techPower !== 'number') sg.techPower = 0;
   if (typeof sg.auraEnergy !== 'number') sg.auraEnergy = 0;
-  // 技術力/磁場能量是本次新增的追蹤欄位，回填既有已升級的證照/裝潢對應點數(只執行一次)
+  // 技術力/辦公家具是本次新增的追蹤欄位，回填既有已升級的證照/裝潢對應點數(只執行一次)
   if (!sg._migratedTechAura) {
     let techBackfill = 0;
     Object.keys(sg.certLv||{}).forEach(id => {
@@ -3344,7 +3355,7 @@ function sgTechPowerBonus() {
   return Math.sqrt(sg.techPower||0) * 0.001;
 }
 
-// 磁場能量被動加成(來自辦公室裝潢升級累積，無上限，係數極低，優先度低於同事系統)
+// 辦公家具被動加成(來自辦公室裝潢升級累積，無上限，係數極低，優先度低於同事系統)
 function sgAuraEnergyBonus() {
   return Math.sqrt(sg.auraEnergy||0) * 0.001;
 }
@@ -3625,7 +3636,7 @@ function sgRender() {
   document.getElementById('sgBody').innerHTML = `
     ${offlineHtml}
     <div class="sg-stage" id="sgStage">
-      <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgSlimeSvg(stage)}${sgEquipOverlayHtml(stage)}</div>
+      <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgJobAuraHtml()}${sgSlimeSvg(stage)}${sgEquipOverlayHtml(stage)}</div>
       <div class="sg-stage-name">${stage.name}</div>
       <div class="sg-job-rank" id="sgJobRank">${sgJobRankHtml()}</div>
       <div class="sg-xp-row">
@@ -3634,7 +3645,7 @@ function sgRender() {
       </div>
       <div class="sg-secondary-stats" id="sgSecondaryStats">
         <span>🧠 技術力 <b id="sgTechNum">${sgFormatNum(sg.techPower||0)}</b></span>
-        <span>🌀 磁場能量 <b id="sgAuraNum">${sgFormatNum(sg.auraEnergy||0)}</b></span>
+        <span>🪑 辦公家具 <b id="sgAuraNum">${sgFormatNum(sg.auraEnergy||0)}</b></span>
         <span>🏦 資產 <b id="sgAssetNum">${sgFormatNum(sg.assets||0)}</b></span>
       </div>
       <div class="sg-xp-rate" id="sgXpRate">+${sgFormatNum(effRate)}/秒　｜　點擊 +${sgFormatNum(effClick)}</div>
@@ -4036,7 +4047,7 @@ function sgUpgradeOffice(id) {
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
   sgUpdateStageDisplay();
-  showToast(`🏢 「${def.name}」升級到 Lv.${lv}！磁場能量 +1`);
+  showToast(`🏢 「${def.name}」升級到 Lv.${lv}！辦公家具 +1`);
 }
 
 function sgPropertyCost(def) {
@@ -4065,23 +4076,21 @@ function sgRerenderStageVisual() {
   const wrap = document.getElementById('sgSlimeWrap');
   if (!wrap) return;
   const stage = sgGetStage();
-  wrap.innerHTML = sgSlimeSvg(stage) + sgEquipOverlayHtml(stage);
+  wrap.innerHTML = sgJobAuraHtml() + sgSlimeSvg(stage) + sgEquipOverlayHtml(stage);
 }
 
 // 僅安全帽(頭)與手電筒(手)有實際疊圖視覺，其餘裝備/證照皆為純數值加成
+// 裝備疊圖視覺已移除(效果數值不受影響，僅取消emoji疊加顯示)
 function sgEquipOverlayHtml(stage) {
-  let html = '';
-  const headOwned = sg.gearOwned && sg.gearOwned[SG_GEAR_VISUAL.head];
-  const handOwned = sg.gearOwned && sg.gearOwned[SG_GEAR_VISUAL.hand];
-  if (headOwned && !(stage && stage.crown)) {
-    const def = SG_GEAR.find(e=>e.id===SG_GEAR_VISUAL.head);
-    if (def) html += `<div class="sg-equip-head">${def.emoji}</div>`;
-  }
-  if (handOwned) {
-    const def = SG_GEAR.find(e=>e.id===SG_GEAR_VISUAL.hand);
-    if (def) html += `<div class="sg-equip-hand">${def.emoji}</div>`;
-  }
-  return html;
+  return '';
+}
+
+// 職級光環：依目前職級分級(1-4)，投資越多、職級越高，光環越明顯，呈現「越來越厲害」的持續視覺感
+function sgJobAuraHtml() {
+  const tier = sgJobRankTier(sgGetJobRank().rank);
+  if (tier <= 1) return '';
+  const auraClass = { 2:'sg-job-aura-t2', 3:'sg-job-aura-t3', 4:'sg-job-aura-t4' }[tier];
+  return `<div class="sg-job-aura ${auraClass}"></div>`;
 }
 
 function sgEquipTabHtml() {
