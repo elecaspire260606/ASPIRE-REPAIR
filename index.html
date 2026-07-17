@@ -335,6 +335,14 @@
     background:white; border-radius:16px; padding:20px; text-align:center;
     box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:16px; position:relative; overflow:hidden;
   }
+  .sg-toast {
+    position:absolute; top:10px; left:50%; transform:translateX(-50%) translateY(-10px);
+    background:rgba(20,15,10,0.92); color:white; padding:9px 16px; border-radius:10px;
+    font-size:12px; font-weight:600; opacity:0; pointer-events:none; transition:all 0.25s;
+    z-index:50; max-width:92%; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.3);
+    line-height:1.4;
+  }
+  .sg-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   .sg-slime-wrap {
     width:130px; height:130px; margin:0 auto; cursor:pointer; user-select:none;
     display:flex; align-items:center; justify-content:center; position:relative;
@@ -2741,7 +2749,7 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_r3', rarity:'rare', name:'幸運羽毛', desc:'會心機率永久+2%', type:'critBonus', value:2 },
   { id:'g_r4', rarity:'rare', name:'自動連發手套', desc:'自動點擊永久+0.5次/秒', type:'autoClickBonus', value:0.5 },
   { id:'g_l1', rarity:'legendary', name:'產能核心', desc:'全體產能永久+40%', type:'globalRate', value:0.40 },
-  { id:'g_l2', rarity:'legendary', name:'時之沙漏', desc:'連擊時間窗永久+0.3秒，且全體產能與點擊力永久+10%', type:'hourglass', value:300 },
+  { id:'g_l2', rarity:'legendary', name:'時之沙漏', desc:'連擊時間窗永久+0.3秒，且全體產能與點擊力永久+10%', type:'hourglass', value:300, compoundPct:0.10 },
   { id:'g_l3', rarity:'legendary', name:'離線結界', desc:'離線效率永久+50%', type:'offlineMult', value:0.50 },
   { id:'g_l4', rarity:'legendary', name:'永動機核心', desc:'自動點擊永久+1.5次/秒', type:'autoClickBonus', value:1.5 },
   { id:'g_c5', rarity:'common', name:'萬用電表', desc:'全體產能永久+6%', type:'globalRate', value:0.06 },
@@ -2789,10 +2797,45 @@ const SG_GLOBAL_ITEMS = [
   { id:'g_l14', rarity:'legendary', name:'命運轉輪',       desc:'寶箱掉落機率永久+0.6%',     type:'dropRateBonus', value:0.006 },
 ];
 
+// 依道具實際數值動態產生說明文字，避免buff後數值跟文字對不上
+function sgFormatItemDesc(item) {
+  switch(item.type) {
+    case 'globalRate':      return `全體產能永久+${(item.value*100).toFixed(1)}%`;
+    case 'globalClick':     return `全體點擊力永久+${(item.value*100).toFixed(1)}%`;
+    case 'instantXp':       return `立即獲得大量薪水`;
+    case 'autoClickBonus':  return `自動點擊永久+${item.value.toFixed(2)}次/秒`;
+    case 'critMultBonus':   return `會心倍率永久+${item.value.toFixed(2)}倍`;
+    case 'critBonus':       return `會心機率永久+${item.value.toFixed(1)}%`;
+    case 'hourglass':       return `連擊時間窗永久+${(item.value/1000).toFixed(1)}秒，且全體產能與點擊力永久+${(item.compoundPct*100).toFixed(0)}%`;
+    case 'offlineMult':     return `離線效率永久+${(item.value*100).toFixed(0)}%`;
+    case 'offlineHrBonus':  return `離線收益上限永久+${item.value.toFixed(1)}小時`;
+    case 'dropRateBonus':   return `寶箱掉落機率永久+${(item.value*100).toFixed(2)}%`;
+    case 'luckySpawnBonus': return `幸運史萊姆出現機率永久+${(item.value*100).toFixed(0)}%`;
+    case 'crystalInstant':  return `立即獲得 ${Math.round(item.value)} 水晶`;
+    case 'techPowerInstant':return `立即獲得 ${Math.round(item.value)} 技術力`;
+    case 'auraEnergyInstant':return `立即獲得 ${Math.round(item.value)} 辦公家具`;
+    case 'dailyRewardBonus':return `每日任務水晶獎勵永久+${(item.value*100).toFixed(0)}%`;
+    case 'crystalGainBonus':return `重新入職水晶量永久+${(item.value*100).toFixed(0)}%`;
+    case 'comboWindowBonus':return `連擊時間窗永久+${(item.value/1000).toFixed(2)}秒`;
+    case 'comboCapBonus':   return `連擊加成上限永久+${(item.value*100).toFixed(0)}%`;
+  }
+  return item.desc;
+}
+
+// 道具稀有度倍率：既然道具難拿(尤其傳說級)，數值大幅提升才對得起稀有度
+const SG_ITEM_RARITY_BUFF = { common:1.6, rare:2.5, legendary:4.0 };
+SG_GLOBAL_ITEMS.forEach(item => {
+  const mult = SG_ITEM_RARITY_BUFF[item.rarity];
+  item.value = item.value * mult;
+  if (item.compoundPct !== undefined) item.compoundPct = item.compoundPct * mult;
+  item.desc = sgFormatItemDesc(item);
+});
+
+const SG_CHAR_ITEM_BUFF = { common:1.5, rare:2.0, legendary:2.5 };
 const SG_CHAR_ITEMS = SG_COLLEAGUES.flatMap(c => [
-  { id:`c_${c.id}_common`,    rarity:'common',    name:`${c.name}的祝福（小）`, charId:c.id, type:'charMult', value:0.10 },
-  { id:`c_${c.id}_rare`,      rarity:'rare',      name:`${c.name}的祝福（中）`, charId:c.id, type:'charMult', value:0.25 },
-  { id:`c_${c.id}_legendary`, rarity:'legendary', name:`${c.name}的祝福（大）`, charId:c.id, type:'charMult', value:0.60 },
+  { id:`c_${c.id}_common`,    rarity:'common',    name:`${c.name}的祝福（小）`, charId:c.id, type:'charMult', value:0.10 * SG_CHAR_ITEM_BUFF.common },
+  { id:`c_${c.id}_rare`,      rarity:'rare',      name:`${c.name}的祝福（中）`, charId:c.id, type:'charMult', value:0.25 * SG_CHAR_ITEM_BUFF.rare },
+  { id:`c_${c.id}_legendary`, rarity:'legendary', name:`${c.name}的祝福（大）`, charId:c.id, type:'charMult', value:0.60 * SG_CHAR_ITEM_BUFF.legendary },
 ]).map(it => ({ ...it, desc: `${SG_COLLEAGUES.find(c=>c.id===it.charId).name} 效果永久+${Math.round(it.value*100)}%` }));
 
 const SG_ITEMS = [...SG_GLOBAL_ITEMS, ...SG_CHAR_ITEMS];
@@ -3466,8 +3509,8 @@ function sgApplyItemEffect(itemDef) {
       break;
     case 'hourglass':
       sg.itemComboWindowBonus = (sg.itemComboWindowBonus||0) + itemDef.value;
-      sg.itemGlobalRateBonus = (sg.itemGlobalRateBonus||0) + 0.10;
-      sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + 0.10;
+      sg.itemGlobalRateBonus = (sg.itemGlobalRateBonus||0) + itemDef.compoundPct;
+      sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + itemDef.compoundPct;
       break;
     case 'dropRateBonus':
       sg.itemDropRateBonus = (sg.itemDropRateBonus||0) + itemDef.value;
@@ -3505,7 +3548,7 @@ function sgIsItemUpgradeable(itemDef) {
 
 function sgItemUpgradeCost(itemId) {
   const lv = (sg.itemLv && sg.itemLv[itemId]) || 0;
-  return Math.floor(5 * Math.pow(1.25, lv));
+  return Math.floor(5 * Math.pow(1.18, lv));
 }
 
 // 依道具原本效果類型，將指定的增量疊加進對應的持續性數值(升級用,delta為每級增量)
@@ -3545,7 +3588,7 @@ function sgUpgradeItem(itemId) {
   sg.manNiu -= cost;
   const lv = (sg.itemLv[itemId]||0) + 1;
   sg.itemLv[itemId] = lv;
-  const deltaValue = itemDef.value * 0.15; // 每級增加原效果的15%
+  const deltaValue = itemDef.value * 0.28; // 每級增加原效果的28%
   sgApplyItemEffectDelta(itemDef, deltaValue);
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
@@ -3568,7 +3611,7 @@ function sgObtainItem(itemDef) {
 }
 
 function sgTryDropItem(source, silent) {
-  const baseChance = source==='click' ? 0.002 : 0.001; // 點擊：僅手動點擊觸發；tick：放置本身固定機率
+  const baseChance = source==='click' ? 0.0035 : 0.0015; // 點擊：僅手動點擊觸發；tick：放置本身固定機率
   const chance = baseChance + (sg.itemDropRateBonus||0);
   if (Math.random() >= chance) return null;
   const rarity = sgRollRarity();
@@ -3583,13 +3626,13 @@ function sgRollOfflineDrops(hours) {
   const results = [];
   const whole = Math.floor(hours);
   for (let i=0; i<whole; i++) {
-    if (Math.random() < 0.003) {
+    if (Math.random() < 0.005) {
       const rarity = sgRollRarity();
       results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
     }
   }
   const frac = hours - whole;
-  if (Math.random() < frac*0.003) {
+  if (Math.random() < frac*0.005) {
     const rarity = sgRollRarity();
     results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
   }
@@ -3959,6 +4002,7 @@ function sgRender() {
   document.getElementById('sgBody').innerHTML = `
     ${offlineHtml}
     <div class="sg-stage" id="sgStage">
+      <div class="sg-toast" id="sgToast"></div>
       <div class="sg-slime-wrap idle" id="sgSlimeWrap" onclick="sgClick(event)">${sgJobAuraHtml()}${sgSlimeSvg(stage)}${sgEquipOverlayHtml(stage)}</div>
       <div class="sg-stage-name">${stage.name}</div>
       <div class="sg-job-rank" id="sgJobRank">${sgJobRankHtml()}</div>
@@ -4996,6 +5040,15 @@ function sgConfirmReset() {
 }
 
 function showToast(msg) {
+  const gameOpen = document.getElementById('slimeGameOverlay') && document.getElementById('slimeGameOverlay').classList.contains('open');
+  const sgToastEl = document.getElementById('sgToast');
+  if (gameOpen && sgToastEl) {
+    sgToastEl.textContent = msg;
+    sgToastEl.classList.add('show');
+    clearTimeout(sgToastEl._hideTimer);
+    sgToastEl._hideTimer = setTimeout(()=>sgToastEl.classList.remove('show'), 2800);
+    return;
+  }
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2800);
