@@ -2849,19 +2849,25 @@ const SG_RARITY_META = {
 // ── 🎽 裝備與證照系統 ──
 // 裝備：基礎工具，用薪水購買，買了永久生效(不需穿脫，全部同時作用)
 // 裝備：無限升級，前10級用薪水購買，第11級起改用水晶；每級皆需技術力門檻(每3級+1點)
+const SG_GEAR_MILESTONE_LEVEL = 8; // 裝備升到此等級，解鎖「功能性」效果(非單純數值疊加)
 const SG_GEAR = [
-  { id:'g1',  emoji:'⛑️', name:'工程安全帽',     bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:500, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:20, costMul:1.35} },
-  { id:'g2',  emoji:'🧤', name:'絕緣工作手套',   bonuses:[{type:'click',    value:0.004}], salaryPhase:{baseCost:900, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:25, costMul:1.35} },
-  { id:'g3',  emoji:'🦺', name:'反光安全背心',   bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:400, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:18, costMul:1.35} },
-  { id:'g4',  emoji:'👢', name:'鋼頭安全鞋',     bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:600, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:22, costMul:1.35} },
-  { id:'g5',  emoji:'🥽', name:'護目鏡',         bonuses:[{type:'click',    value:0.003}], salaryPhase:{baseCost:500, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:20, costMul:1.35} },
-  { id:'g6',  emoji:'💡', name:'頭燈',           bonuses:[{type:'offlinehr',value:0.05}],  salaryPhase:{baseCost:800, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:28, costMul:1.4} },
-  { id:'g7',  emoji:'🎒', name:'工具腰帶',       bonuses:[{type:'autoclick',value:0.05}],  salaryPhase:{baseCost:1000,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:30, costMul:1.4} },
-  { id:'g8',  emoji:'📻', name:'對講機',         bonuses:[{type:'autoclick',value:0.08}],  salaryPhase:{baseCost:1500,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:35, costMul:1.4} },
-  { id:'g9',  emoji:'📏', name:'捲尺',           bonuses:[{type:'click',    value:0.002}], salaryPhase:{baseCost:300, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:15, costMul:1.35} },
-  { id:'g10', emoji:'🔦', name:'手電筒',         bonuses:[{type:'offlinehr',value:0.05}],  salaryPhase:{baseCost:700, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:25, costMul:1.4} },
-  { id:'g11', emoji:'🧰', name:'工具箱',         bonuses:[{type:'rate',     value:0.005}], salaryPhase:{baseCost:2000,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:40, costMul:1.4} },
+  { id:'g1',  emoji:'⛑️', name:'工程安全帽',     bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:500, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:20, costMul:1.35}, milestone:'離線結算保底：期間至少開到1個寶箱' },
+  { id:'g2',  emoji:'🧤', name:'絕緣工作手套',   bonuses:[{type:'click',    value:0.004}], salaryPhase:{baseCost:900, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:25, costMul:1.35}, milestone:'連擊會心：每20次手動點擊必定會心' },
+  { id:'g3',  emoji:'🦺', name:'反光安全背心',   bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:400, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:18, costMul:1.35}, milestone:'自動購買加速：間隔10秒→6秒' },
+  { id:'g4',  emoji:'👢', name:'鋼頭安全鞋',     bonuses:[{type:'rate',     value:0.003}], salaryPhase:{baseCost:600, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:22, costMul:1.35}, milestone:'幸運史萊姆停留時間5秒→9秒' },
+  { id:'g5',  emoji:'🥽', name:'護目鏡',         bonuses:[{type:'click',    value:0.003}], salaryPhase:{baseCost:500, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:20, costMul:1.35}, milestone:'會心強化：會心倍率3倍→4倍' },
+  { id:'g6',  emoji:'💡', name:'頭燈',           bonuses:[{type:'offlinehr',value:0.05}],  salaryPhase:{baseCost:800, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:28, costMul:1.4}, milestone:'離線寶箱掉落機率×2' },
+  { id:'g7',  emoji:'🎒', name:'工具腰帶',       bonuses:[{type:'autoclick',value:0.05}],  salaryPhase:{baseCost:1000,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:30, costMul:1.4}, milestone:'自動點擊也能開寶箱(手動的一半機率)' },
+  { id:'g8',  emoji:'📻', name:'對講機',         bonuses:[{type:'autoclick',value:0.08}],  salaryPhase:{baseCost:1500,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:35, costMul:1.4}, milestone:'自動購買一次購足三分類CP值最高各一項' },
+  { id:'g9',  emoji:'📏', name:'捲尺',           bonuses:[{type:'click',    value:0.002}], salaryPhase:{baseCost:300, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:15, costMul:1.35}, milestone:'安慰獎：未會心時仍額外+8%產出' },
+  { id:'g10', emoji:'🔦', name:'手電筒',         bonuses:[{type:'offlinehr',value:0.05}],  salaryPhase:{baseCost:700, costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:25, costMul:1.4}, milestone:'離線收益計算時間額外+20%' },
+  { id:'g11', emoji:'🧰', name:'工具箱',         bonuses:[{type:'rate',     value:0.005}], salaryPhase:{baseCost:2000,costMul:1.2, maxLevel:10}, crystalPhase:{baseCost:40, costMul:1.4}, milestone:'自動購買資金夠時可連續多買一輪' },
 ];
+
+// 判斷指定裝備是否已達里程碑等級(功能解鎖)
+function sgGearMS(id) {
+  return (sg.gearLv && (sg.gearLv[id]||0) >= SG_GEAR_MILESTONE_LEVEL);
+}
 
 // 裝備升級技術力門檻：升到第N級需要技術力 >= ceil(N/3)
 function sgGearTechReq(targetLevel) {
@@ -3611,7 +3617,8 @@ function sgObtainItem(itemDef) {
 }
 
 function sgTryDropItem(source, silent) {
-  const baseChance = source==='click' ? 0.0035 : 0.0015; // 點擊：僅手動點擊觸發；tick：放置本身固定機率
+  // click: 手動點擊；click_auto_half: 🎒工具腰帶里程碑解鎖後的自動點擊(手動的一半機率)；其餘(tick): 放置固定機率
+  const baseChance = source==='click' ? 0.005 : (source==='click_auto_half' ? 0.0025 : 0.0025);
   const chance = baseChance + (sg.itemDropRateBonus||0);
   if (Math.random() >= chance) return null;
   const rarity = sgRollRarity();
@@ -3624,15 +3631,22 @@ function sgTryDropItem(source, silent) {
 
 function sgRollOfflineDrops(hours) {
   const results = [];
+  // 💡頭燈里程碑：離線寶箱掉落機率×2
+  const perHourChance = 0.008 * (sgGearMS('g6') ? 2 : 1);
   const whole = Math.floor(hours);
   for (let i=0; i<whole; i++) {
-    if (Math.random() < 0.005) {
+    if (Math.random() < perHourChance) {
       const rarity = sgRollRarity();
       results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
     }
   }
   const frac = hours - whole;
-  if (Math.random() < frac*0.005) {
+  if (Math.random() < frac*perHourChance) {
+    const rarity = sgRollRarity();
+    results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
+  }
+  // ⛑️工程安全帽里程碑：只要離線超過1小時，結算保底至少開到1個寶箱
+  if (results.length===0 && hours>=1 && sgGearMS('g1')) {
     const rarity = sgRollRarity();
     results.push(sgObtainItem(sgRollItemOfRarity(rarity)));
   }
@@ -3803,7 +3817,9 @@ function openSlimeGame() {
   let offlineGain = 0;
   const effRate = sgEffRate();
   const capHours = 8 + sgColleagueOfflineCapHours() + sgEquipOfflineHrBonus() + (sg.itemOfflineHrBonus||0);
-  const cappedSec = Math.min(elapsedSec, capHours*3600);
+  const rawCappedSec = Math.min(elapsedSec, capHours*3600);
+  // 🔦手電筒里程碑：離線收益計算時間額外+20%(仍受上限秒數保護，不會超過原始經過時間)
+  const cappedSec = sgGearMS('g10') ? Math.min(elapsedSec, rawCappedSec*1.2) : rawCappedSec;
   if (elapsedSec > 5 && effRate > 0) {
     const offlineMult = 1 + (sg.itemOfflineBonus||0);
     offlineGain = Math.floor(cappedSec * effRate * offlineMult);
@@ -3845,39 +3861,64 @@ function openSlimeGame() {
   }, 5000);
 
   if (sgAutoBuyInterval) clearInterval(sgAutoBuyInterval);
+  sg._autoBuyElapsedMs = sg._autoBuyElapsedMs || 0;
   sgAutoBuyInterval = setInterval(()=>{
-    if (sg.autoBuy) sgAutoBuyTick();
-  }, 10000);
+    if (!sg.autoBuy) return;
+    sg._autoBuyElapsedMs += 1000;
+    const interval = sgGearMS('g3') ? 6000 : 10000; // 🦺反光背心里程碑：自動購買加速 10秒→6秒
+    if (sg._autoBuyElapsedMs >= interval) {
+      sg._autoBuyElapsedMs = 0;
+      sgAutoBuyTick();
+    }
+  }, 1000);
 }
 
 function sgAutoBuyTick() {
-  // 找出目前買得起的商品中，CP值(效益/花費比)最高的一項
-  let best = null, bestCP = -1;
-  SG_SHOP.forEach(item => {
-    if (!sgIsShopItemUnlocked(item)) return;
-    const cost = sgShopCost(item);
-    if (sg.xp < cost) return;
-    const cp = item.amount / cost;
-    if (cp > bestCP) { best = item; bestCP = cp; }
-  });
-  if (!best) return;
+  const bought = sgAutoBuyRound();
+  // 🧰工具箱里程碑：若這輪有買到東西且資金還夠，可連續多買一輪
+  if (bought && sgGearMS('g11')) sgAutoBuyRound();
+}
 
-  // 用全部可用薪水買到不能再買為止(MAX)，靜默處理不整頁重繪，避免打斷玩家操作
-  const { count, cost } = sgCalcBuyQty(best, Infinity);
-  if (count <= 0) return;
-  sg.xp -= cost;
-  sg.owned[best.id] = (sg.owned[best.id]||0) + count;
-  sgEnsureDailyReset();
-  sg.daily.buys++;
-  const tierUps = sgCheckAchvTierUps();
-  const setBonusUps = sgCheckSetBonusUnlocks();
+// 執行一輪自動購買，回傳是否有買到任何東西
+function sgAutoBuyRound() {
+  // 📻對講機里程碑：一次購買維修/行政/旅館三分類CP值最高各一項；未解鎖則只買全體CP值最高一項
+  const categories = sgGearMS('g8') ? ['maintenance','admin','hotel'] : [null];
+  let anyBought = false;
+  const tierUpsAll = [], setBonusUpsAll = [];
+
+  categories.forEach(cat => {
+    let best = null, bestCP = -1;
+    SG_SHOP.forEach(item => {
+      if (cat && item.category !== cat) return;
+      if (!sgIsShopItemUnlocked(item)) return;
+      const cost = sgShopCost(item);
+      if (sg.xp < cost) return;
+      const cp = item.amount / cost;
+      if (cp > bestCP) { best = item; bestCP = cp; }
+    });
+    if (!best) return;
+
+    // 用全部可用薪水買到不能再買為止(MAX)，靜默處理不整頁重繪，避免打斷玩家操作
+    const { count, cost } = sgCalcBuyQty(best, Infinity);
+    if (count <= 0) return;
+    sg.xp -= cost;
+    sg.owned[best.id] = (sg.owned[best.id]||0) + count;
+    anyBought = true;
+    sgEnsureDailyReset();
+    sg.daily.buys++;
+    sgCheckAchvTierUps().forEach(u => tierUpsAll.push(u));
+    sgCheckSetBonusUnlocks().forEach(b => setBonusUpsAll.push(b));
+    showToast(`🤖 自動購買「${best.name.replace(/^\S+\s/,'')}」x${count}`);
+  });
+
+  if (!anyBought) return false;
   sgSave();
   sgUpdateNumbers();
   // 若目前正在商店/公司分頁，更新畫面上的持有數量與按鈕狀態
   if (sgActiveTab === 'shop') document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
-  showToast(`🤖 自動購買「${best.name.replace(/^\S+\s/,'')}」x${count}`);
-  tierUps.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
-  setBonusUps.forEach(b => showToast(`🎖️ 套裝效果啟動：${b.name}！${({maintenance:'維修',hotel:'旅館',admin:'行政'})[b.category]}類產能額外+${Math.round(b.bonus*100)}%`));
+  tierUpsAll.forEach(u => showToast(`🏆 ${u.cat.icon} ${u.cat.name} 達成 Lv.${u.tier}！`));
+  setBonusUpsAll.forEach(b => showToast(`🎖️ 套裝效果啟動：${b.name}！${({maintenance:'維修',hotel:'旅館',admin:'行政'})[b.category]}類產能額外+${Math.round(b.bonus*100)}%`));
+  return true;
 }
 
 function closeSlimeGame() {
@@ -4534,6 +4575,7 @@ function sgEquipTabHtml() {
         <div class="sg-colleague-bonus">${lv>0?bonusLabel(totalBonus):bonusLabel(def.bonuses)+'/級'}</div>
         <div class="sg-colleague-bonus" style="color:${techOk?'#999':'#C0392B'};">技術力需求 ${techReq}（目前${sg.techPower||0}）</div>
         <div class="sg-colleague-cost">${costLabel}　<span style="opacity:0.6;">${phaseLabel}</span></div>
+        ${def.milestone ? `<div class="sg-colleague-bonus" style="color:${lv>=SG_GEAR_MILESTONE_LEVEL?'#2E7D32':'#999'};">${lv>=SG_GEAR_MILESTONE_LEVEL?'✅ 已解鎖':'🔒 Lv.'+SG_GEAR_MILESTONE_LEVEL+'解鎖'}：${def.milestone}</div>` : ''}
         <button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeGear('${def.id}')">${lv>0?'升級':'購買'}</button>
       </div>`;
   };
@@ -4734,7 +4776,8 @@ function sgSpawnLucky() {
   el.style.top = y + '%';
   el.onclick = (e) => { e.stopPropagation(); sgClickLucky(el); };
   stageBox.appendChild(el);
-  el._timeout = setTimeout(()=>{ el.remove(); sg._luckyActive = false; }, 5000);
+  const luckyDuration = sgGearMS('g4') ? 9000 : 5000; // 👢鋼頭安全鞋里程碑：停留時間5秒→9秒
+  el._timeout = setTimeout(()=>{ el.remove(); sg._luckyActive = false; }, luckyDuration);
 }
 
 function sgClickLucky(el) {
@@ -4772,7 +4815,11 @@ function sgPerformClick(opts) {
   const critChance = 0.08 + sgColleagueCritBonus()/100 + (sg.itemCritBonus||0)/100 + sgAchvBonusSum('crit')/100;
   let isCrit = Math.random() < critChance;
   if (sg.guaranteedCritUntil && now < sg.guaranteedCritUntil) isCrit = true;
-  const critMult = isCrit ? (3 + (sg.itemCritMultBonus||0)) : 1;
+  // 🧤絕緣工作手套里程碑：每20次手動點擊，第20次必定會心
+  if (!isAuto && sgGearMS('g2') && ((sg.manualClicks||0) + 1) % 20 === 0) isCrit = true;
+  // 🥽護目鏡里程碑：會心倍率額外+1(3倍→4倍)；📏捲尺里程碑：未會心時安慰獎+8%
+  const critMult = isCrit ? (3 + (sg.itemCritMultBonus||0) + (sgGearMS('g5') ? 1 : 0))
+                          : (1 + (sgGearMS('g9') ? 0.08 : 0));
 
   let burstMult = 1;
   if (!isAuto && sg.burstClicksRemaining > 0) {
@@ -4791,8 +4838,11 @@ function sgPerformClick(opts) {
   sg.daily.clicks++;
   sg.daily.xpEarned += gain;
 
-  // 寶箱只由「真人手動點擊」觸發，自動點擊(松鼠/道具/水晶)純粹負責衝數值，不佔用寶箱池
-  const dropResult = isAuto ? null : sgTryDropItem('click', silentDrop);
+  // 寶箱只由「真人手動點擊」觸發；🎒工具腰帶里程碑解鎖後，自動點擊也能以一半機率參與寶箱池
+  let dropResult = isAuto ? null : sgTryDropItem('click', silentDrop);
+  if (isAuto && sgGearMS('g7')) {
+    dropResult = sgTryDropItem('click_auto_half', silentDrop);
+  }
 
   return { gain, isCrit, dropResult };
 }
