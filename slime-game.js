@@ -2719,9 +2719,12 @@ function sgRaidEnterFloor() {
   sg.raid.skipNextStaminaGain = false;
   const idx = SG_RAID_FLOOR_COMBAT_IDX[sg.raid.floor];
   const pickBase = type === 'boss' ? zone.boss : zone.regularPool[Math.floor(Math.random()*zone.regularPool.length)];
-  const atk = Math.round(SG_RAID_FLOOR_BASE_ATK[idx] * zone.mult);
+  // 難度隨「這是你第幾次來這個園區」成長，不跟角色等級綁——即使練得再高，反覆刷同園區還是會重新有壓力
+  const runsBefore = (sg.raid.zoneRuns[zone.id] || 1) - 1; // 本次出勤已於sgRaidStart扣款時+1，這裡取「進來前」的次數
+  const effMult = zone.mult * (1 + runsBefore * 0.12);
+  const atk = Math.round(SG_RAID_FLOOR_BASE_ATK[idx] * effMult);
   sg.raid.currentEnemyPick = { ...pickBase, atk, isBoss: type==='boss' };
-  const hp = Math.round(SG_RAID_FLOOR_BASE_HP[idx] * zone.mult);
+  const hp = Math.round(SG_RAID_FLOOR_BASE_HP[idx] * effMult);
   sg.raid.enemyHp = hp;
   sg.raid.enemyMaxHp = hp;
 }
@@ -3046,6 +3049,68 @@ function sgRaidWeaponShopHtml() {
     </div>`;
 }
 
+// 四隻王怪的SVG插畫(取代emoji)，viewBox統一100x100方便嵌入卡片
+const SG_RAID_BOSS_SVG = {
+  kaoguan: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="50" cy="60" rx="34" ry="24" fill="#B5541F"/>
+    <ellipse cx="50" cy="55" rx="30" ry="20" fill="#D2691E"/>
+    <path d="M30 45 Q25 30 15 32 Q20 45 28 48 Z" fill="#8B3A0F"/>
+    <path d="M70 45 Q75 30 85 32 Q80 45 72 48 Z" fill="#8B3A0F"/>
+    <circle cx="15" cy="30" r="6" fill="#B5541F"/>
+    <circle cx="85" cy="30" r="6" fill="#B5541F"/>
+    <circle cx="38" cy="52" r="5" fill="#1a1a1a"/>
+    <circle cx="62" cy="52" r="5" fill="#1a1a1a"/>
+    <circle cx="39" cy="50" r="1.5" fill="#fff"/>
+    <circle cx="63" cy="50" r="1.5" fill="#fff"/>
+    <path d="M35 68 Q50 74 65 68" stroke="#5A2A0A" stroke-width="2" fill="none"/>
+    <g stroke="#7A3A10" stroke-width="1.5" opacity="0.6">
+      <path d="M40 42 L44 46"/><path d="M60 44 L56 48"/><path d="M50 40 L50 46"/>
+    </g>
+    <ellipse cx="42" cy="66" rx="3" ry="5" fill="#8B3A0F" opacity="0.5"/>
+    <ellipse cx="58" cy="70" rx="3" ry="4" fill="#8B3A0F" opacity="0.5"/>
+  </svg>`,
+  yashe: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 15 Q75 25 78 50 Q80 75 50 88 Q20 75 22 50 Q25 25 50 15 Z" fill="#2D8FBF"/>
+    <path d="M50 22 Q68 30 70 50 Q72 70 50 80 Q28 70 30 50 Q32 30 50 22 Z" fill="#5AB4E0"/>
+    <circle cx="40" cy="48" r="5" fill="#0a3a52"/>
+    <circle cx="60" cy="48" r="5" fill="#0a3a52"/>
+    <circle cx="41" cy="46" r="1.5" fill="#fff"/>
+    <circle cx="61" cy="46" r="1.5" fill="#fff"/>
+    <path d="M38 62 Q50 68 62 62" stroke="#0a3a52" stroke-width="2" fill="none"/>
+    <circle cx="25" cy="35" r="4" fill="#8FD4F0" opacity="0.8"/>
+    <circle cx="76" cy="40" r="3" fill="#8FD4F0" opacity="0.8"/>
+    <circle cx="30" cy="70" r="3" fill="#8FD4F0" opacity="0.7"/>
+    <path d="M50 85 Q45 92 48 96 M50 85 Q55 92 52 96" stroke="#2D8FBF" stroke-width="2" fill="none"/>
+  </svg>`,
+  yanjiu: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 12 L60 35 L82 32 L64 48 L74 70 L50 56 L26 70 L36 48 L18 32 L40 35 Z" fill="#5B3A9E"/>
+    <path d="M50 22 L57 38 L72 36 L60 47 L67 62 L50 52 L33 62 L40 47 L28 36 L43 38 Z" fill="#8B6BC9"/>
+    <circle cx="43" cy="46" r="4" fill="#F2D46E"/>
+    <circle cx="57" cy="46" r="4" fill="#F2D46E"/>
+    <circle cx="43" cy="46" r="1.5" fill="#1a1a1a"/>
+    <circle cx="57" cy="46" r="1.5" fill="#1a1a1a"/>
+    <g stroke="#F2D46E" stroke-width="2" fill="none" opacity="0.8">
+      <path d="M20 25 L26 30 L20 33"/>
+      <path d="M80 25 L74 30 L80 33"/>
+    </g>
+  </svg>`,
+  zhizun: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="50,10 68,30 62,50 78,55 55,90 45,90 22,55 38,50 32,30" fill="#B71C1C"/>
+    <polygon points="50,20 62,34 58,48 70,52 54,80 46,80 30,52 42,48 38,34" fill="#E85A4A"/>
+    <rect x="40" y="42" width="8" height="8" fill="#1a1a1a" transform="rotate(10 44 46)"/>
+    <rect x="55" y="40" width="7" height="7" fill="#1a1a1a" transform="rotate(-8 58 43)"/>
+    <path d="M50 30 L46 45 L52 45 L48 62" stroke="#FFD54F" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+    <circle cx="44" cy="46" r="1.3" fill="#FFD54F"/>
+    <circle cx="58" cy="43" r="1.3" fill="#FFD54F"/>
+  </svg>`,
+};
+
+function sgRaidBossSvgHtml(zoneId, size) {
+  const svg = SG_RAID_BOSS_SVG[zoneId];
+  if (!svg) return '';
+  return `<div style="width:${size}px;height:${size}px;margin:0 auto;">${svg}</div>`;
+}
+
 function sgRaidZoneSelectHtml() {
   const lv = sg.raid.charLevel;
   const expNext = sgRaidExpToNext(lv);
@@ -3056,7 +3121,7 @@ function sgRaidZoneSelectHtml() {
     const cost = sgRaidEntryCost(z);
     return `
       <div class="sg-colleague-card">
-        <div class="sg-colleague-emoji">${z.boss.emoji}</div>
+        <div class="sg-colleague-emoji">${sgRaidBossSvgHtml(z.id, 48) || z.boss.emoji}</div>
         <div class="sg-colleague-name">${z.name}${cleared?' ✅':''}</div>
         <div class="sg-colleague-bonus">建議等級 Lv.${z.recLevel}　｜　難度係數 ×${z.mult}<br>弱點屬性：${elementIcon[z.weakElement]}${z.weakElement}</div>
         <div class="sg-colleague-cost">出勤費 💰${sgFormatNum(cost)}</div>
@@ -3134,8 +3199,14 @@ function sgRaidTabHtml() {
   if (!r.inRun) {
     const cost = sgRaidEntryCost(zone);
     const canAfford = sg.xp >= cost;
+    const runsSoFar = sg.raid.zoneRuns[zone.id] || 0;
+    const effMult = (zone.mult * (1 + runsSoFar * 0.12)).toFixed(2);
     return `
       <div class="sg-colleague-crystal-bar">🧑‍🔧 Lv.${r.charLevel}　｜　${zone.name}　｜　建議等級 Lv.${zone.recLevel}</div>
+      <div style="text-align:center;color:#666;font-size:13px;padding:8px 0;">
+        已出勤 ${runsSoFar} 次　｜　目前實際難度係數 ×${effMult}<br>
+        <span style="opacity:0.8;">同園區刷越多次敵人越強，不會因為等級高就永遠碾壓；獎勵也會跟著變多</span>
+      </div>
       <div style="text-align:center;padding:16px 0;">
         <button class="sg-colleague-buy" style="max-width:240px;" ${canAfford?'':'disabled'} onclick="sgRaidStart()">
           出發巡邏(💰${sgFormatNum(cost)} 薪水)
@@ -3171,7 +3242,7 @@ function sgRaidTabHtml() {
     ${r.bossTelegraphed ? `<div class="sg-raid-boss-warn">⚠️ ${enemyDef.name} 正在蓄力，這回合行動將承受重擊！可以選擇防禦減傷</div>` : ''}
     <div class="sg-colleague-card sg-raid-card" style="text-align:center;padding:16px;">
       ${sgRaidDmgFloatHtml('enemy')}
-      <div style="font-size:40px;">${enemyDef.emoji}</div>
+      <div style="font-size:40px;">${enemyDef.isBoss ? (sgRaidBossSvgHtml(sg.raid.selectedZone, 64) || enemyDef.emoji) : enemyDef.emoji}</div>
       <div style="font-weight:600;margin:4px 0;">${enemyDef.name}${enemyDef.isBoss?'（BOSS）':''}</div>
       <div style="font-size:12px;color:#999;margin-bottom:6px;">${enemyDef.desc}</div>
       <div class="sg-combo-bar"><div class="sg-combo-fill sg-raid-hpbar-fill" style="width:${enemyPct}%;background:linear-gradient(90deg,#E85A4A,#C0392B);"></div></div>
