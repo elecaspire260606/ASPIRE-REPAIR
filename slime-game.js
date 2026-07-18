@@ -252,28 +252,28 @@ const SG_RAID_FLOOR_LAYOUT = ['combat','combat','event','combat','combat','boss'
 const SG_RAID_FLOOR_COMBAT_IDX = {1:0, 2:1, 4:2, 5:3, 6:4};
 
 const SG_RAID_ZONES = [
-  { id:'kaoguan',  name:'會館',   tier:1, mult:1.0, recLevel:1,
+  { id:'kaoguan',  name:'會館',   tier:1, mult:1.1, recLevel:1, weakElement:'機械',
     regularPool:[
       { emoji:'💧', name:'漏水怪', desc:'從水管縫隙滲出的黏稠水漬' },
       { emoji:'🔩', name:'卡榫怪', desc:'卡死門鎖與鉸鏈的頑固鐵鏽' },
       { emoji:'🧹', name:'雜物怪', desc:'堆積雜物中竄出的塵土精怪' },
     ],
     boss:{ emoji:'🦀', name:'鏽蝕王', desc:'佔據機房許久的鏽蝕巨獸(BOSS)', isBoss:true } },
-  { id:'yashe',    name:'雅舍',   tier:2, mult:2.5, recLevel:9,
+  { id:'yashe',    name:'雅舍',   tier:2, mult:2.9, recLevel:9, weakElement:'火',
     regularPool:[
       { emoji:'🧫', name:'壁癌怪', desc:'牆面滲出的黴斑逐漸蔓延' },
       { emoji:'🪳', name:'蟲害怪', desc:'躲在牆縫裡不斷繁殖的小生物' },
       { emoji:'🚽', name:'馬桶怪', desc:'反覆堵塞、脾氣暴躁的衛浴設備' },
     ],
     boss:{ emoji:'🌊', name:'水管魔', desc:'盤據雅舍地下管線的水患之王(BOSS)', isBoss:true } },
-  { id:'yanjiu',   name:'研究園', tier:3, mult:4.1, recLevel:18,
+  { id:'yanjiu',   name:'研究園', tier:3, mult:4.8, recLevel:18, weakElement:'水',
     regularPool:[
       { emoji:'⚡', name:'靜電怪', desc:'精密儀器旁亂竄的靜電火花' },
       { emoji:'💨', name:'塵爆怪', desc:'粉塵濃度超標引發的危險氣旋' },
       { emoji:'🔬', name:'儀器怪', desc:'校正失準、瘋狂亂動的實驗設備' },
     ],
     boss:{ emoji:'🌀', name:'斷電巨獸', desc:'吞噬整棟研究園電力的災厄(BOSS)', isBoss:true } },
-  { id:'zhizun',   name:'智尊',   tier:4, mult:5.8, recLevel:28,
+  { id:'zhizun',   name:'智尊',   tier:4, mult:7.2, recLevel:28, weakElement:'電',
     regularPool:[
       { emoji:'🛗', name:'電梯怪', desc:'卡在樓層間、脾氣暴躁的升降機關' },
       { emoji:'📹', name:'監控怪', desc:'畫面雪花、四處亂竄的監視幽靈' },
@@ -292,12 +292,18 @@ const SG_RAID_EVENTS = [
     resolve:()=>{ const heal=Math.round(sg.raid.playerMaxHp*0.25); sg.raid.playerHp=Math.min(sg.raid.playerMaxHp, sg.raid.playerHp+heal); return `找了個角落喘口氣，回復 ${heal} 點HP`; } },
 ];
 
+// 主動技能：需消耗「幹勁值」才能使用，取代舊版被動觸發式技能
 const SG_RAID_SKILLS = [
-  { id:'r1', emoji:'🔧', name:'校準扳手',   desc:'攻擊有25%機率造成2倍傷害', type:'crit', value:0.25 },
-  { id:'r2', emoji:'🩹', name:'補漏貼片',   desc:'每回合開始回復2點生命',    type:'heal', value:2 },
-  { id:'r3', emoji:'🧯', name:'滅火筒',     desc:'攻擊附加灼燒，之後2回合每回合額外3點傷害', type:'burn', value:3 },
-  { id:'r4', emoji:'⏱️', name:'超時工作',   desc:'每3回合攻擊自動造成雙倍傷害', type:'periodic', value:3 },
-  { id:'r5', emoji:'💪', name:'加班津貼',   desc:'基礎攻擊力永久+3',          type:'flatatk', value:3 },
+  { id:'r1', emoji:'🔨', name:'猛力一擊', element:'機械', cost:35, dmgMult:2.2,
+    desc:'消耗35幹勁，造成2.2倍傷害' },
+  { id:'r2', emoji:'🧯', name:'灼燒噴射', element:'火',   cost:25, dmgMult:1.0, burn:true,
+    desc:'消耗25幹勁，造成1倍傷害並附加灼燒(之後2回合每回合3點)' },
+  { id:'r3', emoji:'💦', name:'高壓水槍', element:'水',   cost:20, dmgMult:1.2, guaranteedCrit:true,
+    desc:'消耗20幹勁，必定會心(1.8倍傷害)；灼燒中命中會引爆額外傷害' },
+  { id:'r4', emoji:'⚡', name:'全力衝刺', element:'電',   cost:45, dmgMult:3.0, skipNextGain:true,
+    desc:'消耗45幹勁，造成3倍傷害，但下回合不會累積幹勁' },
+  { id:'r5', emoji:'🩹', name:'緊急補漏', element:null,   cost:20, heal:0.30,
+    desc:'消耗20幹勁，回復30%最大生命值' },
 ];
 
 // 武器坊：薪水換「工程幣」(專屬貨幣，比例故意壓貴)，再用工程幣買裝備
@@ -324,7 +330,7 @@ const SG_RAID_ACCESSORIES = [
 // 角色基礎數值：隨等級永久成長(不受轉生/死亡影響)
 function sgRaidCharMaxHp() {
   const lv = (sg.raid && sg.raid.charLevel) || 1;
-  return 60 + (lv-1)*14;
+  return 65 + (lv-1)*15;
 }
 function sgRaidWeaponAtkTotal() {
   if (!sg.raid || !sg.raid.weaponsOwned) return 0;
@@ -848,8 +854,11 @@ function sgDefaultState() {
       floorType: 'combat',   // combat / event / boss
       currentEnemyPick: null,// 本層隨機抽到的敵人(含emoji/name/desc/atk)
       currentEvent: null,    // 本層事件結果(僅event樓層使用)
-      bossEnraged: false,    // 王怪是否已進入怒氣狀態(一次性觸發)
-      bossTelegraphed: false,// 王怪下一次反擊是否為蓄力大招(需玩家選擇攻擊/防禦)
+      bossEnraged: false,    // 王怪是否已進入怒氣狀態(一次性觸發，血量跌破50%)
+      bossTelegraphed: false,// 下一次敵人反擊是否為警示重擊(需玩家選擇攻擊/技能/防禦)
+      stamina: 0,            // 幹勁值(0~100)，主動技能需消耗幹勁才能使用
+      enemyAttackCount: 0,   // 目前敵人已反擊次數(每4次會有一次警示重擊)
+      skipNextStaminaGain: false, // 使用「全力衝刺」後下回合不會累積幹勁
       usedFirstAttackCrit: false, // 幸運護符本次出勤是否已用掉
       usedAccessoryRevive: false, // 急救包本次出勤是否已用掉
       lastEnemyDmg: null,    // 最近一次對敵人造成的傷害(飄字用)
@@ -921,6 +930,11 @@ function sgLoad() {
   if (typeof sg.raid.bossTelegraphed !== 'boolean') sg.raid.bossTelegraphed = false;
   if (typeof sg.raid.usedFirstAttackCrit !== 'boolean') sg.raid.usedFirstAttackCrit = false;
   if (typeof sg.raid.usedAccessoryRevive !== 'boolean') sg.raid.usedAccessoryRevive = false;
+  if (typeof sg.raid.stamina !== 'number') sg.raid.stamina = 0;
+  if (typeof sg.raid.enemyAttackCount !== 'number') sg.raid.enemyAttackCount = 0;
+  if (typeof sg.raid.skipNextStaminaGain !== 'boolean') sg.raid.skipNextStaminaGain = false;
+  // 舊版技能id若殘留在skills陣列中(被動制)，清空讓玩家重新以主動制學習，避免格式不符crash
+  if (sg.raid.skills && sg.raid.skills.some(id => !SG_RAID_SKILLS.find(s=>s.id===id))) sg.raid.skills = [];
   if (typeof sg.techPower !== 'number') sg.techPower = 0;
   if (typeof sg.auraEnergy !== 'number') sg.auraEnergy = 0;
   // 技術力/辦公家具是本次新增的追蹤欄位，回填既有已升級的證照/裝潢對應點數(只執行一次)
@@ -2637,10 +2651,9 @@ function sgRaidGetZone() {
   return SG_RAID_ZONES.find(z => z.id === sg.raid.selectedZone);
 }
 
+// 基礎攻擊力：等級成長+武器加成(元素/技能倍率另外在使用技能時計算)
 function sgRaidPlayerAtk() {
-  let atk = 8 + (sg.raid.charLevel - 1) * 1.8 + sgRaidWeaponAtkTotal();
-  if (sg.raid.skills.includes('r5')) atk += 3;
-  return Math.round(atk);
+  return Math.round(10 + (sg.raid.charLevel - 1) * 2.2 + sgRaidWeaponAtkTotal());
 }
 
 function sgRaidSelectZone(zoneId) {
@@ -2681,7 +2694,7 @@ function sgRaidStart() {
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
 }
 
-// 進入目前樓層：依樓層配置決定是戰鬥/事件/王，並準備對應狀態
+// 進入目前樓層：依樓層配置決定是戰鬥/事件/王，並重置本層戰鬥狀態(幹勁/怒氣/反擊次數)
 function sgRaidEnterFloor() {
   const zone = sgRaidGetZone();
   const type = SG_RAID_FLOOR_LAYOUT[sg.raid.floor - 1];
@@ -2699,8 +2712,11 @@ function sgRaidEnterFloor() {
   }
 
   sg.raid.currentEvent = null;
+  sg.raid.stamina = 40; // 每層開局預先累積一些幹勁，避免第一回合完全無技能可用
+  sg.raid.enemyAttackCount = 0;
   sg.raid.bossEnraged = false;
   sg.raid.bossTelegraphed = false;
+  sg.raid.skipNextStaminaGain = false;
   const idx = SG_RAID_FLOOR_COMBAT_IDX[sg.raid.floor];
   const pickBase = type === 'boss' ? zone.boss : zone.regularPool[Math.floor(Math.random()*zone.regularPool.length)];
   const atk = Math.round(SG_RAID_FLOOR_BASE_ATK[idx] * zone.mult);
@@ -2718,86 +2734,127 @@ function sgRaidEventContinue() {
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
 }
 
-// 玩家攻擊一次，然後(若敵人未死)換敵人回合
-function sgRaidAttack() {
-  if (!sg.raid.inRun || sg.raid.knockedOut || sg.raid.floorType !== 'combat' && sg.raid.floorType !== 'boss') return;
-  const enemyDef = sg.raid.currentEnemyPick;
-  sg.raid.turnCount++;
-
-  if (sg.raid.skills.includes('r2')) {
-    sg.raid.playerHp = Math.min(sg.raid.playerMaxHp, sg.raid.playerHp + 2);
-  }
-
-  let dmg = sgRaidPlayerAtk();
-  let isCrit = false;
-  // 🍀幸運護符：本次出勤第一次攻擊必定會心
-  if (sg.raid.equippedAccessory === 'ac1' && !sg.raid.usedFirstAttackCrit) {
-    isCrit = true;
-    sg.raid.usedFirstAttackCrit = true;
-  } else if (sg.raid.skills.includes('r1') && Math.random() < 0.25) {
-    isCrit = true;
-  }
-  if (isCrit) dmg *= 2;
-  let isPeriodic = false;
-  if (sg.raid.skills.includes('r4') && sg.raid.turnCount % 3 === 0) { dmg *= 2; isPeriodic = true; }
-  // ⏳加班獎章：每5回合額外1.5倍加成
-  let isOvertimeBonus = false;
-  if (sg.raid.equippedAccessory === 'ac3' && sg.raid.turnCount % 5 === 0) { dmg = Math.round(dmg*1.5); isOvertimeBonus = true; }
-  if (sg.raid.skills.includes('r3')) sg.raid.burnStacks = 2;
-
-  sg.raid.enemyHp -= dmg;
-  sg.raid.lastEnemyDmg = dmg;
-  sgRaidLog(`🔨 你造成 ${dmg} 傷害${isCrit?'(會心！)':''}${isPeriodic?'(超時加倍！)':''}${isOvertimeBonus?'(加班獎章！)':''}`);
-
-  if (sg.raid.burnStacks > 0 && sg.raid.enemyHp > 0) {
-    sg.raid.enemyHp -= 3;
-    sg.raid.burnStacks--;
-    sgRaidLog(`🔥 灼燒造成 3 傷害`);
-  }
-
-  if (sg.raid.enemyHp <= 0) {
-    sgRaidWinFloor(enemyDef);
-    return;
-  }
-
-  // 王怪怒氣：血量跌破50%第一次時進入蓄力狀態，下一次反擊觸發前先警告玩家
-  if (enemyDef.isBoss && !sg.raid.bossEnraged && sg.raid.enemyHp <= sg.raid.enemyMaxHp*0.5) {
-    sg.raid.bossEnraged = true;
-    sg.raid.bossTelegraphed = true;
-    sgRaidLog(`⚠️ ${enemyDef.name} 進入狂暴狀態，正在蓄力大招！`);
-    sgSave();
-    document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
-    return; // 這回合先不反擊，讓玩家看到警告、決定下回合攻擊或防禦
-  }
-
-  sgRaidEnemyCounter(enemyDef, false);
-}
-
-// 敵人反擊：guardMode=true代表玩家這回合選擇防禦(僅王怪蓄力後可選)
-function sgRaidEnemyCounter(enemyDef, guardMode) {
+// 每次玩家行動後，結算敵人反擊(判斷是否為第4/8/12...次的警示重擊，以及王怪怒氣一次性大招)
+function sgRaidResolveEnemyCounter(enemyDef, guardMode) {
+  const wasTelegraphed = sg.raid.bossTelegraphed;
   let taken = Math.max(1, enemyDef.atk - sgRaidArmorDefTotal());
-  let telegraphed = sg.raid.bossTelegraphed;
-  if (telegraphed) taken *= 2;
+  if (wasTelegraphed) taken = Math.round(taken * (enemyDef._enrageHit ? 2.2 : 1.5));
   if (guardMode) taken = Math.round(taken * 0.5);
   sg.raid.bossTelegraphed = false;
 
   sg.raid.playerHp -= taken;
   sg.raid.lastPlayerDmg = taken;
-  sgRaidLog(`${enemyDef.emoji} ${enemyDef.name} ${guardMode?'防禦後仍':''}反擊造成 ${taken} 傷害${telegraphed?'(大招！)':''}`);
+  sgRaidLog(`${enemyDef.emoji} ${enemyDef.name} ${guardMode?'防禦後仍':''}反擊造成 ${taken} 傷害${wasTelegraphed?'(警示重擊！)':''}`);
 
   if (sg.raid.playerHp <= 0) {
     sgRaidKnockOut();
     return;
   }
+
+  if (guardMode) sg.raid.stamina = Math.min(100, sg.raid.stamina + 45);
+  else if (!sg.raid.skipNextStaminaGain) sg.raid.stamina = Math.min(100, sg.raid.stamina + 38);
+  sg.raid.skipNextStaminaGain = false;
+
+  sg.raid.enemyAttackCount++;
+  const nextIsPattern = (sg.raid.enemyAttackCount % 4 === 0);
+  const nextIsEnrage = enemyDef.isBoss && !sg.raid.bossEnraged && sg.raid.enemyHp <= sg.raid.enemyMaxHp*0.5;
+  if (nextIsEnrage) sg.raid.bossEnraged = true;
+  if (nextIsPattern || nextIsEnrage) {
+    sg.raid.bossTelegraphed = true;
+    enemyDef._enrageHit = nextIsEnrage;
+    sgRaidLog(`⚠️ ${enemyDef.name} 正在蓄力，下回合將發動重擊！`);
+  }
+
   sgSave();
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
 }
 
-// 王怪蓄力大招時，玩家選擇「防禦」：這回合不攻擊，換取傷害減半
-function sgRaidGuard() {
-  if (!sg.raid.inRun || sg.raid.knockedOut || !sg.raid.bossTelegraphed) return;
+// 玩家行動後的共用結算：檢查敵人是否死亡，否則交由敵人反擊
+function sgRaidResolveAfterPlayerAction(enemyDef) {
+  if (sg.raid.enemyHp <= 0) {
+    sgRaidWinFloor(enemyDef);
+    return;
+  }
+  sgRaidResolveEnemyCounter(enemyDef, false);
+}
+
+// 普通攻擊：無消耗，穩定造成1倍傷害，並累積較多幹勁
+function sgRaidBasicAttack() {
+  if (!sg.raid.inRun || sg.raid.knockedOut) return;
+  if (sg.raid.floorType !== 'combat' && sg.raid.floorType !== 'boss') return;
+  const enemyDef = sg.raid.currentEnemyPick;
   sg.raid.turnCount++;
-  sgRaidEnemyCounter(sg.raid.currentEnemyPick, true);
+
+  let dmg = sgRaidPlayerAtk();
+  let isCrit = false;
+  if (sg.raid.equippedAccessory === 'ac1' && !sg.raid.usedFirstAttackCrit) {
+    isCrit = true;
+    sg.raid.usedFirstAttackCrit = true;
+    dmg *= 1.8;
+  }
+  let isOvertimeBonus = false;
+  if (sg.raid.equippedAccessory === 'ac3' && sg.raid.turnCount % 5 === 0) { dmg = Math.round(dmg*1.5); isOvertimeBonus = true; }
+  dmg = Math.round(dmg);
+
+  sg.raid.enemyHp -= dmg;
+  sg.raid.lastEnemyDmg = dmg;
+  sgRaidLog(`👊 普通攻擊造成 ${dmg} 傷害${isCrit?'(會心！)':''}${isOvertimeBonus?'(加班獎章！)':''}`);
+  sgRaidResolveAfterPlayerAction(enemyDef);
+}
+
+// 使用主動技能
+function sgRaidUseSkill(skillId) {
+  if (!sg.raid.inRun || sg.raid.knockedOut) return;
+  if (sg.raid.floorType !== 'combat' && sg.raid.floorType !== 'boss') return;
+  const skill = SG_RAID_SKILLS.find(s=>s.id===skillId);
+  if (!skill || !sg.raid.skills.includes(skillId)) return;
+  if (sg.raid.stamina < skill.cost) { showToast('幹勁不足'); return; }
+  const enemyDef = sg.raid.currentEnemyPick;
+  const zone = sgRaidGetZone();
+  sg.raid.turnCount++;
+  sg.raid.stamina -= skill.cost;
+
+  if (skill.heal) {
+    const heal = Math.round(sg.raid.playerMaxHp * skill.heal);
+    sg.raid.playerHp = Math.min(sg.raid.playerMaxHp, sg.raid.playerHp + heal);
+    sgRaidLog(`🩹 使用「${skill.name}」，回復 ${heal} 點HP`);
+    sgRaidResolveAfterPlayerAction(enemyDef);
+    return;
+  }
+
+  let dmg = sgRaidPlayerAtk() * skill.dmgMult;
+  const weakHit = skill.element && zone.weakElement === skill.element;
+  if (weakHit) dmg *= 1.5;
+  if (skill.guaranteedCrit) dmg *= 1.8;
+  let igniteBonus = 0;
+  if (sg.raid.burnStacks > 0 && skill.guaranteedCrit) {
+    igniteBonus = sg.raid.burnStacks * 5;
+    dmg += igniteBonus;
+  }
+  if (skill.burn) sg.raid.burnStacks = 2;
+  if (skill.skipNextGain) sg.raid.skipNextStaminaGain = true;
+  dmg = Math.round(dmg);
+
+  sg.raid.enemyHp -= dmg;
+  sg.raid.lastEnemyDmg = dmg;
+  sgRaidLog(`${skill.emoji} 使用「${skill.name}」造成 ${dmg} 傷害${weakHit?'(屬性剋制！)':''}${igniteBonus?`(引爆+${igniteBonus}！)`:''}`);
+
+  if (sg.raid.burnStacks > 0 && sg.raid.enemyHp > 0 && !skill.burn) {
+    sg.raid.enemyHp -= 3;
+    sg.raid.burnStacks--;
+    sgRaidLog(`🔥 灼燒造成 3 傷害`);
+  }
+
+  sgRaidResolveAfterPlayerAction(enemyDef);
+}
+
+// 防禦：不攻擊，換取這回合傷害減半，並多累積一些幹勁
+function sgRaidGuard() {
+  if (!sg.raid.inRun || sg.raid.knockedOut) return;
+  if (sg.raid.floorType !== 'combat' && sg.raid.floorType !== 'boss') return;
+  sg.raid.turnCount++;
+  sgRaidLog(`🛡️ 選擇防禦`);
+  sgRaidResolveEnemyCounter(sg.raid.currentEnemyPick, true);
 }
 
 // 體力耗盡：不會直接結束出勤，卡在原地等復活(花錢立即復活，或先去忙放置賺夠錢再回來)
@@ -2852,7 +2909,7 @@ function sgRaidWinFloor(enemyDef) {
   document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
 }
 
-// 從尚未擁有的技能池中隨機挑2個供選擇
+// 從尚未學會的主動技能池中隨機挑2個供選擇
 function sgRaidRollSkillChoices() {
   const available = SG_RAID_SKILLS.filter(s => !sg.raid.skills.includes(s.id));
   if (available.length === 0) return [];
@@ -2993,6 +3050,7 @@ function sgRaidZoneSelectHtml() {
   const lv = sg.raid.charLevel;
   const expNext = sgRaidExpToNext(lv);
   const expPct = Math.round((sg.raid.charExp / expNext) * 100);
+  const elementIcon = { '機械':'🔩', '火':'🔥', '水':'💦', '電':'⚡' };
   const cards = SG_RAID_ZONES.map(z => {
     const cleared = sg.raid.zoneCleared[z.id];
     const cost = sgRaidEntryCost(z);
@@ -3000,7 +3058,7 @@ function sgRaidZoneSelectHtml() {
       <div class="sg-colleague-card">
         <div class="sg-colleague-emoji">${z.boss.emoji}</div>
         <div class="sg-colleague-name">${z.name}${cleared?' ✅':''}</div>
-        <div class="sg-colleague-bonus">建議等級 Lv.${z.recLevel}　｜　難度係數 ×${z.mult}</div>
+        <div class="sg-colleague-bonus">建議等級 Lv.${z.recLevel}　｜　難度係數 ×${z.mult}<br>弱點屬性：${elementIcon[z.weakElement]}${z.weakElement}</div>
         <div class="sg-colleague-cost">出勤費 💰${sgFormatNum(cost)}</div>
         <button class="sg-colleague-buy" onclick="sgRaidSelectZone('${z.id}')">前往</button>
       </div>`;
@@ -3011,8 +3069,9 @@ function sgRaidZoneSelectHtml() {
     </div>
     <div class="sg-combo-bar"><div class="sg-combo-fill" style="width:${expPct}%;"></div></div>
     <div style="text-align:center;color:#666;line-height:1.7;padding:12px 0;">
-      四個園區各有不同難度，等級不夠會很難打贏，先去等級低的園區練練也可以。<br>
-      每個園區6層：4場戰鬥（小怪隨機出現）+1個事件樓層+最後王怪關卡。<br>
+      四個園區各有不同難度跟屬性弱點，等級不夠會很難打贏。<br>
+      戰鬥中除了普通攻擊，學會的主動技能要消耗⚡幹勁值才能使用；技能屬性對到園區弱點會有剋制加成。<br>
+      每個園區6層：4場戰鬥（小怪隨機出現，每4次反擊會有警示重擊，可用防禦化解）+1個事件樓層+最後王怪關卡。<br>
       出勤要付薪水，體力耗盡不會直接結束——可以花錢立即復活，或先離開去放置賺夠錢再回來。
     </div>
     <div class="sg-colleague-grid">${cards}</div>
@@ -3046,7 +3105,7 @@ function sgRaidTabHtml() {
     const choices = sg._raidPendingSkillChoice.map(id => SG_RAID_SKILLS.find(s=>s.id===id));
     return `
       <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層　❤️ ${r.playerHp}/${r.playerMaxHp}</div>
-      <div style="text-align:center;padding:14px 0;font-weight:600;">過關了！選一項技能</div>
+      <div style="text-align:center;padding:14px 0;font-weight:600;">過關了！學一項主動技能（戰鬥中可主動使用，消耗幹勁值）</div>
       <div class="sg-colleague-grid">
         ${choices.map(s => `
           <div class="sg-colleague-card">
@@ -3100,13 +3159,16 @@ function sgRaidTabHtml() {
   const enemyDef = r.currentEnemyPick;
   const playerPct = Math.max(0, Math.round(r.playerHp / r.playerMaxHp * 100));
   const enemyPct = Math.max(0, Math.round(r.enemyHp / r.enemyMaxHp * 100));
-  const learnedHtml = r.skills.length
-    ? r.skills.map(id => { const s = SG_RAID_SKILLS.find(x=>x.id===id); return `<span title="${s.desc}" style="margin-right:6px;">${s.emoji}</span>`; }).join('')
+  const staminaPct = Math.round((r.stamina||0));
+  const learnedSkills = r.skills.map(id => SG_RAID_SKILLS.find(x=>x.id===id));
+  const learnedHtml = learnedSkills.length
+    ? learnedSkills.map(s => `<span title="${s.desc}" style="margin-right:6px;">${s.emoji}</span>`).join('')
     : '<span style="opacity:0.5;">尚未學習技能</span>';
+  const elementIcon = { '機械':'🔩', '火':'🔥', '水':'💦', '電':'⚡' };
 
   return `
-    <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層　｜　已學技能：${learnedHtml}</div>
-    ${r.bossTelegraphed ? `<div class="sg-raid-boss-warn">⚠️ ${enemyDef.name} 正在蓄力大招！這回合攻擊會承受雙倍反擊，或選擇防禦減傷</div>` : ''}
+    <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層　｜　弱點屬性：${elementIcon[zone.weakElement]}${zone.weakElement}　｜　已學：${learnedHtml}</div>
+    ${r.bossTelegraphed ? `<div class="sg-raid-boss-warn">⚠️ ${enemyDef.name} 正在蓄力，這回合行動將承受重擊！可以選擇防禦減傷</div>` : ''}
     <div class="sg-colleague-card sg-raid-card" style="text-align:center;padding:16px;">
       ${sgRaidDmgFloatHtml('enemy')}
       <div style="font-size:40px;">${enemyDef.emoji}</div>
@@ -3121,10 +3183,17 @@ function sgRaidTabHtml() {
       <div style="font-weight:600;margin:4px 0;">你（Lv.${r.charLevel} 史萊姆工程師）</div>
       <div class="sg-combo-bar"><div class="sg-combo-fill sg-raid-hpbar-fill" style="width:${playerPct}%;"></div></div>
       <div style="font-size:12px;color:#999;margin-top:2px;">HP ${Math.max(0,r.playerHp)}/${r.playerMaxHp}</div>
+      <div class="sg-combo-bar" style="margin-top:8px;background:#e0d8c8;"><div class="sg-combo-fill sg-raid-hpbar-fill" style="width:${staminaPct}%;background:linear-gradient(90deg,#4A90D9,#2D6CB0);"></div></div>
+      <div style="font-size:12px;color:#999;margin-top:2px;">⚡幹勁 ${Math.round(r.stamina||0)}/100</div>
     </div>
     <div style="text-align:center;margin:12px 0;">
-      <button class="sg-colleague-buy" style="max-width:200px;" onclick="sgRaidAttack()">⚔️ 攻擊</button>
-      ${r.bossTelegraphed ? `<button class="sg-colleague-buy" style="max-width:200px;background:#4A90D9;margin-top:8px;" onclick="sgRaidGuard()">🛡️ 防禦</button>` : ''}
+      <button class="sg-colleague-buy" style="max-width:200px;" onclick="sgRaidBasicAttack()">👊 普通攻擊(無消耗)</button>
+      ${learnedSkills.map(s => {
+        const affordable = (r.stamina||0) >= s.cost;
+        const weak = s.element && zone.weakElement === s.element;
+        return `<button class="sg-colleague-buy" style="max-width:260px;margin-top:8px;${weak?'background:#2D9E5F;':''}" ${affordable?'':'disabled'} onclick="sgRaidUseSkill('${s.id}')">${s.emoji} ${s.name}${weak?'(剋制！)':''}（⚡${s.cost}）</button>`;
+      }).join('')}
+      <button class="sg-colleague-buy" style="max-width:200px;background:#4A90D9;margin-top:8px;" onclick="sgRaidGuard()">🛡️ 防禦</button>
       <button class="sg-colleague-buy" style="max-width:160px;background:#999;margin-top:8px;" onclick="sgRaidAbandon()">🚪 撤退</button>
     </div>
     <div style="font-size:12px;color:#888;line-height:1.8;max-height:120px;overflow-y:auto;padding:8px;background:#faf8f4;border-radius:8px;">
