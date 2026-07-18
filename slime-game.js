@@ -239,6 +239,29 @@ function sgGearMS(id) {
   return (sg.gearLv && (sg.gearLv[id]||0) >= SG_GEAR_MILESTONE_LEVEL);
 }
 
+// ══════════════════════════════════════════════
+// 🗡️ 巡邏系統(肉鴿MVP)：會館地下機房，1園區/3層/3種敵人
+// ══════════════════════════════════════════════
+const SG_RAID_ENEMIES = [
+  { id:'leak',  emoji:'💧', name:'漏水怪',   hp:24, atk:3,  desc:'從水管縫隙滲出的黏稠水漬' },
+  { id:'short', emoji:'⚡', name:'跳電怪',   hp:40, atk:5,  desc:'亂竄的電流噴出火花' },
+  { id:'rust',  emoji:'🦀', name:'鏽蝕王',   hp:65, atk:7,  desc:'佔據機房許久的鏽蝕巨獸(BOSS)', isBoss:true },
+];
+
+const SG_RAID_SKILLS = [
+  { id:'r1', emoji:'🔧', name:'校準扳手',   desc:'攻擊有25%機率造成2倍傷害', type:'crit', value:0.25 },
+  { id:'r2', emoji:'🩹', name:'補漏貼片',   desc:'每回合開始回復2點生命',    type:'heal', value:2 },
+  { id:'r3', emoji:'🧯', name:'滅火筒',     desc:'攻擊附加灼燒，之後2回合每回合額外3點傷害', type:'burn', value:3 },
+  { id:'r4', emoji:'⏱️', name:'超時工作',   desc:'每3回合攻擊自動造成雙倍傷害', type:'periodic', value:3 },
+  { id:'r5', emoji:'💪', name:'加班津貼',   desc:'基礎攻擊力永久+3',          type:'flatatk', value:3 },
+];
+
+// 入場費：隨累計通關次數增加，用薪水支付，這筆錢花掉就是花掉(不會變回產能)
+function sgRaidEntryCost() {
+  const runs = (sg.raid && sg.raid.runsCompleted) || 0;
+  return Math.floor(3000 * Math.pow(1.6, runs));
+}
+
 // 裝備升級技術力門檻：升到第N級需要技術力 >= ceil(N/3)
 function sgGearTechReq(targetLevel) {
   return Math.ceil(targetLevel / 3);
@@ -712,6 +735,20 @@ function sgDefaultState() {
     dailyDoubleDate: '',   // 上次使用雙倍離線收益的日期
     daily: { date:'', clicks:0, xpEarned:0, buys:0, claimed:[] },
     luckyClickCount: 0,
+    raid: {                 // 🗡️巡邏(肉鴿MVP)：薪水的真正出口，花掉就是花掉，不會變回產能
+      runsCompleted: 0,     // 累計完整通關次數(影響下次入場費)
+      bestFloor: 0,         // 歷史最高抵達樓層(僅供顯示)
+      inRun: false,
+      floor: 1,
+      playerHp: 0,
+      playerMaxHp: 0,
+      enemyHp: 0,
+      enemyMaxHp: 0,
+      skills: [],          // 本局已選技能id陣列
+      turnCount: 0,
+      burnStacks: 0,        // 灼燒剩餘回合數(滅火筒技能)
+      log: [],
+    },
   };
 }
 
@@ -1430,6 +1467,7 @@ function sgRender() {
       <button class="sg-tab-btn${sgActiveTab==='inventory'?' active':''}" onclick="sgSwitchTab('inventory',this)">🎒 道具</button>
       <button class="sg-tab-btn${sgActiveTab==='daily'?' active':''}" onclick="sgSwitchTab('daily',this)">📅 每日</button>
       <button class="sg-tab-btn${sgActiveTab==='achv'?' active':''}" onclick="sgSwitchTab('achv',this)">🏆 成就</button>
+      <button class="sg-tab-btn${sgActiveTab==='raid'?' active':''}" onclick="sgSwitchTab('raid',this)">🗡️ 巡邏</button>
     </div>
     <div id="sgTabContent">${sgTabContentHtml()}</div>
     <div class="sg-reset-btn" onclick="sgConfirmReset()">重新開始遊戲（清除全部進度）</div>
@@ -1453,6 +1491,7 @@ function sgTabContentHtml() {
   if (sgActiveTab === 'inventory') return sgInventoryTabHtml();
   if (sgActiveTab === 'daily') return sgDailyTabHtml();
   if (sgActiveTab === 'achv') return sgAchvTabHtml();
+  if (sgActiveTab === 'raid') return sgRaidTabHtml();
   return '';
 }
 
@@ -2447,4 +2486,221 @@ function sgConfirmReset() {
     sgRender();
     showToast('🔄 史萊姆重新開始了！');
   }
+}
+
+// ══════════════════════════════════════════════
+// 🗡️ 巡邏系統(肉鴿MVP) 核心邏輯
+// ══════════════════════════════════════════════
+
+function sgRaidLog(msg) {
+  sg.raid.log.unshift(msg);
+  if (sg.raid.log.length > 6) sg.raid.log.length = 6;
+}
+
+function sgRaidPlayerAtk() {
+  let atk = 7;
+  if (sg.raid.skills.includes('r5')) atk += 3;
+  return atk;
+}
+
+// 出發：扣薪水、初始化本局狀態
+function sgRaidStart() {
+  const cost = sgRaidEntryCost();
+  if (sg.xp < cost) { showToast('薪水不夠支付這次出勤費用'); return; }
+  sg.xp -= cost;
+  sg.raid.inRun = true;
+  sg.raid.floor = 1;
+  sg.raid.playerMaxHp = 60;
+  sg.raid.playerHp = 60;
+  sg.raid.skills = [];
+  sg.raid.turnCount = 0;
+  sg.raid.burnStacks = 0;
+  sg.raid.log = [];
+  sgRaidSpawnEnemy();
+  sgRaidLog(`🚪 出發巡邏，支付了 ${sgFormatNum(cost)} 薪水`);
+  sgSave();
+  sgUpdateNumbers();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgRaidSpawnEnemy() {
+  const def = SG_RAID_ENEMIES[sg.raid.floor - 1];
+  sg.raid.enemyHp = def.hp;
+  sg.raid.enemyMaxHp = def.hp;
+}
+
+// 玩家攻擊一次，然後(若敵人未死)換敵人回合
+function sgRaidAttack() {
+  if (!sg.raid.inRun) return;
+  const enemyDef = SG_RAID_ENEMIES[sg.raid.floor - 1];
+  sg.raid.turnCount++;
+
+  // 每回合開始：🩹補漏貼片回血
+  if (sg.raid.skills.includes('r2')) {
+    sg.raid.playerHp = Math.min(sg.raid.playerMaxHp, sg.raid.playerHp + 2);
+  }
+
+  // 計算本次攻擊傷害
+  let dmg = sgRaidPlayerAtk();
+  let isCrit = false;
+  if (sg.raid.skills.includes('r1') && Math.random() < 0.25) { dmg *= 2; isCrit = true; }
+  // ⏱️超時工作：每3回合一次雙倍
+  let isPeriodic = false;
+  if (sg.raid.skills.includes('r4') && sg.raid.turnCount % 3 === 0) { dmg *= 2; isPeriodic = true; }
+  // 🧯灼燒附加(套用一次，之後每回合額外扣血，直到stacks歸零)
+  if (sg.raid.skills.includes('r3')) sg.raid.burnStacks = 2;
+
+  sg.raid.enemyHp -= dmg;
+  sgRaidLog(`🔨 你造成 ${dmg} 傷害${isCrit?'(會心！)':''}${isPeriodic?'(超時加倍！)':''}`);
+
+  // 灼燒傷害結算(若有剩餘層數)
+  if (sg.raid.burnStacks > 0 && sg.raid.enemyHp > 0) {
+    sg.raid.enemyHp -= 3;
+    sg.raid.burnStacks--;
+    sgRaidLog(`🔥 灼燒造成 3 傷害`);
+  }
+
+  if (sg.raid.enemyHp <= 0) {
+    sgRaidWinFloor(enemyDef);
+    return;
+  }
+
+  // 敵人反擊
+  sg.raid.playerHp -= enemyDef.atk;
+  sgRaidLog(`${enemyDef.emoji} ${enemyDef.name} 反擊造成 ${enemyDef.atk} 傷害`);
+
+  if (sg.raid.playerHp <= 0) {
+    sgRaidLose();
+    return;
+  }
+
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgRaidWinFloor(enemyDef) {
+  if (enemyDef.isBoss) {
+    sgRaidWinRun();
+    return;
+  }
+  sgRaidLog(`✅ 擊敗 ${enemyDef.name}！`);
+  sg.raid.floor++;
+  if (sg.raid.floor > (sg.raid.bestFloor||0)) sg.raid.bestFloor = sg.raid.floor;
+  sgRaidSpawnEnemy();
+  sg._raidPendingSkillChoice = sgRaidRollSkillChoices();
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+// 從尚未擁有的技能池中隨機挑2個供選擇
+function sgRaidRollSkillChoices() {
+  const available = SG_RAID_SKILLS.filter(s => !sg.raid.skills.includes(s.id));
+  if (available.length === 0) return [];
+  const shuffled = [...available].sort(()=>Math.random()-0.5);
+  return shuffled.slice(0, Math.min(2, shuffled.length)).map(s=>s.id);
+}
+
+function sgRaidPickSkill(skillId) {
+  sg.raid.skills.push(skillId);
+  sg._raidPendingSkillChoice = null;
+  const skill = SG_RAID_SKILLS.find(s=>s.id===skillId);
+  sgRaidLog(`🎁 學會了「${skill.name}」`);
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgRaidWinRun() {
+  sg.raid.inRun = false;
+  sg.raid.runsCompleted = (sg.raid.runsCompleted||0) + 1;
+  sg.raid.bestFloor = SG_RAID_ENEMIES.length + 1;
+  // 獎勵：資產貨幣(不會變回薪水/秒，乾淨的職級門檻資源)，不影響薪水生產循環
+  const assetReward = 15 + sg.raid.runsCompleted * 3;
+  sg.assets = (sg.assets||0) + assetReward;
+  sgRaidLog(`🏆 擊退鏽蝕王！巡邏完成，獲得 ${assetReward} 資產`);
+  sgSave();
+  sgUpdateNumbers();
+  showToast(`🏆 巡邏完成！獲得 ${assetReward} 🏦資產`);
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgRaidLose() {
+  sg.raid.inRun = false;
+  sgRaidLog(`💀 體力耗盡，撤退了……`);
+  sgSave();
+  showToast('💀 這次巡邏失敗了，出勤費用不會退還');
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgRaidAbandon() {
+  if (!confirm('確定要放棄這次巡邏嗎？出勤費用不會退還。')) return;
+  sg.raid.inRun = false;
+  sgRaidLog('🚪 提早撤退');
+  sgSave();
+  document.getElementById('sgTabContent').innerHTML = sgTabContentHtml();
+}
+
+function sgRaidTabHtml() {
+  const r = sg.raid;
+  if (sg._raidPendingSkillChoice && sg._raidPendingSkillChoice.length) {
+    const choices = sg._raidPendingSkillChoice.map(id => SG_RAID_SKILLS.find(s=>s.id===id));
+    return `
+      <div class="sg-colleague-crystal-bar">🚪 第 ${r.floor} 層　❤️ ${r.playerHp}/${r.playerMaxHp}</div>
+      <div style="text-align:center;padding:14px 0;font-weight:600;">過關了！選一項技能</div>
+      <div class="sg-colleague-grid">
+        ${choices.map(s => `
+          <div class="sg-colleague-card">
+            <div class="sg-colleague-emoji">${s.emoji}</div>
+            <div class="sg-colleague-name">${s.name}</div>
+            <div class="sg-colleague-bonus">${s.desc}</div>
+            <button class="sg-colleague-buy" onclick="sgRaidPickSkill('${s.id}')">選擇</button>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  if (!r.inRun) {
+    const cost = sgRaidEntryCost();
+    const canAfford = sg.xp >= cost;
+    return `
+      <div class="sg-colleague-crystal-bar">🗡️ 累計完整通關：${r.runsCompleted||0} 次　｜　歷史最高抵達第 ${r.bestFloor||0} 層</div>
+      <div style="text-align:center;padding:16px 0;color:#666;line-height:1.7;">
+        深入會館地下機房，擊退故障怪，一路打到鏽蝕王。<br>
+        出勤要付薪水，<b>失敗或中途放棄都不會退費</b>——這是薪水真正的出口。<br>
+        每過一關可以選學一個新技能，技能會保留到這局結束。
+      </div>
+      <div style="text-align:center;">
+        <button class="sg-colleague-buy" style="max-width:240px;" ${canAfford?'':'disabled'} onclick="sgRaidStart()">
+          出發巡邏(💰${sgFormatNum(cost)} 薪水)
+        </button>
+      </div>`;
+  }
+
+  const enemyDef = SG_RAID_ENEMIES[r.floor - 1];
+  const playerPct = Math.max(0, Math.round(r.playerHp / r.playerMaxHp * 100));
+  const enemyPct = Math.max(0, Math.round(r.enemyHp / r.enemyMaxHp * 100));
+  const learnedHtml = r.skills.length
+    ? r.skills.map(id => { const s = SG_RAID_SKILLS.find(x=>x.id===id); return `<span title="${s.desc}" style="margin-right:6px;">${s.emoji}</span>`; }).join('')
+    : '<span style="opacity:0.5;">尚未學習技能</span>';
+
+  return `
+    <div class="sg-colleague-crystal-bar">🚪 第 ${r.floor} / ${SG_RAID_ENEMIES.length} 層　｜　已學技能：${learnedHtml}</div>
+    <div class="sg-colleague-card" style="text-align:center;padding:16px;">
+      <div style="font-size:40px;">${enemyDef.emoji}</div>
+      <div style="font-weight:600;margin:4px 0;">${enemyDef.name}${enemyDef.isBoss?'（BOSS）':''}</div>
+      <div style="font-size:12px;color:#999;margin-bottom:6px;">${enemyDef.desc}</div>
+      <div class="sg-combo-bar"><div class="sg-combo-fill" style="width:${enemyPct}%;background:linear-gradient(90deg,#E85A4A,#C0392B);"></div></div>
+      <div style="font-size:12px;color:#999;margin-top:2px;">HP ${Math.max(0,r.enemyHp)}/${r.enemyMaxHp}</div>
+    </div>
+    <div class="sg-colleague-card" style="text-align:center;padding:16px;">
+      <div style="font-size:32px;">🟢</div>
+      <div style="font-weight:600;margin:4px 0;">你（史萊姆工程師）</div>
+      <div class="sg-combo-bar"><div class="sg-combo-fill" style="width:${playerPct}%;"></div></div>
+      <div style="font-size:12px;color:#999;margin-top:2px;">HP ${Math.max(0,r.playerHp)}/${r.playerMaxHp}</div>
+    </div>
+    <div style="text-align:center;margin:12px 0;">
+      <button class="sg-colleague-buy" style="max-width:200px;" onclick="sgRaidAttack()">⚔️ 攻擊</button>
+      <button class="sg-colleague-buy" style="max-width:160px;background:#999;margin-top:8px;" onclick="sgRaidAbandon()">🚪 撤退</button>
+    </div>
+    <div style="font-size:12px;color:#888;line-height:1.8;max-height:120px;overflow-y:auto;padding:8px;background:#faf8f4;border-radius:8px;">
+      ${r.log.map(l=>`<div>${l}</div>`).join('')}
+    </div>`;
 }
