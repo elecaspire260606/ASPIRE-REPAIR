@@ -317,23 +317,23 @@
   }
   #slimeGameOverlay.open { display:flex; }
   .sg-panel {
-    background:linear-gradient(180deg,#FFF9F2 0%,#FBF3E8 100%);
+    background:linear-gradient(180deg,#241a12 0%,#150e08 100%);
     border-radius:22px; width:100%; max-width:420px; max-height:88vh;
-    overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.4);
+    overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 2px #6b4a26;
     position:relative;
   }
   .sg-header {
-    background:linear-gradient(135deg,#E8761A,#F4A24A); color:white;
+    background:linear-gradient(135deg,#3a2815,#241a12); color:#F2D46E;
     padding:16px 20px; border-radius:22px 22px 0 0;
     display:flex; justify-content:space-between; align-items:center;
-    position:sticky; top:0; z-index:2;
+    position:sticky; top:0; z-index:2; border-bottom:2px solid #6b4a26;
   }
-  .sg-title { font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px; }
-  .sg-close { cursor:pointer; font-size:22px; opacity:0.85; line-height:1; }
-  .sg-body { padding:18px 20px 26px; }
+  .sg-title { font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px; text-shadow:0 1px 2px rgba(0,0,0,0.6); }
+  .sg-close { cursor:pointer; font-size:22px; opacity:0.85; line-height:1; color:#F2D46E; }
+  .sg-body { padding:18px 20px 26px; color:#f0e4d0; }
   .sg-stage {
-    background:white; border-radius:16px; padding:20px; text-align:center;
-    box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:16px; position:relative; overflow:hidden;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:16px; padding:20px; text-align:center;
+    box-shadow:inset 0 0 20px rgba(0,0,0,0.4); margin-bottom:16px; position:relative; overflow:hidden;
   }
   .sg-toast {
     position:absolute; top:10px; left:50%; transform:translateX(-50%) translateY(-10px);
@@ -368,28 +368,28 @@
     0%   { opacity:1; transform:translate(0,0) scale(0.5) rotate(0deg); }
     100% { opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.2) rotate(180deg); }
   }
-  .sg-crit-float { color:#E0524D !important; font-size:17px !important; font-weight:900 !important; }
-  .sg-combo-bar { height:5px; background:#f0ece0; border-radius:3px; overflow:hidden; margin-top:10px; }
-  .sg-combo-fill { height:100%; background:linear-gradient(90deg,#F4A24A,#E8761A); border-radius:3px; transition:width 0.15s; width:0%; }
-  .sg-combo-label { font-size:10px; color:#c99; margin-top:3px; text-align:center; min-height:14px; font-weight:700; }
+  .sg-crit-float { color:#ff8a65 !important; font-size:17px !important; font-weight:900 !important; }
+  .sg-combo-bar { height:5px; background:#1a1210; border-radius:3px; overflow:hidden; margin-top:10px; border:1px solid #4a3520; }
+  .sg-combo-fill { height:100%; background:linear-gradient(90deg,#F2D46E,#C9971F); border-radius:3px; transition:width 0.15s; width:0%; }
+  .sg-combo-label { font-size:10px; color:#d8a0a0; margin-top:3px; text-align:center; min-height:14px; font-weight:700; }
   .sg-achv-item {
-    background:white; border-radius:10px; padding:10px 12px; margin-bottom:6px;
-    display:flex; align-items:center; gap:10px; box-shadow:0 1px 6px rgba(0,0,0,0.05);
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:10px 12px; margin-bottom:6px;
+    display:flex; align-items:center; gap:10px;
   }
   .sg-achv-item.locked { opacity:0.4; }
   .sg-achv-icon { font-size:22px; flex-shrink:0; }
   .sg-achv-info { flex:1; min-width:0; }
-  .sg-achv-name { font-size:12px; font-weight:700; color:#1a1a1a; }
-  .sg-achv-desc { font-size:10px; color:#aaa; margin-top:1px; }
-  .sg-achv-reward { font-size:10px; color:#2D7A3E; font-weight:700; white-space:nowrap; }
+  .sg-achv-name { font-size:12px; font-weight:700; color:#f0e4d0; }
+  .sg-achv-desc { font-size:10px; color:#a8927a; margin-top:1px; }
+  .sg-achv-reward { font-size:10px; color:#7ED9A8; font-weight:700; white-space:nowrap; }
 
   /* 分頁導覽 */
   .sg-tabs { display:flex; gap:4px; margin:14px 0 10px; overflow-x:auto; padding-bottom:2px; }
   .sg-tab-btn {
-    flex-shrink:0; padding:7px 12px; border:none; border-radius:20px; background:#f0ece0;
-    color:#999; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
+    flex-shrink:0; padding:7px 12px; border:2px solid #4a3520; border-radius:20px; background:rgba(0,0,0,0.35);
+    color:#a8927a; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
   }
-  .sg-tab-btn.active { background:#E8761A; color:white; }
+  .sg-tab-btn.active { background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; border-color:#F2D46E; }
 
   /* 幸運史萊姆 */
   .sg-lucky {
@@ -458,36 +458,35 @@
 
   /* 道具背包分頁 */
   .sg-inventory-item {
-    background:white; border-radius:10px; padding:10px 12px; margin-bottom:6px;
-    display:flex; align-items:center; gap:10px; box-shadow:0 1px 6px rgba(0,0,0,0.05);
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:10px 12px; margin-bottom:6px;
+    display:flex; align-items:center; gap:10px;
     border-left:4px solid transparent;
   }
-  .sg-inv-name { font-size:12px; font-weight:700; color:#1a1a1a; }
-  .sg-inv-desc { font-size:10px; color:#aaa; margin-top:1px; }
+  .sg-inv-name { font-size:12px; font-weight:700; color:#f0e4d0; }
+  .sg-inv-desc { font-size:10px; color:#a8927a; margin-top:1px; }
   .sg-inv-count { font-size:11px; font-weight:800; white-space:nowrap; }
   .sg-crystal-upgrade {
-    background:white; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:10px 12px; margin-bottom:8px;
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    box-shadow:0 1px 6px rgba(0,0,0,0.05);
   }
   .sg-crystal-buy-btn {
-    padding:7px 12px; border:none; border-radius:9px; font-size:11px; font-weight:700; cursor:pointer;
-    font-family:inherit; background:#8B4FD9; color:white; flex-shrink:0;
+    padding:7px 12px; border:1px solid #8a6a10; border-radius:9px; font-size:11px; font-weight:700; cursor:pointer;
+    font-family:inherit; background:linear-gradient(180deg,#c89bf5,#8B4FD9); color:white; flex-shrink:0;
   }
-  .sg-crystal-buy-btn:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
+  .sg-crystal-buy-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; cursor:not-allowed; }
 
   /* 圖鑑 */
   .sg-colleague-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .sg-colleague-item {
-    background:white; border-radius:12px; padding:12px 6px; text-align:center;
-    box-shadow:0 1px 6px rgba(0,0,0,0.05); position:relative;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:12px; padding:12px 6px; text-align:center;
+    position:relative;
   }
   .sg-colleague-item.locked { opacity:0.45; }
-  .sg-colleague-item.can-afford { border:2px solid #E8761A; box-shadow:0 0 0 3px rgba(232,118,26,0.15); }
+  .sg-colleague-item.can-afford { border:2px solid #F2D46E; box-shadow:0 0 8px rgba(242,212,110,0.35); }
   .sg-colleague-crystal-bar {
-    display:flex; align-items:center; justify-content:center; gap:6px;
-    background:#2b1a4a; color:white; border-radius:10px; padding:8px 12px; margin-bottom:10px;
-    font-size:13px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;
+    background:rgba(0,0,0,0.4); color:#F2D46E; border:2px solid #4a3520; border-radius:10px; padding:8px 12px; margin-bottom:10px;
+    font-size:12px; font-weight:800; text-align:center;
   }
 
   /* 裝備疊圖(視覺已停用,保留樣式避免殘留呼叫報錯) */
@@ -506,35 +505,34 @@
   .sg-job-aura-t4 { box-shadow:0 0 36px 16px rgba(255,215,0,0.55); }
   @keyframes sgAuraPulse { 0%,100%{opacity:0.7; transform:translate(-50%,-50%) scale(0.96);} 50%{opacity:1; transform:translate(-50%,-50%) scale(1.05);} }
   .sg-colleague-emoji { font-size:26px; }
-  .sg-colleague-name { font-size:9px; font-weight:700; color:#1a1a1a; margin-top:4px; line-height:1.3; }
-  .sg-colleague-bonus { font-size:9px; color:#2D7A3E; margin-top:2px; font-weight:700; line-height:1.3; }
-  .sg-colleague-cost { font-size:9px; color:#999; margin-top:2px; }
-  .sg-colleague-buy { margin-top:6px; width:100%; padding:5px; border:none; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:#E8761A; color:white; }
-  .sg-colleague-buy:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
+  .sg-colleague-name { font-size:9px; font-weight:700; color:#f0e4d0; margin-top:4px; line-height:1.3; }
+  .sg-colleague-bonus { font-size:9px; color:#7ED9A8; margin-top:2px; font-weight:700; line-height:1.3; }
+  .sg-colleague-cost { font-size:9px; color:#a8927a; margin-top:2px; }
+  .sg-colleague-buy { margin-top:6px; width:100%; padding:5px; border:1px solid #8a6a10; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; }
+  .sg-colleague-buy:disabled { background:linear-gradient(180deg,#555,#333); color:#888; border-color:#222; cursor:not-allowed; }
 
   /* 每日任務 */
   .sg-daily-item {
-    background:white; border-radius:10px; padding:12px 14px; margin-bottom:8px;
-    box-shadow:0 1px 6px rgba(0,0,0,0.05);
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:12px 14px; margin-bottom:8px;
   }
   .sg-daily-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-  .sg-daily-name { font-size:12px; font-weight:700; color:#1a1a1a; }
-  .sg-daily-reward { font-size:11px; color:#E8761A; font-weight:700; }
-  .sg-daily-track { height:6px; background:#f0ece0; border-radius:3px; overflow:hidden; }
-  .sg-daily-fill { height:100%; background:#2D9E5F; border-radius:3px; transition:width 0.3s; }
-  .sg-daily-prog { font-size:10px; color:#aaa; margin-top:4px; text-align:right; }
+  .sg-daily-name { font-size:12px; font-weight:700; color:#f0e4d0; }
+  .sg-daily-reward { font-size:11px; color:#F2D46E; font-weight:700; }
+  .sg-daily-track { height:6px; background:#1a1210; border-radius:3px; overflow:hidden; border:1px solid #4a3520; }
+  .sg-daily-fill { height:100%; background:linear-gradient(90deg,#7ED9A8,#2D9E5F); border-radius:3px; transition:width 0.3s; }
+  .sg-daily-prog { font-size:10px; color:#a8927a; margin-top:4px; text-align:right; }
   .sg-daily-claim {
-    margin-top:8px; width:100%; padding:7px; border:none; border-radius:8px; font-size:11px; font-weight:700;
-    cursor:pointer; font-family:inherit; background:#2D7A3E; color:white;
+    margin-top:8px; width:100%; padding:7px; border:1px solid #1f5a2c; border-radius:8px; font-size:11px; font-weight:700;
+    cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#4fbf6a,#2D7A3E); color:white;
   }
-  .sg-daily-claim:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
-  .sg-stage-name { font-size:13px; color:#E8761A; font-weight:700; margin-top:8px; }
-  .sg-job-rank { margin-top:8px; padding-top:8px; border-top:1px dashed #f0e0d0; }
-  .sg-job-rank-name { font-size:12px; color:#444; font-weight:700; }
-  .sg-job-rank-tier { font-size:10px; color:#8B5CF6; font-weight:800; }
-  .sg-job-rank-track { height:5px; background:#f0ece0; border-radius:3px; overflow:hidden; margin:6px 0 4px; }
+  .sg-daily-claim:disabled { background:linear-gradient(180deg,#555,#333); color:#888; cursor:not-allowed; }
+  .sg-stage-name { font-size:13px; color:#F2D46E; font-weight:700; margin-top:8px; text-shadow:0 1px 2px rgba(0,0,0,0.5); }
+  .sg-job-rank { margin-top:8px; padding-top:8px; border-top:1px dashed #4a3520; }
+  .sg-job-rank-name { font-size:12px; color:#f0e4d0; font-weight:700; }
+  .sg-job-rank-tier { font-size:10px; color:#c89bf5; font-weight:800; }
+  .sg-job-rank-track { height:5px; background:#1a1210; border-radius:3px; overflow:hidden; margin:6px 0 4px; border:1px solid #4a3520; }
   .sg-job-rank-fill { height:100%; background:linear-gradient(90deg,#8B5CF6,#5B3FA8); border-radius:3px; transition:width 0.3s; }
-  .sg-job-rank-next { font-size:10px; color:#aaa; }
+  .sg-job-rank-next { font-size:10px; color:#a8927a; }
 
   /* 職級點擊特效：中階主管(2) 星星爆發 */
   .sg-click-fx-tier2 { position:absolute; font-size:16px; pointer-events:none; animation:sgFxTier2 0.7s ease-out forwards; }
@@ -550,12 +548,12 @@
   }
   @keyframes sgFxTier4Ring { 0%{opacity:0.9; transform:scale(0.5);} 100%{opacity:0; transform:scale(4);} }
   .sg-xp-row { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-top:10px; }
-  .sg-xp-num { font-size:24px; font-weight:800; color:#1a1a1a; }
-  .sg-xp-label { font-size:12px; color:#aaa; }
-  .sg-xp-rate { font-size:11px; color:#2D7A3E; margin-top:4px; font-weight:600; }
-  .sg-secondary-stats { display:flex; justify-content:center; gap:14px; margin-top:4px; font-size:10px; color:#888; }
-  .sg-secondary-stats b { color:#5B3FA8; font-size:11px; }
-  .sg-float { position:absolute; font-size:14px; font-weight:800; color:#E8761A; pointer-events:none; animation:sgFloat 0.8s ease-out forwards; }
+  .sg-xp-num { font-size:24px; font-weight:800; color:#F2D46E; text-shadow:0 1px 3px rgba(0,0,0,0.5); }
+  .sg-xp-label { font-size:12px; color:#a8927a; }
+  .sg-xp-rate { font-size:11px; color:#7ED9A8; margin-top:4px; font-weight:600; }
+  .sg-secondary-stats { display:flex; justify-content:center; gap:14px; margin-top:4px; font-size:10px; color:#a8927a; }
+  .sg-secondary-stats b { color:#c89bf5; font-size:11px; }
+  .sg-float { position:absolute; font-size:14px; font-weight:800; color:#F2D46E; pointer-events:none; animation:sgFloat 0.8s ease-out forwards; text-shadow:0 1px 2px rgba(0,0,0,0.5); }
   @keyframes sgFloat { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-40px);} }
   .sg-raid-card { position:relative; overflow:visible; }
   .sg-raid-dmg-float { position:absolute; top:8px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:900; pointer-events:none; animation:sgFloat 0.9s ease-out forwards; z-index:5; }
@@ -638,19 +636,46 @@
     display:flex; justify-content:space-between; align-items:center; margin-top:10px;
     font-size:11px; color:#d8c8ae; padding-top:8px; border-top:1px solid #4a3520;
   }
-  .sg-section-label { font-size:11px; font-weight:700; color:#999; text-transform:uppercase; letter-spacing:0.06em; margin:14px 0 8px; }
+
+  /* ══════ 公司分頁 復古風格測試版 ══════ */
+  .sg-raid-shop-toggle {
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px;
+    padding:10px 12px; margin-bottom:10px; font-size:12px; font-weight:700; color:#f0e4d0;
+  }
+  .sg-raid-shop-subtabs { display:flex; gap:6px; margin-bottom:10px; }
+  .sg-raid-shop-subtab {
+    flex:1; text-align:center; padding:8px 4px; font-size:12px; font-weight:700;
+    background:linear-gradient(180deg,#2d2015,#1a1209); border:2px solid #4a3520; border-radius:8px;
+    color:#a8927a; cursor:pointer;
+  }
+  .sg-raid-shop-subtab.active { color:#F2D46E; border-color:#F2D46E; box-shadow:0 0 8px rgba(242,212,110,0.4); }
+  .sg-raid-shop-item {
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px;
+    padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .sg-raid-shop-item.locked { opacity:0.5; }
+  .sg-raid-shop-name { font-weight:700; color:#f0e4d0; font-size:13px; }
+  .sg-raid-shop-desc { font-size:11px; color:#a8927a; margin-top:2px; }
+  .sg-raid-shop-owned { font-size:10px; color:#7ED9A8; margin-top:2px; }
+  .sg-raid-buy-row { display:flex; gap:4px; flex-shrink:0; }
+  .sg-raid-buy-btn {
+    background:linear-gradient(180deg,#F2D46E,#C9971F); border:1px solid #8a6a10; border-radius:6px;
+    color:#3a2000; font-size:10px; font-weight:800; padding:6px 8px; cursor:pointer; text-align:center; line-height:1.3;
+  }
+  .sg-raid-buy-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; border-color:#222; cursor:not-allowed; }
+  .sg-section-label { font-size:11px; font-weight:700; color:#a8927a; text-transform:uppercase; letter-spacing:0.06em; margin:14px 0 8px; }
   .sg-shop-item {
-    background:white; border-radius:12px; padding:12px 14px; margin-bottom:8px;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:12px; padding:12px 14px; margin-bottom:8px;
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    box-shadow:0 1px 6px rgba(0,0,0,0.05);
   }
   .sg-shop-info { flex:1; min-width:0; }
-  .sg-shop-name { font-size:13px; font-weight:700; color:#1a1a1a; display:flex; align-items:center; gap:6px; }
-  .sg-shop-desc { font-size:11px; color:#aaa; margin-top:2px; }
-  .sg-shop-owned { font-size:11px; color:#2D7A3E; font-weight:700; margin-top:2px; }
-  .sg-shop-locked { opacity:0.6; background:#f5f3ef; }
-  .sg-shop-locked .sg-shop-name { color:#aaa; }
-  .sg-shop-locked .sg-shop-desc { color:#bbb; }
+  .sg-shop-name { font-size:13px; font-weight:700; color:#f0e4d0; display:flex; align-items:center; gap:6px; }
+  .sg-shop-desc { font-size:11px; color:#a8927a; margin-top:2px; }
+  .sg-shop-owned { font-size:11px; color:#7ED9A8; font-weight:700; margin-top:2px; }
+  .sg-shop-locked { opacity:0.6; background:rgba(0,0,0,0.5); }
+  .sg-shop-locked .sg-shop-name { color:#a8927a; }
+  .sg-shop-locked .sg-shop-desc { color:#7a6a5a; }
   .sg-shop-cat-tag {
     font-size:9px; font-weight:700; color:white; background:#B08968; border-radius:10px;
     padding:1px 7px; margin-left:4px; vertical-align:middle;
@@ -659,61 +684,61 @@
 
   /* 股票賭博機制 */
   .sg-stock-panel {
-    background:linear-gradient(135deg,#1a3a2e,#2d5a45); border-radius:14px; padding:16px;
-    text-align:center; color:white; margin-bottom:14px;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:14px; padding:16px;
+    text-align:center; color:#f0e4d0; margin-bottom:14px;
   }
-  .sg-stock-title { font-size:15px; font-weight:800; margin-bottom:4px; }
+  .sg-stock-title { font-size:15px; font-weight:800; margin-bottom:4px; color:#F2D46E; }
   .sg-stock-desc { font-size:11px; opacity:0.8; margin-bottom:12px; line-height:1.5; }
   .sg-stock-btn {
-    width:100%; padding:14px; border:none; border-radius:12px; font-size:14px; font-weight:800;
-    cursor:pointer; font-family:inherit; background:#FFD700; color:#2b1a00;
-    box-shadow:0 4px 12px rgba(255,215,0,0.3);
+    width:100%; padding:14px; border:1px solid #8a6a10; border-radius:12px; font-size:14px; font-weight:800;
+    cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000;
+    box-shadow:0 4px 12px rgba(242,212,110,0.25);
   }
-  .sg-stock-btn:disabled { background:rgba(255,255,255,0.2); color:rgba(255,255,255,0.4); box-shadow:none; cursor:not-allowed; }
+  .sg-stock-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; box-shadow:none; cursor:not-allowed; }
   .sg-stock-heat { font-size:11px; opacity:0.75; margin-top:10px; }
   .sg-stock-stats { font-size:10px; opacity:0.6; margin-top:4px; }
-  .sg-stock-table { background:white; border-radius:10px; padding:6px 10px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
-  .sg-stock-row { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid #f2ede8; }
+  .sg-stock-table { background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:6px 10px; }
+  .sg-stock-row { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid #4a3520; }
   .sg-stock-row:last-child { border-bottom:none; }
-  .sg-stock-row.good { color:#2D7A3E; }
-  .sg-stock-row.bad { color:#C0392B; }
+  .sg-stock-row.good { color:#7ED9A8; }
+  .sg-stock-row.bad { color:#E85A4A; }
   .sg-stock-debuff-alert {
-    background:#FDECEA; color:#C0392B; border-radius:8px; padding:8px 12px; margin-bottom:10px;
-    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #C0392B;
+    background:rgba(200,60,50,0.2); color:#ff8a75; border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #E85A4A;
   }
   .sg-stock-buff-alert {
-    background:#EEF7F0; color:#246332; border-radius:8px; padding:8px 12px; margin-bottom:10px;
-    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #2D7A3E;
+    background:rgba(60,160,90,0.2); color:#7ED9A8; border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #2D9E5F;
   }
   .sg-shop-subtab {
-    flex:1; padding:8px; border:none; border-radius:10px; background:#f0ece0; color:#888;
+    flex:1; padding:8px; border:2px solid #4a3520; border-radius:10px; background:rgba(0,0,0,0.35); color:#a8927a;
     font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
   }
-  .sg-shop-subtab.active { background:#E8761A; color:white; }
+  .sg-shop-subtab.active { background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; border-color:#F2D46E; }
   .sg-setbonus-mini {
-    background:#f0ece0; border-radius:8px; padding:8px 12px; margin-bottom:10px;
-    font-size:11px; color:#666; cursor:pointer; text-align:center; font-weight:600;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:11px; color:#d8c8ae; cursor:pointer; text-align:center; font-weight:600;
   }
-  .sg-setbonus-mini:hover { background:#e5ddd0; }
+  .sg-setbonus-mini:hover { background:rgba(0,0,0,0.5); }
   .sg-setbonus-panel {
-    background:linear-gradient(135deg,#2b1a4a,#4a2a7a); border-radius:12px; padding:12px 14px;
-    margin-bottom:12px; color:white;
+    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:12px; padding:12px 14px;
+    margin-bottom:12px; color:#f0e4d0;
   }
-  .sg-setbonus-title { font-size:12px; font-weight:800; margin-bottom:8px; }
+  .sg-setbonus-title { font-size:12px; font-weight:800; margin-bottom:8px; color:#F2D46E; }
   .sg-setbonus-row { font-size:11px; margin-bottom:6px; }
   .sg-setbonus-row:last-child { margin-bottom:0; }
   .sg-setbonus-name { font-weight:700; margin-bottom:2px; }
   .sg-setbonus-info { opacity:0.9; font-size:10px; margin-top:2px; }
   .sg-buy-btn {
-    flex-shrink:0; padding:8px 14px; border:none; border-radius:10px; font-size:12px; font-weight:700;
-    cursor:pointer; font-family:inherit; background:#E8761A; color:white; transition:all 0.15s;
+    flex-shrink:0; padding:8px 14px; border:1px solid #8a6a10; border-radius:10px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; transition:all 0.15s;
   }
-  .sg-buy-btn:disabled { background:#e5e0d8; color:#bbb; cursor:not-allowed; }
-  .sg-buy-btn:not(:disabled):hover { background:#d06815; }
-  .sg-reset-btn { font-size:11px; color:#ccc; text-align:center; margin-top:16px; cursor:pointer; text-decoration:underline; }
+  .sg-buy-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; cursor:not-allowed; }
+  .sg-buy-btn:not(:disabled):hover { filter:brightness(1.08); }
+  .sg-reset-btn { font-size:11px; color:#a8927a; text-align:center; margin-top:16px; cursor:pointer; text-decoration:underline; }
   .sg-offline-toast {
-    background:#EEF7F0; color:#246332; border-radius:10px; padding:10px 14px; font-size:12px;
-    margin-bottom:14px; text-align:center; border-left:3px solid #2D7A3E;
+    background:rgba(60,160,90,0.2); color:#7ED9A8; border-radius:10px; padding:10px 14px; font-size:12px;
+    margin-bottom:14px; text-align:center; border-left:3px solid #2D9E5F;
   }
 
   /* 收假報告面板 */
