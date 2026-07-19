@@ -188,6 +188,10 @@ function sgFormatItemDesc(item) {
     case 'crystalGainBonus':return `重新入職水晶量永久+${(item.value*100).toFixed(0)}%`;
     case 'comboWindowBonus':return `連擊時間窗永久+${(item.value/1000).toFixed(2)}秒`;
     case 'comboCapBonus':   return `連擊加成上限永久+${(item.value*100).toFixed(0)}%`;
+    case 'charMult': {
+      const charName = (SG_COLLEAGUES.find(c=>c.id===item.charId)||{}).name || '';
+      return `${charName} 效果永久+${Math.round(item.value*100)}%`;
+    }
   }
   return item.desc;
 }
@@ -3197,16 +3201,15 @@ function sgRaidTabHtml() {
   if (sg._raidPendingSkillChoice && sg._raidPendingSkillChoice.length) {
     const choices = sg._raidPendingSkillChoice.map(id => SG_RAID_SKILLS.find(s=>s.id===id));
     return `
-      <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層　❤️ ${r.playerHp}/${r.playerMaxHp}</div>
-      <div style="text-align:center;padding:14px 0;font-weight:600;">過關了！學一項主動技能（戰鬥中可主動使用，消耗幹勁值）</div>
-      <div class="sg-colleague-grid">
-        ${choices.map(s => `
-          <div class="sg-colleague-card">
-            <div class="sg-colleague-emoji">${s.emoji}</div>
-            <div class="sg-colleague-name">${s.name}</div>
-            <div class="sg-colleague-bonus">${s.desc}</div>
-            <button class="sg-colleague-buy" onclick="sgRaidPickSkill('${s.id}')">選擇</button>
-          </div>`).join('')}
+      <div class="sg-raid-frame">
+        <div class="sg-raid-zonebar">🚪 ${zone.name} 第 ${r.floor}/6 層　❤️ ${r.playerHp}/${r.playerMaxHp}</div>
+        <div style="text-align:center;padding:10px 0;font-weight:700;color:#F2D46E;">過關了！學一項主動技能（戰鬥中可主動使用，消耗幹勁值）</div>
+        <div class="sg-raid-actionbar" style="flex-direction:column;">
+          ${choices.map(s => `
+            <button class="sg-raid-actbtn skill" style="flex:1 1 auto;text-align:left;padding:10px;" onclick="sgRaidPickSkill('${s.id}')">
+              <span class="ic" style="display:inline;margin-right:6px;">${s.emoji}</span><b>${s.name}</b>　<span style="opacity:0.8;font-weight:400;">${s.desc}</span>
+            </button>`).join('')}
+        </div>
       </div>`;
   }
 
@@ -3214,13 +3217,17 @@ function sgRaidTabHtml() {
     const cost = sgRaidReviveCost();
     const canAfford = sg.xp >= cost;
     return `
-      <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層</div>
-      <div class="sg-colleague-card" style="text-align:center;padding:24px;">
-        <div style="font-size:40px;">💀</div>
-        <div style="font-weight:600;margin:8px 0;">體力耗盡，倒地了</div>
-        <div style="font-size:13px;color:#999;margin-bottom:12px;">花錢可以立即復活繼續，或先離開去放置賺夠錢再回來，等級、經驗值、裝備都不會不見。</div>
-        <button class="sg-colleague-buy" style="max-width:240px;" ${canAfford?'':'disabled'} onclick="sgRaidRevive()">💰 花 ${sgFormatNum(cost)} 薪水復活</button>
-        <button class="sg-colleague-buy" style="max-width:200px;background:#999;margin-top:8px;" onclick="sgRaidAbandon()">🚪 先離開</button>
+      <div class="sg-raid-frame">
+        <div class="sg-raid-zonebar">🚪 ${zone.name} 第 ${r.floor}/6 層</div>
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:44px;">💀</div>
+          <div style="font-weight:700;margin:8px 0;color:#F2D46E;">體力耗盡，倒地了</div>
+          <div style="font-size:12px;color:#d8c8ae;margin-bottom:14px;">花錢可以立即復活繼續，或先離開去放置賺夠錢再回來，等級、經驗值、裝備都不會不見。</div>
+        </div>
+        <div class="sg-raid-actionbar">
+          <button class="sg-raid-actbtn attack" style="flex:1 1 90%;" ${canAfford?'':'disabled'} onclick="sgRaidRevive()"><span class="ic">💰</span>花 ${sgFormatNum(cost)} 薪水復活</button>
+          <button class="sg-raid-actbtn run" style="flex:1 1 90%;" onclick="sgRaidAbandon()"><span class="ic">🚪</span>先離開</button>
+        </div>
       </div>`;
   }
 
@@ -3230,28 +3237,32 @@ function sgRaidTabHtml() {
     const runsSoFar = sg.raid.zoneRuns[zone.id] || 0;
     const effMult = (zone.mult * (1 + runsSoFar * 0.12)).toFixed(2);
     return `
-      <div class="sg-colleague-crystal-bar">🧑‍🔧 Lv.${r.charLevel}　｜　${zone.name}　｜　建議等級 Lv.${zone.recLevel}</div>
-      <div style="text-align:center;color:#666;font-size:13px;padding:8px 0;">
-        已出勤 ${runsSoFar} 次　｜　目前實際難度係數 ×${effMult}<br>
-        <span style="opacity:0.8;">同園區刷越多次敵人越強，不會因為等級高就永遠碾壓；獎勵也會跟著變多</span>
-      </div>
-      <div style="text-align:center;padding:16px 0;">
-        <button class="sg-colleague-buy" style="max-width:240px;" ${canAfford?'':'disabled'} onclick="sgRaidStart()">
-          出發巡邏(💰${sgFormatNum(cost)} 薪水)
-        </button>
-        <button class="sg-colleague-buy" style="max-width:200px;background:#999;margin-top:8px;" onclick="sgRaidBackToZoneSelect()">🚪 返回園區選擇</button>
+      <div class="sg-raid-frame">
+        <div class="sg-raid-zonebar">🧑‍🔧 Lv.${r.charLevel}　｜　${zone.name}　｜　建議等級 Lv.${zone.recLevel}</div>
+        <div style="text-align:center;color:#d8c8ae;font-size:12px;padding:8px 0;">
+          已出勤 ${runsSoFar} 次　｜　目前實際難度係數 ×${effMult}<br>
+          <span style="opacity:0.75;">同園區刷越多次敵人越強，不會因為等級高就永遠碾壓；獎勵也會跟著變多</span>
+        </div>
+        <div class="sg-raid-actionbar">
+          <button class="sg-raid-actbtn attack" style="flex:1 1 90%;" ${canAfford?'':'disabled'} onclick="sgRaidStart()"><span class="ic">🚪</span>出發巡邏(💰${sgFormatNum(cost)} 薪水)</button>
+          <button class="sg-raid-actbtn run" style="flex:1 1 90%;" onclick="sgRaidBackToZoneSelect()"><span class="ic">↩️</span>返回園區選擇</button>
+        </div>
       </div>`;
   }
 
   // 非戰鬥事件樓層
   if (r.floorType === 'event' && r.currentEvent) {
     return `
-      <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層（事件）</div>
-      <div class="sg-raid-event-card">
-        <div style="font-size:40px;">${r.currentEvent.emoji}</div>
-        <div style="font-weight:700;margin:8px 0;">${r.currentEvent.title}</div>
-        <div style="color:#666;">${r.currentEvent.resultText}</div>
-        <button class="sg-colleague-buy" style="max-width:200px;margin-top:14px;" onclick="sgRaidEventContinue()">繼續前進</button>
+      <div class="sg-raid-frame">
+        <div class="sg-raid-zonebar">🚪 ${zone.name} 第 ${r.floor}/6 層（事件）</div>
+        <div style="text-align:center;padding:16px 0;">
+          <div style="font-size:44px;">${r.currentEvent.emoji}</div>
+          <div style="font-weight:700;margin:8px 0;color:#F2D46E;">${r.currentEvent.title}</div>
+          <div style="color:#d8c8ae;font-size:13px;">${r.currentEvent.resultText}</div>
+        </div>
+        <div class="sg-raid-actionbar">
+          <button class="sg-raid-actbtn attack" style="flex:1 1 90%;" onclick="sgRaidEventContinue()"><span class="ic">➡️</span>繼續前進</button>
+        </div>
       </div>`;
   }
 
@@ -3266,36 +3277,43 @@ function sgRaidTabHtml() {
   const elementIcon = { '機械':'🔩', '火':'🔥', '水':'💦', '電':'⚡' };
 
   return `
-    <div class="sg-colleague-crystal-bar">🚪 ${zone.name} 第 ${r.floor}/6 層　｜　弱點屬性：${elementIcon[zone.weakElement]}${zone.weakElement}　｜　已學：${learnedHtml}</div>
-    ${r.bossTelegraphed ? `<div class="sg-raid-boss-warn">⚠️ ${enemyDef.name} 正在蓄力，這回合行動將承受重擊！可以選擇防禦減傷</div>` : ''}
-    <div class="sg-colleague-card sg-raid-card" style="text-align:center;padding:16px;">
-      ${sgRaidDmgFloatHtml('enemy')}
-      <div style="font-size:40px;">${enemyDef.isBoss ? (sgRaidBossSvgHtml(sg.raid.selectedZone, 64) || enemyDef.emoji) : enemyDef.emoji}</div>
-      <div style="font-weight:600;margin:4px 0;">${enemyDef.name}${enemyDef.isBoss?'（BOSS）':''}</div>
-      <div style="font-size:12px;color:#999;margin-bottom:6px;">${enemyDef.desc}</div>
-      <div class="sg-combo-bar"><div class="sg-combo-fill sg-raid-hpbar-fill" style="width:${enemyPct}%;background:linear-gradient(90deg,#E85A4A,#C0392B);"></div></div>
-      <div style="font-size:12px;color:#999;margin-top:2px;">HP ${Math.max(0,r.enemyHp)}/${r.enemyMaxHp}</div>
-    </div>
-    <div class="sg-colleague-card sg-raid-card" style="text-align:center;padding:16px;">
-      ${sgRaidDmgFloatHtml('player')}
-      <div style="font-size:32px;">🟢</div>
-      <div style="font-weight:600;margin:4px 0;">你（Lv.${r.charLevel} 史萊姆工程師）</div>
-      <div class="sg-combo-bar"><div class="sg-combo-fill sg-raid-hpbar-fill" style="width:${playerPct}%;"></div></div>
-      <div style="font-size:12px;color:#999;margin-top:2px;">HP ${Math.max(0,r.playerHp)}/${r.playerMaxHp}</div>
-      <div class="sg-combo-bar" style="margin-top:8px;background:#e0d8c8;"><div class="sg-combo-fill sg-raid-hpbar-fill" style="width:${staminaPct}%;background:linear-gradient(90deg,#4A90D9,#2D6CB0);"></div></div>
-      <div style="font-size:12px;color:#999;margin-top:2px;">⚡幹勁 ${Math.round(r.stamina||0)}/100</div>
-    </div>
-    <div style="text-align:center;margin:12px 0;">
-      <button class="sg-colleague-buy" style="max-width:200px;" onclick="sgRaidBasicAttack()">👊 普通攻擊(無消耗)</button>
-      ${learnedSkills.map(s => {
-        const affordable = (r.stamina||0) >= s.cost;
-        const weak = s.element && zone.weakElement === s.element;
-        return `<button class="sg-colleague-buy" style="max-width:260px;margin-top:8px;${weak?'background:#2D9E5F;':''}" ${affordable?'':'disabled'} onclick="sgRaidUseSkill('${s.id}')">${s.emoji} ${s.name}${weak?'(剋制！)':''}（⚡${s.cost}）</button>`;
-      }).join('')}
-      <button class="sg-colleague-buy" style="max-width:200px;background:#4A90D9;margin-top:8px;" onclick="sgRaidGuard()">🛡️ 防禦</button>
-      <button class="sg-colleague-buy" style="max-width:160px;background:#999;margin-top:8px;" onclick="sgRaidAbandon()">🚪 撤退</button>
-    </div>
-    <div style="font-size:12px;color:#888;line-height:1.8;max-height:120px;overflow-y:auto;padding:8px;background:#faf8f4;border-radius:8px;">
-      ${r.log.map(l=>`<div>${l}</div>`).join('')}
+    <div class="sg-raid-frame">
+      <div class="sg-raid-zonebar">🚪 ${zone.name} 第 ${r.floor}/6 層　｜　弱點屬性：${elementIcon[zone.weakElement]}${zone.weakElement}　｜　已學：${learnedHtml}</div>
+      ${r.bossTelegraphed ? `<div class="sg-raid-warn">⚠️ ${enemyDef.name} 正在蓄力，這回合行動將承受重擊！可以選擇防禦減傷</div>` : ''}
+      <div class="sg-raid-combatants">
+        <div class="sg-raid-unit">
+          ${sgRaidDmgFloatHtml('player')}
+          <div class="sg-raid-unit-name">Lv.${r.charLevel} 勇者史萊姆</div>
+          <div class="sg-raid-unit-emoji">🟢</div>
+          <div class="sg-raid-bar-track"><div class="sg-raid-bar-fill hp" style="width:${playerPct}%;"></div></div>
+          <div class="sg-raid-bar-label">❤️ ${Math.max(0,r.playerHp)}/${r.playerMaxHp}</div>
+          <div class="sg-raid-bar-track" style="margin-top:6px;"><div class="sg-raid-bar-fill stamina" style="width:${staminaPct}%;"></div></div>
+          <div class="sg-raid-bar-label">⚡ ${Math.round(r.stamina||0)}/100</div>
+        </div>
+        <div class="sg-raid-unit">
+          ${sgRaidDmgFloatHtml('enemy')}
+          <div class="sg-raid-unit-name">${enemyDef.name}${enemyDef.isBoss?'（BOSS）':''}</div>
+          <div class="sg-raid-unit-emoji">${enemyDef.isBoss ? (sgRaidBossSvgHtml(sg.raid.selectedZone, 60) || enemyDef.emoji) : enemyDef.emoji}</div>
+          <div class="sg-raid-bar-track"><div class="sg-raid-bar-fill hp" style="width:${enemyPct}%;"></div></div>
+          <div class="sg-raid-bar-label">${Math.max(0,r.enemyHp)}/${r.enemyMaxHp}</div>
+        </div>
+      </div>
+      <div class="sg-raid-log-box">
+        ${r.log.map(l=>`<div>${l}</div>`).join('')}
+      </div>
+      <div class="sg-raid-actionbar">
+        <button class="sg-raid-actbtn attack" onclick="sgRaidBasicAttack()"><span class="ic">👊</span>普通攻擊</button>
+        ${learnedSkills.map(s => {
+          const affordable = (r.stamina||0) >= s.cost;
+          const weak = s.element && zone.weakElement === s.element;
+          return `<button class="sg-raid-actbtn skill${weak?' weak':''}" ${affordable?'':'disabled'} onclick="sgRaidUseSkill('${s.id}')"><span class="ic">${s.emoji}</span>${s.name}${weak?'(剋制!)':''}（⚡${s.cost}）</button>`;
+        }).join('')}
+        <button class="sg-raid-actbtn guard" onclick="sgRaidGuard()"><span class="ic">🛡️</span>防禦</button>
+        <button class="sg-raid-actbtn run" onclick="sgRaidAbandon()"><span class="ic">🚪</span>撤退</button>
+      </div>
+      <div class="sg-raid-footer">
+        <span>Lv.${r.charLevel}　勇者史萊姆</span>
+        <span>💰 薪水：${sgFormatNum(sg.xp)}</span>
+      </div>
     </div>`;
 }
