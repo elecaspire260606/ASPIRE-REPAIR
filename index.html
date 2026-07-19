@@ -565,6 +565,79 @@
   .sg-raid-boss-warn { background:linear-gradient(90deg,#FFD54F,#FF7043); color:#3a2000; font-weight:800; text-align:center; padding:8px; border-radius:8px; margin:8px 0; animation:sgRaidPulse 1s ease-in-out infinite; }
   @keyframes sgRaidPulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
   .sg-raid-event-card { text-align:center; padding:20px; background:linear-gradient(135deg,#FFF8E1,#FFECB3); border-radius:12px; }
+
+  /* ══════ 🗡️ 巡邏戰鬥畫面：復古地牢RPG主題 ══════ */
+  .sg-raid-frame {
+    background:
+      radial-gradient(circle at 20% 10%, rgba(232,118,26,0.15), transparent 40%),
+      linear-gradient(180deg,#241a12,#150e08);
+    border:3px solid #6b4a26;
+    border-radius:14px;
+    box-shadow: inset 0 0 0 2px #3a2815, inset 0 0 24px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
+    padding:14px;
+    position:relative;
+    color:#f0e4d0;
+  }
+  .sg-raid-frame::before, .sg-raid-frame::after {
+    content:''; position:absolute; width:10px; height:10px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #ff8a65, #b71c1c);
+    box-shadow:0 0 6px rgba(255,110,64,0.8);
+    top:8px;
+  }
+  .sg-raid-frame::before { left:8px; }
+  .sg-raid-frame::after { right:8px; }
+  .sg-raid-zonebar {
+    text-align:center; font-weight:800; font-size:13px; color:#F2D46E;
+    letter-spacing:0.03em; margin-bottom:10px;
+    text-shadow:0 1px 2px rgba(0,0,0,0.6);
+  }
+  .sg-raid-combatants { display:flex; gap:10px; margin-bottom:10px; }
+  .sg-raid-unit {
+    flex:1; background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px;
+    padding:10px; text-align:center; position:relative; overflow:visible;
+  }
+  .sg-raid-unit-name { font-size:12px; font-weight:700; color:#f0e4d0; margin-bottom:2px; }
+  .sg-raid-unit-emoji { font-size:38px; line-height:1; margin:4px 0; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
+  .sg-raid-bar-track {
+    height:14px; background:#1a1210; border:1px solid #000; border-radius:7px; overflow:hidden;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,0.8); position:relative; margin-top:4px;
+  }
+  .sg-raid-bar-fill { height:100%; transition:width 0.35s ease-out; }
+  .sg-raid-bar-fill.hp { background:linear-gradient(180deg,#ff6b5b,#c0392b); }
+  .sg-raid-bar-fill.stamina { background:linear-gradient(180deg,#5bb8ff,#2d6cb0); }
+  .sg-raid-bar-label { font-size:10px; color:#d8c8ae; margin-top:2px; }
+  .sg-raid-warn {
+    background:linear-gradient(90deg,#FFD54F,#FF7043); color:#3a2000; font-weight:800;
+    text-align:center; padding:8px; border-radius:8px; margin-bottom:10px;
+    animation:sgRaidPulse 1s ease-in-out infinite; font-size:12px;
+    border:1px solid rgba(0,0,0,0.3);
+  }
+  .sg-raid-log-box {
+    background:rgba(0,0,0,0.4); border:2px solid #4a3520; border-radius:10px;
+    padding:8px 10px; font-size:11px; color:#d8c8ae; line-height:1.7;
+    max-height:110px; overflow-y:auto; margin-bottom:10px;
+  }
+  .sg-raid-log-box div:first-child { color:#F2D46E; font-weight:700; }
+  .sg-raid-actionbar {
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:center;
+    background:rgba(0,0,0,0.3); border:2px solid #4a3520; border-radius:10px; padding:8px;
+  }
+  .sg-raid-actbtn {
+    flex:1 1 30%; min-width:76px; background:linear-gradient(180deg,#2d3a52,#1a2338);
+    border:2px solid #4a5a7a; border-radius:8px; color:#e8eef7; font-size:10px; font-weight:700;
+    padding:8px 4px; cursor:pointer; text-align:center; transition:transform 0.1s, box-shadow 0.1s;
+  }
+  .sg-raid-actbtn .ic { font-size:18px; display:block; margin-bottom:2px; }
+  .sg-raid-actbtn:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,0.4); }
+  .sg-raid-actbtn:disabled { opacity:0.4; cursor:not-allowed; }
+  .sg-raid-actbtn.attack { background:linear-gradient(180deg,#c0392b,#7a2015); border-color:#e85a4a; }
+  .sg-raid-actbtn.guard { background:linear-gradient(180deg,#2d6cb0,#1a3d66); border-color:#5bb8ff; }
+  .sg-raid-actbtn.skill.weak { border-color:#2D9E5F; box-shadow:0 0 8px rgba(45,158,95,0.6); }
+  .sg-raid-actbtn.run { background:linear-gradient(180deg,#555,#2a2a2a); border-color:#888; }
+  .sg-raid-footer {
+    display:flex; justify-content:space-between; align-items:center; margin-top:10px;
+    font-size:11px; color:#d8c8ae; padding-top:8px; border-top:1px solid #4a3520;
+  }
   .sg-section-label { font-size:11px; font-weight:700; color:#999; text-transform:uppercase; letter-spacing:0.06em; margin:14px 0 8px; }
   .sg-shop-item {
     background:white; border-radius:12px; padding:12px 14px; margin-bottom:8px;
