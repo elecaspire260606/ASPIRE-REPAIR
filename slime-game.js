@@ -1206,10 +1206,17 @@ function sgObtainItem(itemDef) {
   }
 }
 
+// 邊際遞減：持有的道具總數(含重複)越多，掉落機率倍率越低，避免後期道具訊息洗版
+// 但不會完全歸零，維持基本的驚喜感
+function sgDropRateDecayMult() {
+  const totalOwned = Object.values(sg.itemInventory||{}).reduce((a,b)=>a+b, 0);
+  return 1 / (1 + totalOwned * 0.01);
+}
+
 function sgTryDropItem(source, silent) {
   // click: 手動點擊；click_auto_half: 🎒工具腰帶里程碑解鎖後的自動點擊(手動的一半機率)；其餘(tick): 放置固定機率
   const baseChance = source==='click' ? 0.005 : (source==='click_auto_half' ? 0.0025 : 0.0025);
-  const chance = baseChance + (sg.itemDropRateBonus||0);
+  const chance = (baseChance + (sg.itemDropRateBonus||0)) * sgDropRateDecayMult();
   if (Math.random() >= chance) return null;
   const rarity = sgRollRarity();
   const itemDef = sgRollItemOfRarity(rarity);
@@ -1221,8 +1228,8 @@ function sgTryDropItem(source, silent) {
 
 function sgRollOfflineDrops(hours) {
   const results = [];
-  // 💡頭燈里程碑：離線寶箱掉落機率×2
-  const perHourChance = 0.008 * (sgGearMS('g6') ? 2 : 1);
+  // 💡頭燈里程碑：離線寶箱掉落機率×2；同樣套用邊際遞減
+  const perHourChance = 0.008 * (sgGearMS('g6') ? 2 : 1) * sgDropRateDecayMult();
   const whole = Math.floor(hours);
   for (let i=0; i<whole; i++) {
     if (Math.random() < perHourChance) {
@@ -1682,12 +1689,13 @@ function sgInventoryTabHtml() {
   const owned = SG_ITEMS.filter(it => (sg.itemInventory[it.id]||0) > 0);
   const manNiuBar = `<div class="sg-colleague-crystal-bar">🐂 目前蠻牛：${sgFormatNum(sg.manNiu||0)}</div>`;
   if (!owned.length) {
-    return manNiuBar + `<div class="empty-state" style="padding:30px 0;color:#ccc;">尚未獲得任何道具<br>點擊、放置或離線都有機會開到寶箱 🎁</div>`;
+    return manNiuBar + `<div class="empty-state" style="padding:30px 0;color:#a8927a;">尚未獲得任何道具<br>點擊、放置或離線都有機會開到寶箱 🎁</div>`;
   }
   const sorted = owned.sort((a,b) => {
     const order = {legendary:0, rare:1, common:2};
     return order[a.rarity]-order[b.rarity];
   });
+  const rarityIcon = { legendary:'⭐', rare:'💎', common:'📦' };
   const html = sorted.map(it => {
     const meta = SG_RARITY_META[it.rarity];
     const count = sg.itemInventory[it.id];
@@ -1696,18 +1704,15 @@ function sgInventoryTabHtml() {
     const cost = upgradeable ? sgItemUpgradeCost(it.id) : 0;
     const canAfford = upgradeable && (sg.manNiu||0) >= cost;
     return `
-      <div class="sg-inventory-item" style="border-left-color:${meta.color};">
-        <div style="flex:1;min-width:0;">
-          <div class="sg-inv-name">${it.name} <span style="font-size:9px;color:${meta.color};font-weight:800;">[${meta.label}]</span>${lv>0?` <span style="font-size:9px;color:#8B5CF6;font-weight:800;">Lv.${lv}</span>`:''}</div>
-          <div class="sg-inv-desc">${sgFormatItemDescCurrent(it, lv)}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-          <div class="sg-inv-count" style="color:${meta.color};">x${count}</div>
-          ${upgradeable ? `<button class="sg-colleague-buy" style="font-size:10px;padding:5px 10px;" ${canAfford?'':'disabled'} onclick="sgUpgradeItem('${it.id}')">升級 ${cost}🐂</button>` : ''}
-        </div>
+      <div class="sg-colleague-item" style="border-color:${meta.color};">
+        <div class="sg-colleague-emoji">${rarityIcon[it.rarity]}</div>
+        <div class="sg-colleague-name">${it.name}${lv>0?` <span style="color:#c89bf5;">Lv.${lv}</span>`:''}</div>
+        <div class="sg-colleague-bonus" style="color:${meta.color};">[${meta.label}] x${count}</div>
+        <div class="sg-colleague-cost" style="font-size:8px;line-height:1.3;">${sgFormatItemDescCurrent(it, lv)}</div>
+        ${upgradeable ? `<button class="sg-colleague-buy" ${canAfford?'':'disabled'} onclick="sgUpgradeItem('${it.id}')">升級 ${cost}🐂</button>` : ''}
       </div>`;
   }).join('');
-  return manNiuBar + `<div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具　｜　重複道具會轉換成蠻牛，用來升級已擁有的道具</div>${html}`;
+  return manNiuBar + `<div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具　｜　重複道具會轉換成蠻牛，用來升級已擁有的道具</div><div class="sg-colleague-grid">${html}</div>`;
 }
 
 let sgShopSubCat = 'maintenance'; // 公司分頁目前顯示的子分類(不儲存,每次開啟預設維修類)
