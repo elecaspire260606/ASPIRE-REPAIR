@@ -758,7 +758,7 @@ function sgStockTabHtml() {
     return `<div class="sg-stock-row ${o.tone}"><span>${o.label}（${o.weight}%）</span><span>${desc}</span></div>`;
   }).join('');
   return `
-    <div class="sg-colleague-crystal-bar">✨ 薪水：${sgFormatNum(sg.xp)}　｜　💎 水晶：${sg.crystals}</div>
+    <div class="sg-colleague-crystal-bar">✨ 薪水：${sgFormatNum(sg.xp)}　｜　💎 水晶：${sgFormatNum(sg.crystals)}</div>
     ${debuffLeft>0?`<div class="sg-stock-debuff-alert">⚠️ 投資失利中：產能/點擊力削弱 ${Math.round((1-sg.stockDebuffMult)*100)}%，還剩 ${debuffLeft} 秒</div>`:''}
     ${buffLeft>0?`<div class="sg-stock-buff-alert">🎉 投資得利中：產能/點擊力提升 ${Math.round((sg.stockBuffMult-1)*100)}%，還剩 ${buffLeft} 秒</div>`:''}
     <div class="sg-stock-panel">
@@ -1855,7 +1855,7 @@ function sgPrestigeTabHtml() {
   return `
     <div class="sg-prestige-box">
       <div style="font-size:11px;opacity:0.8;">💎 目前水晶</div>
-      <div class="sg-prestige-crystal">${sg.crystals} 💠</div>
+      <div class="sg-prestige-crystal">${sgFormatNum(sg.crystals)} 💠</div>
       <div style="font-size:12px;color:#7ED9A8;font-weight:700;margin-top:2px;">持有加成：全體薪水/點擊力 +${Math.round(sgCrystalHoldBonus()*100)}%（無需花費，光是持有即生效，上限50%）</div>
       <div class="sg-prestige-desc">
         重新入職會重置薪水、點擊力、產能與已購買升級，換取「水晶」。<br>
@@ -1965,7 +1965,7 @@ function sgColleagueTabHtml() {
       </div>`;
   }).join('');
   return `
-    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sg.crystals} 💠　｜　🛒 目前採購折扣：${(sgColleagueShopDiscount()*100).toFixed(1)}%</div>
+    <div class="sg-colleague-crystal-bar">💎 目前水晶：${sgFormatNum(sg.crystals)} 💠　｜　🛒 目前採購折扣：${(sgColleagueShopDiscount()*100).toFixed(1)}%</div>
     <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受重新入職影響、無等級上限</div>
     <div class="sg-colleague-grid">${items}</div>
   `;
@@ -2131,7 +2131,7 @@ let sgEquipSubCat = 'gear'; // 裝備分頁目前顯示的子分類
 function sgEquipTabHtml() {
   const bonusLabel = (bonuses) => bonuses.map(b => {
     const name = {rate:'產能', click:'點擊力', autoclick:'自動點擊', offlinehr:'離線上限', crit:'會心機率'}[b.type];
-    const val = b.type==='offlinehr' ? '+'+b.value+'hr' : (b.type==='crit' ? '+'+b.value+'%' : '+'+Math.round(b.value*100)+'%');
+    const val = b.type==='offlinehr' ? '+'+b.value.toFixed(1)+'hr' : (b.type==='crit' ? '+'+b.value.toFixed(1)+'%' : '+'+Math.round(b.value*100)+'%');
     return `${name}${val}`;
   }).join('、');
 
@@ -2195,7 +2195,7 @@ function sgEquipTabHtml() {
   `).join('');
 
   return `
-    <div class="sg-colleague-crystal-bar">💎 水晶：${sg.crystals} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🧠 技術力：${sgFormatNum(sg.techPower||0)}</div>
+    <div class="sg-colleague-crystal-bar">💎 水晶：${sgFormatNum(sg.crystals)} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🧠 技術力：${sgFormatNum(sg.techPower||0)}</div>
     <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">裝備前期用薪水、後期用水晶購買；證照升級需同時滿足水晶與資產／辦公家具／技術力門檻</div>
     <div class="sg-shop-subtabs">${subTabs}</div>
     ${subTabMeta[sgEquipSubCat].render()}
@@ -2210,7 +2210,7 @@ function sgSwitchEquipSubCat(key) {
 function sgRealEstateTabHtml() {
   const bonusLabel = (bonuses) => bonuses.map(b => {
     const name = {rate:'產能', click:'點擊力', autoclick:'自動點擊', offlinehr:'離線上限', crit:'會心機率'}[b.type];
-    const val = b.type==='offlinehr' ? '+'+b.value+'hr' : (b.type==='crit' ? '+'+b.value+'%' : '+'+Math.round(b.value*100)+'%');
+    const val = b.type==='offlinehr' ? '+'+b.value.toFixed(1)+'hr' : (b.type==='crit' ? '+'+b.value.toFixed(1)+'%' : '+'+Math.round(b.value*100)+'%');
     return `${name}${val}`;
   }).join('、');
 
@@ -2246,7 +2246,7 @@ function sgRealEstateTabHtml() {
   };
 
   return `
-    <div class="sg-colleague-crystal-bar">💎 水晶：${sg.crystals} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🏦 資產：${sgFormatNum(sg.assets||0)}</div>
+    <div class="sg-colleague-crystal-bar">💎 水晶：${sgFormatNum(sg.crystals)} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🏦 資產：${sgFormatNum(sg.assets||0)}</div>
     <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">房地產非常昂貴，用薪水購買，累積的「資產」不受轉生影響，也是職級晉升的必要條件之一</div>
     <div class="sg-section-label">🏠 房地產（薪水購買，非常昂貴）</div>
     <div class="sg-colleague-grid">${SG_REAL_ESTATE.map(renderPropertyCard).join('')}</div>
