@@ -192,6 +192,16 @@ function sgFormatItemDesc(item) {
   return item.desc;
 }
 
+// 依目前等級動態計算「實際生效中」的說明文字(修正：舊版升級後desc欄位是靜態的，文字會跟實際數值脫節)
+function sgFormatItemDescCurrent(itemDef, lv) {
+  if (!lv || lv <= 0 || !sgIsItemUpgradeable(itemDef)) return sgFormatItemDesc(itemDef);
+  const growth = 1 + lv * 0.28; // 每級疊加原效果的28%，跟sgUpgradeItem的實際計算規則一致
+  const scaled = { ...itemDef };
+  if (typeof scaled.value === 'number') scaled.value = itemDef.value * growth;
+  if (typeof scaled.compoundPct === 'number') scaled.compoundPct = itemDef.compoundPct * growth;
+  return sgFormatItemDesc(scaled);
+}
+
 // 道具稀有度倍率：既然道具難拿(尤其傳說級)，數值大幅提升才對得起稀有度
 const SG_ITEM_RARITY_BUFF = { common:1.6, rare:2.5, legendary:4.0 };
 SG_GLOBAL_ITEMS.forEach(item => {
@@ -919,6 +929,20 @@ function sgLoad() {
     sg.raid.selectedZone = null;
     sg.raid.inRun = false;
   }
+  // 一次性修復：舊版「時之沙漏」升級時誤把連擊秒數(ms)當成產能%疊加，這裡校正已被錯誤累加的存檔數值
+  if (!sg._fixedHourglassBugV1 && sg.itemLv && sg.itemLv['g_l2'] > 0) {
+    const lv = sg.itemLv['g_l2'];
+    const hourglassDef = SG_ITEMS.find(i => i.id === 'g_l2');
+    if (hourglassDef) {
+      const wrongPerLevel = (hourglassDef.value * 0.28) * 0.5; // 舊公式錯誤疊加的量
+      const rightPerLevel = hourglassDef.compoundPct * 0.28;   // 正確應該疊加的量
+      const wrongTotal = lv * wrongPerLevel;
+      const rightTotal = lv * rightPerLevel;
+      sg.itemGlobalRateBonus = Math.max(0, (sg.itemGlobalRateBonus||0) - wrongTotal + rightTotal);
+      sg.itemGlobalClickBonus = Math.max(0, (sg.itemGlobalClickBonus||0) - wrongTotal + rightTotal);
+    }
+    sg._fixedHourglassBugV1 = true;
+  }
   if (typeof sg.raid.knockedOut !== 'boolean') sg.raid.knockedOut = false;
   if (!sg.raid.armorsOwned) sg.raid.armorsOwned = {};
   if (!sg.raid.accessoriesOwned) sg.raid.accessoriesOwned = {};
@@ -1137,8 +1161,12 @@ function sgApplyItemEffectDelta(itemDef, value) {
     case 'comboCapBonus':     sg.itemComboCapBonus   = (sg.itemComboCapBonus||0) + value; break;
     case 'hourglass':
       sg.itemComboWindowBonus = (sg.itemComboWindowBonus||0) + value;
-      sg.itemGlobalRateBonus = (sg.itemGlobalRateBonus||0) + value*0.5;
-      sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + value*0.5;
+      // 修正bug：全體產能/點擊力加成要用compoundPct自己的增量計算，不能拿連擊秒數(value)去乘，單位完全不同
+      if (itemDef.compoundPct !== undefined) {
+        const pctDelta = itemDef.compoundPct * 0.28; // 每級增加compoundPct原始值的28%，跟其他道具的升級規則一致
+        sg.itemGlobalRateBonus = (sg.itemGlobalRateBonus||0) + pctDelta;
+        sg.itemGlobalClickBonus = (sg.itemGlobalClickBonus||0) + pctDelta;
+      }
       break;
   }
 }
@@ -1667,7 +1695,7 @@ function sgInventoryTabHtml() {
       <div class="sg-inventory-item" style="border-left-color:${meta.color};">
         <div style="flex:1;min-width:0;">
           <div class="sg-inv-name">${it.name} <span style="font-size:9px;color:${meta.color};font-weight:800;">[${meta.label}]</span>${lv>0?` <span style="font-size:9px;color:#8B5CF6;font-weight:800;">Lv.${lv}</span>`:''}</div>
-          <div class="sg-inv-desc">${it.desc}</div>
+          <div class="sg-inv-desc">${sgFormatItemDescCurrent(it, lv)}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
           <div class="sg-inv-count" style="color:${meta.color};">x${count}</div>
