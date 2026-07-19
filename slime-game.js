@@ -1707,7 +1707,7 @@ function sgInventoryTabHtml() {
         </div>
       </div>`;
   }).join('');
-  return manNiuBar + `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具　｜　重複道具會轉換成蠻牛，用來升級已擁有的道具</div>${html}`;
+  return manNiuBar + `<div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">已收集 ${owned.length} / ${SG_ITEMS.length} 種道具　｜　重複道具會轉換成蠻牛，用來升級已擁有的道具</div>${html}`;
 }
 
 let sgShopSubCat = 'maintenance'; // 公司分頁目前顯示的子分類(不儲存,每次開啟預設維修類)
@@ -1719,7 +1719,7 @@ function sgShopTabHtml() {
     hotel:       { label:'🏨 旅館', color:'#2D9E5F' },
   };
   const subTabs = Object.keys(catMeta).map(cat => `
-    <button class="sg-shop-subtab${sgShopSubCat===cat?' active':''}" onclick="sgSwitchShopSubCat('${cat}')">${catMeta[cat].label}</button>
+    <button class="sg-raid-shop-subtab${sgShopSubCat===cat?' active':''}" onclick="sgSwitchShopSubCat('${cat}')">${catMeta[cat].label}</button>
   `).join('');
 
   const itemsInCat = SG_SHOP.filter(i=>i.category===sgShopSubCat);
@@ -1729,10 +1729,10 @@ function sgShopTabHtml() {
       const reqItem = SG_SHOP.find(s=>s.id===item.unlockReq.itemId);
       const reqOwned = sg.owned[item.unlockReq.itemId] || 0;
       return `
-      <div class="sg-shop-item sg-shop-locked">
-        <div class="sg-shop-info">
-          <div class="sg-shop-name">🔒 未解鎖</div>
-          <div class="sg-shop-desc">擁有 ${item.unlockReq.count} 個「${reqItem?reqItem.name.replace(/^\S+\s/,''):'?'}」即可解鎖（目前 ${reqOwned}）</div>
+      <div class="sg-raid-shop-item locked">
+        <div>
+          <div class="sg-raid-shop-name">🔒 未解鎖</div>
+          <div class="sg-raid-shop-desc">擁有 ${item.unlockReq.count} 個「${reqItem?reqItem.name.replace(/^\S+\s/,''):'?'}」即可解鎖（目前 ${reqOwned}）</div>
         </div>
       </div>`;
     }
@@ -1740,29 +1740,31 @@ function sgShopTabHtml() {
     const cost = sgShopCost(item);
     const canAfford = sg.xp >= cost;
     return `
-      <div class="sg-shop-item">
-        <div class="sg-shop-info">
-          <div class="sg-shop-name">${item.name}</div>
-          <div class="sg-shop-desc">${item.desc}</div>
-          ${owned>0?`<div class="sg-shop-owned">已擁有 ${owned}</div>`:''}
+      <div class="sg-raid-shop-item">
+        <div>
+          <div class="sg-raid-shop-name">${item.name}</div>
+          <div class="sg-raid-shop-desc">${item.desc}</div>
+          ${owned>0?`<div class="sg-raid-shop-owned">已擁有 ${owned}</div>`:''}
         </div>
-        <div class="sg-buy-row">
-          <button class="sg-buy-btn" data-item="${item.id}" ${canAfford?'':'disabled'} onclick="sgBuyBatch('${item.id}',1)">x1<br>✨${sgFormatNum(cost)}</button>
-          <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',10)">x10</button>
-          <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',100)">x100</button>
-          <button class="sg-buy-btn" onclick="sgBuyBatch('${item.id}',Infinity)">MAX</button>
+        <div class="sg-raid-buy-row">
+          <button class="sg-raid-buy-btn sg-buy-btn" data-item="${item.id}" ${canAfford?'':'disabled'} onclick="sgBuyBatch('${item.id}',1)">x1<br>✨${sgFormatNum(cost)}</button>
+          <button class="sg-raid-buy-btn" onclick="sgBuyBatch('${item.id}',10)">x10</button>
+          <button class="sg-raid-buy-btn" onclick="sgBuyBatch('${item.id}',100)">x100</button>
+          <button class="sg-raid-buy-btn" onclick="sgBuyBatch('${item.id}',Infinity)">MAX</button>
         </div>
       </div>`;
   }).join('');
 
   return `
-    <label style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#666;box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-      🤖 自動購買CP值最高升級（每10秒觸發一次）
-      <input type="checkbox" ${sg.autoBuy?'checked':''} onchange="sgToggleAutoBuy(this.checked)" style="width:18px;height:18px;accent-color:#E8761A;">
-    </label>
-    ${sgSetBonusMiniHintHtml()}
-    <div class="sg-shop-subtabs">${subTabs}</div>
-    ${shopHtml}`;
+    <div class="sg-raid-frame">
+      <div class="sg-raid-shop-toggle">
+        🤖 自動購買CP值最高升級（每10秒觸發一次）
+        <input type="checkbox" ${sg.autoBuy?'checked':''} onchange="sgToggleAutoBuy(this.checked)" style="width:18px;height:18px;accent-color:#F2D46E;">
+      </div>
+      ${sgSetBonusMiniHintHtml()}
+      <div class="sg-raid-shop-subtabs">${subTabs}</div>
+      ${shopHtml}
+    </div>`;
 }
 
 // 極簡套裝提示：只顯示一行摘要，完整面板移到成就分頁查看
@@ -1970,7 +1972,7 @@ function sgColleagueTabHtml() {
   }).join('');
   return `
     <div class="sg-colleague-crystal-bar">💎 目前水晶：${sgFormatNum(sg.crystals)} 💠　｜　🛒 目前採購折扣：${(sgColleagueShopDiscount()*100).toFixed(1)}%</div>
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受重新入職影響、無等級上限</div>
+    <div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">用水晶收集並升級永久夥伴，效果不受重新入職影響、無等級上限</div>
     <div class="sg-colleague-grid">${items}</div>
   `;
 }
@@ -2177,7 +2179,7 @@ function sgEquipTabHtml() {
     return `
       <div class="sg-colleague-item${(lv>0||canAfford)?'':' locked'}${canAfford?' can-afford':''}">
         <div class="sg-colleague-emoji">${lv>0?def.emoji:'❓'}</div>
-        <div class="sg-colleague-name">${lv>0?def.name:'未考取'}${lv>0?' Lv.'+lv:''}<span style="font-size:9px;color:#999;font-weight:400;"> [${def.tier}]</span></div>
+        <div class="sg-colleague-name">${lv>0?def.name:'未考取'}${lv>0?' Lv.'+lv:''}<span style="font-size:9px;color:#a8927a;font-weight:400;"> [${def.tier}]</span></div>
         <div class="sg-colleague-bonus">${lv>0?bonusLabel(totalBonus):bonusLabel(def.bonuses)+'/級'}</div>
         ${reqParts.length?`<div class="sg-colleague-bonus" style="color:${reqFailMsg?'#C0392B':'#999'};">需求：${reqParts.join('、')}</div>`:''}
         <div class="sg-colleague-cost">${sgFormatNum(cost)} 💠</div>
@@ -2200,7 +2202,7 @@ function sgEquipTabHtml() {
 
   return `
     <div class="sg-colleague-crystal-bar">💎 水晶：${sgFormatNum(sg.crystals)} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🧠 技術力：${sgFormatNum(sg.techPower||0)}</div>
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">裝備前期用薪水、後期用水晶購買；證照升級需同時滿足水晶與資產／辦公家具／技術力門檻</div>
+    <div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">裝備前期用薪水、後期用水晶購買；證照升級需同時滿足水晶與資產／辦公家具／技術力門檻</div>
     <div class="sg-shop-subtabs">${subTabs}</div>
     ${subTabMeta[sgEquipSubCat].render()}
   `;
@@ -2251,7 +2253,7 @@ function sgRealEstateTabHtml() {
 
   return `
     <div class="sg-colleague-crystal-bar">💎 水晶：${sgFormatNum(sg.crystals)} 💠　｜　✨ 薪水：${sgFormatNum(sg.xp)}　｜　🏦 資產：${sgFormatNum(sg.assets||0)}</div>
-    <div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">房地產非常昂貴，用薪水購買，累積的「資產」不受轉生影響，也是職級晉升的必要條件之一</div>
+    <div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">房地產非常昂貴，用薪水購買，累積的「資產」不受轉生影響，也是職級晉升的必要條件之一</div>
     <div class="sg-section-label">🏠 房地產（薪水購買，非常昂貴）</div>
     <div class="sg-colleague-grid">${SG_REAL_ESTATE.map(renderPropertyCard).join('')}</div>
     <div class="sg-section-label">🏢 辦公室裝潢（水晶升級，無上限）</div>
@@ -2280,7 +2282,7 @@ function sgDailyTabHtml() {
         </button>
       </div>`;
   }).join('');
-  return `<div style="font-size:11px;color:#999;margin-bottom:10px;text-align:center;">每日 00:00 重置，薪水目標依你目前產能自動調整</div>${items}`;
+  return `<div style="font-size:11px;color:#a8927a;margin-bottom:10px;text-align:center;">每日 00:00 重置，薪水目標依你目前產能自動調整</div>${items}`;
 }
 
 function sgClaimDaily(id) {
@@ -2320,7 +2322,7 @@ function sgAchvTabHtml() {
   }).join('');
   const totalTiers = SG_ACHV_CATEGORIES.reduce((s,c)=>s+sgAchvTier(c),0);
   return `
-    <div style="font-size:11px;color:#999;text-align:center;margin-bottom:10px;">成就無上限，數值越高加成越強</div>
+    <div style="font-size:11px;color:#a8927a;text-align:center;margin-bottom:10px;">成就無上限，數值越高加成越強</div>
     ${rows}
     <div style="font-size:11px;color:#aaa;text-align:center;margin:8px 0 14px;">總計已達成 ${totalTiers} 階</div>
     ${sgSetBonusPanelHtml()}
@@ -3068,7 +3070,7 @@ function sgRaidWeaponShopHtml() {
     <div class="sg-colleague-crystal-bar">🔩 工程幣：${sgFormatNum(coin)}　｜　攻擊+${sgRaidWeaponAtkTotal()}　防禦+${sgRaidArmorDefTotal()}</div>
     <div style="text-align:center;padding:10px 0;">
       <button class="sg-colleague-buy" style="max-width:280px;" onclick="sgRaidExchangeCoin()">💰 兌換工程幣（${sgFormatNum(rate)} 薪水 = 1枚）</button>
-      <div style="font-size:11px;color:#999;margin-top:4px;">比例故意壓貴，這是薪水真正的長期出口</div>
+      <div style="font-size:11px;color:#a8927a;margin-top:4px;">比例故意壓貴，這是薪水真正的長期出口</div>
     </div>
     <div style="font-weight:700;margin:10px 0 4px;">⚔️ 武器（永久疊加攻擊力）</div>
     <div class="sg-colleague-grid">${weaponRows}</div>
@@ -3165,7 +3167,7 @@ function sgRaidZoneSelectHtml() {
       🧑‍🔧 等級 Lv.${lv}　｜　經驗值 ${sgFormatNum(sg.raid.charExp)}/${sgFormatNum(expNext)}　｜　⚔️+${sgRaidWeaponAtkTotal()}　🛡️+${sgRaidArmorDefTotal()}
     </div>
     <div class="sg-combo-bar"><div class="sg-combo-fill" style="width:${expPct}%;"></div></div>
-    <div style="text-align:center;color:#666;line-height:1.7;padding:12px 0;">
+    <div style="text-align:center;color:#d8c8ae;line-height:1.7;padding:12px 0;">
       四個園區各有不同難度跟屬性弱點，等級不夠會很難打贏。<br>
       戰鬥中除了普通攻擊，學會的主動技能要消耗⚡幹勁值才能使用；技能屬性對到園區弱點會有剋制加成。<br>
       每個園區6層：4場戰鬥（小怪隨機出現，每4次反擊會有警示重擊，可用防禦化解）+1個事件樓層+最後王怪關卡。<br>
