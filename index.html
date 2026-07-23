@@ -943,6 +943,9 @@
 
 <!-- ══ 修繕管理 ══ -->
 <div id="page-mgr" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <button onclick="openPrintListModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">🖨️ 列印派工清單</button>
+  </div>
   <div class="filter-row">
     <button class="filter-btn active" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
     <button class="filter-btn" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
@@ -1098,6 +1101,42 @@
       <span onclick="closeDrillModal()" style="cursor:pointer;font-size:20px;color:#bbb;line-height:1;">×</span>
     </div>
     <div id="drillBody"></div>
+  </div>
+</div>
+
+<div id="printListModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)closePrintListModal()">
+  <div style="background:white;border-radius:18px;padding:28px;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:18px;">🖨️ 列印派工清單</div>
+    <div style="font-size:12px;color:#666;margin-bottom:8px;font-weight:500;">案件範圍</div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
+      <input type="checkbox" id="printIncludeClosed" style="width:15px;height:15px;accent-color:#1a3a5c;"> 也納入已結案案件
+    </label>
+    <div style="font-size:12px;color:#666;margin:14px 0 8px;font-weight:500;">區域</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;" id="printAreaGrid">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" class="print-area-check" value="all" checked onchange="onPrintAreaAllToggle(this)" style="width:14px;height:14px;accent-color:#1a3a5c;"> 全部
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" class="print-area-check" value="會館" style="width:14px;height:14px;accent-color:#1a3a5c;"> 會館
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" class="print-area-check" value="雅舍" style="width:14px;height:14px;accent-color:#1a3a5c;"> 雅舍
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" class="print-area-check" value="研究園" style="width:14px;height:14px;accent-color:#1a3a5c;"> 研究園
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" class="print-area-check" value="智尊" style="width:14px;height:14px;accent-color:#1a3a5c;"> 智尊
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
+        <input type="checkbox" class="print-area-check" value="其他" style="width:14px;height:14px;accent-color:#1a3a5c;"> 其他
+      </label>
+    </div>
+    <div id="printListCount" style="font-size:12px;color:#999;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closePrintListModal()" style="flex:1;padding:11px;background:#f0f0f0;color:#666;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
+      <button onclick="generatePrintList()" style="flex:2;padding:11px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">產生清單</button>
+    </div>
   </div>
 </div>
 
@@ -2467,6 +2506,117 @@ function openExportModal() {
 
 function closeExportModal() {
   document.getElementById('exportModal').style.display = 'none';
+}
+
+// ── 列印派工清單 ──
+function openPrintListModal() {
+  document.getElementById('printListModal').style.display = 'flex';
+  document.getElementById('printIncludeClosed').checked = false;
+  document.querySelectorAll('.print-area-check').forEach(el => el.checked = (el.value === 'all'));
+  updatePrintListCount();
+}
+
+function closePrintListModal() {
+  document.getElementById('printListModal').style.display = 'none';
+}
+
+function onPrintAreaAllToggle(el) {
+  if (el.checked) {
+    document.querySelectorAll('.print-area-check').forEach(c => { if (c.value !== 'all') c.checked = false; });
+  }
+  updatePrintListCount();
+}
+
+function getPrintListSelectedAreas() {
+  const checked = [...document.querySelectorAll('.print-area-check:checked')].map(el => el.value);
+  if (!checked.length || checked.includes('all')) return null; // null 代表不篩選區域
+  return checked;
+}
+
+function getPrintListCases() {
+  const includeClosed = document.getElementById('printIncludeClosed').checked;
+  const areas = getPrintListSelectedAreas();
+  let cases = allCases.filter(c => !c.flagReason);
+  cases = cases.filter(c => includeClosed ? true : c.status === '待處理');
+  if (areas) cases = cases.filter(c => areas.some(a => areaMatchesFilter(effArea(c), a)));
+  // 排序：待處理優先，區域內依報修時間新到舊
+  cases.sort((a,b) => {
+    if (a.status !== b.status) return a.status === '待處理' ? -1 : 1;
+    return String(effArea(a)).localeCompare(String(effArea(b)));
+  });
+  return cases;
+}
+
+function updatePrintListCount() {
+  const n = getPrintListCases().length;
+  document.getElementById('printListCount').textContent = `符合條件的案件：${n} 件`;
+}
+document.addEventListener('change', (e) => {
+  if (e.target && (e.target.id === 'printIncludeClosed' || e.target.classList.contains('print-area-check'))) {
+    updatePrintListCount();
+  }
+});
+
+function generatePrintList() {
+  const cases = getPrintListCases();
+  if (!cases.length) { showToast('沒有符合條件的案件'); return; }
+
+  const rows = cases.map((c, i) => {
+    const loc = c.normalizedLocation || c.location || '—';
+    const locType = c.locationType ? `（${c.locationType}）` : '';
+    const applicant = [c.unit, c.name].filter(Boolean).join(' ');
+    const date = String(c.datetime || c.date || '').slice(0, 10);
+    const statusTag = c.status === '已結案' ? '<span style="color:#1E7A3E;font-weight:700;">已結案</span>' : '';
+    return `<tr>
+      <td style="text-align:center;">${i + 1}</td>
+      <td style="text-align:center;"><div class="print-checkbox"></div></td>
+      <td>${c.caseId || ''}</td>
+      <td>${effArea(c)} / ${loc}${locType}</td>
+      <td>${applicant}</td>
+      <td>${c.description || ''}</td>
+      <td style="text-align:center;">${date}</td>
+      <td style="text-align:center;">${statusTag}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>渴望園區派工清單</title>
+    <style>
+      body { font-family:'Microsoft JhengHei','PingFang TC',sans-serif; padding:16px; color:#222; }
+      h1 { font-size:19px; border-bottom:2px solid #1a3a5c; padding-bottom:8px; margin-bottom:4px; }
+      .meta { font-size:12px; color:#555; margin-bottom:12px; }
+      table { width:100%; border-collapse:collapse; }
+      th, td { border:1px solid #999; padding:7px 6px; font-size:12px; vertical-align:top; }
+      th { background:#eef2f6; font-weight:700; }
+      .print-checkbox { width:16px; height:16px; border:2px solid #333; margin:2px auto; }
+      @media print {
+        @page { size:A4 landscape; margin:10mm; }
+        body { padding:0; }
+      }
+    </style></head><body>
+    <h1>渴望園區報修系統 — 派工清單</h1>
+    <div class="meta">列印時間：${new Date().toLocaleString('zh-TW')}　｜　案件數：${cases.length} 件</div>
+    <table>
+      <thead><tr>
+        <th style="width:32px;">序</th>
+        <th style="width:44px;">完成</th>
+        <th style="width:90px;">案件編號</th>
+        <th>區域 / 地點</th>
+        <th style="width:110px;">申請單位/人</th>
+        <th>故障描述</th>
+        <th style="width:82px;">報修日期</th>
+        <th style="width:56px;">狀態</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('請允許瀏覽器彈出視窗才能列印'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+  closePrintListModal();
 }
 
 function setExportRange(range, btn) {
