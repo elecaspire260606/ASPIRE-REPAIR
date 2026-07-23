@@ -1105,37 +1105,49 @@
 </div>
 
 <div id="printListModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)closePrintListModal()">
-  <div style="background:white;border-radius:18px;padding:28px;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
-    <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:18px;">🖨️ 列印派工清單</div>
-    <div style="font-size:12px;color:#666;margin-bottom:8px;font-weight:500;">案件範圍</div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:6px 0;cursor:pointer;">
-      <input type="checkbox" id="printIncludeClosed" style="width:15px;height:15px;accent-color:#1a3a5c;"> 也納入已結案案件
-    </label>
-    <div style="font-size:12px;color:#666;margin:14px 0 8px;font-weight:500;">區域</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;" id="printAreaGrid">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
-        <input type="checkbox" class="print-area-check" value="all" checked onchange="onPrintAreaAllToggle(this)" style="width:14px;height:14px;accent-color:#1a3a5c;"> 全部
+  <div style="background:white;border-radius:18px;padding:24px;width:94%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:14px;flex-shrink:0;">🖨️ 列印派工清單</div>
+
+    <div style="flex-shrink:0;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#444;padding:4px 0;cursor:pointer;">
+        <input type="checkbox" id="printIncludeClosed" onchange="refreshPrintCaseList()" style="width:15px;height:15px;accent-color:#1a3a5c;"> 也納入已結案案件
       </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
-        <input type="checkbox" class="print-area-check" value="會館" style="width:14px;height:14px;accent-color:#1a3a5c;"> 會館
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
-        <input type="checkbox" class="print-area-check" value="雅舍" style="width:14px;height:14px;accent-color:#1a3a5c;"> 雅舍
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
-        <input type="checkbox" class="print-area-check" value="研究園" style="width:14px;height:14px;accent-color:#1a3a5c;"> 研究園
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
-        <input type="checkbox" class="print-area-check" value="智尊" style="width:14px;height:14px;accent-color:#1a3a5c;"> 智尊
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#444;cursor:pointer;">
-        <input type="checkbox" class="print-area-check" value="其他" style="width:14px;height:14px;accent-color:#1a3a5c;"> 其他
-      </label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 4px;" id="printAreaGrid">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;">
+          <input type="checkbox" class="print-area-check" value="all" checked onchange="onPrintAreaAllToggle(this)" style="width:13px;height:13px;accent-color:#1a3a5c;"> 全部
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;">
+          <input type="checkbox" class="print-area-check" value="會館" onchange="refreshPrintCaseList()" style="width:13px;height:13px;accent-color:#1a3a5c;"> 會館
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;">
+          <input type="checkbox" class="print-area-check" value="雅舍" onchange="refreshPrintCaseList()" style="width:13px;height:13px;accent-color:#1a3a5c;"> 雅舍
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;">
+          <input type="checkbox" class="print-area-check" value="研究園" onchange="refreshPrintCaseList()" style="width:13px;height:13px;accent-color:#1a3a5c;"> 研究園
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;">
+          <input type="checkbox" class="print-area-check" value="智尊" onchange="refreshPrintCaseList()" style="width:13px;height:13px;accent-color:#1a3a5c;"> 智尊
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#444;cursor:pointer;">
+          <input type="checkbox" class="print-area-check" value="其他" onchange="refreshPrintCaseList()" style="width:13px;height:13px;accent-color:#1a3a5c;"> 其他
+        </label>
+      </div>
     </div>
-    <div id="printListCount" style="font-size:12px;color:#999;margin-bottom:16px;"></div>
-    <div style="display:flex;gap:8px;">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;flex-shrink:0;">
+      <span id="printListCount" style="font-size:12px;color:#999;"></span>
+      <span style="font-size:12px;">
+        <a href="javascript:void(0)" onclick="togglePrintCaseAll(true)" style="color:#1a3a5c;text-decoration:none;font-weight:600;">全選</a>
+        <span style="color:#ddd;">｜</span>
+        <a href="javascript:void(0)" onclick="togglePrintCaseAll(false)" style="color:#1a3a5c;text-decoration:none;font-weight:600;">全不選</a>
+      </span>
+    </div>
+
+    <div id="printCaseListWrap" style="flex:1;overflow-y:auto;border:1.5px solid #eee;border-radius:10px;padding:4px;min-height:180px;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;flex-shrink:0;">
       <button onclick="closePrintListModal()" style="flex:1;padding:11px;background:#f0f0f0;color:#666;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
-      <button onclick="generatePrintList()" style="flex:2;padding:11px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">產生清單</button>
+      <button onclick="generatePrintList()" style="flex:2;padding:11px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">列印已勾選案件</button>
     </div>
   </div>
 </div>
@@ -2509,11 +2521,13 @@ function closeExportModal() {
 }
 
 // ── 列印派工清單 ──
+let printCheckedIds = new Set(); // 記錄目前勾選的案件(用rowIndex當key)
+
 function openPrintListModal() {
   document.getElementById('printListModal').style.display = 'flex';
   document.getElementById('printIncludeClosed').checked = false;
   document.querySelectorAll('.print-area-check').forEach(el => el.checked = (el.value === 'all'));
-  updatePrintListCount();
+  refreshPrintCaseList();
 }
 
 function closePrintListModal() {
@@ -2524,7 +2538,7 @@ function onPrintAreaAllToggle(el) {
   if (el.checked) {
     document.querySelectorAll('.print-area-check').forEach(c => { if (c.value !== 'all') c.checked = false; });
   }
-  updatePrintListCount();
+  refreshPrintCaseList();
 }
 
 function getPrintListSelectedAreas() {
@@ -2533,13 +2547,12 @@ function getPrintListSelectedAreas() {
   return checked;
 }
 
-function getPrintListCases() {
+function getPrintListFilteredCases() {
   const includeClosed = document.getElementById('printIncludeClosed').checked;
   const areas = getPrintListSelectedAreas();
   let cases = allCases.filter(c => !c.flagReason);
   cases = cases.filter(c => includeClosed ? true : c.status === '待處理');
   if (areas) cases = cases.filter(c => areas.some(a => areaMatchesFilter(effArea(c), a)));
-  // 排序：待處理優先，區域內依報修時間新到舊
   cases.sort((a,b) => {
     if (a.status !== b.status) return a.status === '待處理' ? -1 : 1;
     return String(effArea(a)).localeCompare(String(effArea(b)));
@@ -2547,19 +2560,52 @@ function getPrintListCases() {
   return cases;
 }
 
-function updatePrintListCount() {
-  const n = getPrintListCases().length;
-  document.getElementById('printListCount').textContent = `符合條件的案件：${n} 件`;
+// 篩選條件變更時：重新抓案件清單，並將目前符合條件的案件預設全部勾選
+function refreshPrintCaseList() {
+  const cases = getPrintListFilteredCases();
+  printCheckedIds = new Set(cases.map(c => c.rowIndex));
+  renderPrintCaseList(cases);
 }
-document.addEventListener('change', (e) => {
-  if (e.target && (e.target.id === 'printIncludeClosed' || e.target.classList.contains('print-area-check'))) {
-    updatePrintListCount();
+
+function renderPrintCaseList(cases) {
+  const wrap = document.getElementById('printCaseListWrap');
+  document.getElementById('printListCount').textContent = `符合條件：${cases.length} 件（已勾選 ${printCheckedIds.size} 件）`;
+  if (!cases.length) {
+    wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">沒有符合條件的案件</div>';
+    return;
   }
-});
+  wrap.innerHTML = cases.map(c => {
+    const loc = c.normalizedLocation || c.location || '—';
+    const applicant = [c.unit, c.name].filter(Boolean).join(' ');
+    const checked = printCheckedIds.has(c.rowIndex);
+    const statusTag = c.status === '已結案' ? '<span style="font-size:10px;color:#1E7A3E;font-weight:700;margin-left:6px;">已結案</span>' : '';
+    return `
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 8px;border-bottom:1px solid #f2f2f2;cursor:pointer;">
+        <input type="checkbox" ${checked?'checked':''} onchange="onPrintCaseCheckToggle(${c.rowIndex},this.checked)" style="width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:#1a3a5c;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:#1a1a1a;">${c.caseId || ''}${statusTag}</div>
+          <div style="font-size:11px;color:#666;margin-top:1px;">${effArea(c)} / ${loc}　${applicant}</div>
+          <div style="font-size:11px;color:#999;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.description || ''}</div>
+        </div>
+      </label>`;
+  }).join('');
+}
+
+function onPrintCaseCheckToggle(rowIndex, isChecked) {
+  if (isChecked) printCheckedIds.add(rowIndex);
+  else printCheckedIds.delete(rowIndex);
+  document.getElementById('printListCount').textContent = `符合條件：${getPrintListFilteredCases().length} 件（已勾選 ${printCheckedIds.size} 件）`;
+}
+
+function togglePrintCaseAll(checkAll) {
+  const cases = getPrintListFilteredCases();
+  printCheckedIds = checkAll ? new Set(cases.map(c => c.rowIndex)) : new Set();
+  renderPrintCaseList(cases);
+}
 
 function generatePrintList() {
-  const cases = getPrintListCases();
-  if (!cases.length) { showToast('沒有符合條件的案件'); return; }
+  const cases = getPrintListFilteredCases().filter(c => printCheckedIds.has(c.rowIndex));
+  if (!cases.length) { showToast('請至少勾選一筆案件'); return; }
 
   const rows = cases.map((c, i) => {
     const loc = c.normalizedLocation || c.location || '—';
