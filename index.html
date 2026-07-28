@@ -925,8 +925,13 @@
       <button onclick="exitGmMode()" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer;">退出</button>
     </div>
     <div class="filter-row">
-      <button class="filter-btn active" onclick="filterQuery('待處理',this)">待處理</button>
-      <button class="filter-btn" onclick="filterQuery('已結案',this)">已結案</button>
+      <button class="filter-btn active" data-status="all" onclick="filterQuery('all',this)">全部</button>
+      <button class="filter-btn" data-status="待處理" onclick="filterQuery('待處理',this)">待處理</button>
+      <button class="filter-btn" data-status="已結案" onclick="filterQuery('已結案',this)">已結案</button>
+    </div>
+    <div style="position:relative;margin-bottom:10px;">
+      <input type="text" id="queryKeywordInput" placeholder="搜尋案件編號、地點、描述、申請人…" oninput="onQueryKeywordInput()" style="width:100%;padding:11px 38px 11px 14px;border:1.5px solid #e8e8e8;border-radius:12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+      <span id="queryKeywordClear" onclick="clearQueryKeyword()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#bbb;cursor:pointer;font-size:16px;">×</span>
     </div>
     <div class="filter-row" style="flex-wrap:wrap;gap:6px;" id="query-area-row">
       <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('all',this)">全部</button>
@@ -1885,6 +1890,8 @@ async function callApi(params) {
 
 // ── 案件查詢（公開）──
 let gmMode = false;
+let currentQueryAreaScope = null; // 若設定(如['會館','雅舍'])，代表限定範圍模式，不受一般區域篩選鈕控制
+let currentQueryKeyword = '';
 
 let currentQueryName = '';
 let currentQueryStatusFilter = 'all';
@@ -1894,6 +1901,10 @@ async function searchByName() {
   if (!input) { showToast('請輸入姓名'); return; }
   if (input === 'GM123') {
     enterGmMode();
+    return;
+  }
+  if (input === '營運') {
+    enterGmMode(['會館','雅舍']);
     return;
   }
   if (!allCases.length) await loadCases();
@@ -1914,15 +1925,32 @@ function filterQueryStatus(status, btn) {
   renderQueryByName(currentQueryName);
 }
 
-function enterGmMode() {
+function enterGmMode(areaScope) {
   gmMode = true;
+  currentQueryAreaScope = areaScope || null; // 若有指定(如['會館','雅舍'])，只顯示這些區域，不受區域篩選鈕影響
+  currentQueryFilter = 'all'; // 進入時預設顯示全部狀態(待處理+已結案)
+  currentQueryArea = 'all';
+  queryPage = 1;
   document.getElementById('query-name-mode').style.display = 'none';
   document.getElementById('query-gm-mode').style.display = 'block';
+  document.querySelectorAll('#query-gm-mode [data-status]').forEach(b=>b.classList.remove('active'));
+  const allStatusBtn = document.querySelector('#query-gm-mode [data-status="all"]');
+  if (allStatusBtn) allStatusBtn.classList.add('active');
+  const areaRow = document.getElementById('query-area-row');
+  if (areaRow) {
+    areaRow.style.display = currentQueryAreaScope ? 'none' : 'flex'; // 指定範圍時隱藏區域篩選鈕，避免混淆
+    areaRow.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    const allAreaBtn = areaRow.querySelector('.filter-btn');
+    if (allAreaBtn) allAreaBtn.classList.add('active');
+  }
+  document.getElementById('queryKeywordInput').value = '';
   renderQueryGm();
 }
 
 function exitGmMode() {
   gmMode = false;
+  currentQueryAreaScope = null;
+  currentQueryKeyword = '';
   document.getElementById('query-name-mode').style.display = 'block';
   document.getElementById('query-gm-mode').style.display = 'none';
   document.getElementById('query-name-input').value = '';
@@ -1954,11 +1982,40 @@ function filterQuery(status, btn) {
   btn.classList.add('active'); renderQueryGm();
 }
 
+function onQueryKeywordInput() {
+  currentQueryKeyword = document.getElementById('queryKeywordInput').value.trim();
+  document.getElementById('queryKeywordClear').style.display = currentQueryKeyword ? 'block' : 'none';
+  queryPage = 1;
+  renderQueryGm();
+}
+
+function clearQueryKeyword() {
+  document.getElementById('queryKeywordInput').value = '';
+  currentQueryKeyword = '';
+  document.getElementById('queryKeywordClear').style.display = 'none';
+  queryPage = 1;
+  renderQueryGm();
+}
+
 function renderQueryGm() {
   const list = document.getElementById('queryListGm');
   let filtered = allCases;
   if (currentQueryFilter!=='all') filtered=filtered.filter(c=>c.status===currentQueryFilter);
-  if (currentQueryArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentQueryArea));
+  if (currentQueryAreaScope) {
+    filtered = filtered.filter(c => currentQueryAreaScope.some(a => areaMatchesFilter(effArea(c), a)));
+  } else if (currentQueryArea!=='all') {
+    filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentQueryArea));
+  }
+  const kw = currentQueryKeyword.toLowerCase();
+  if (kw) {
+    filtered = filtered.filter(c => {
+      const haystack = [
+        c.caseId, c.area, effArea(c), c.location, c.normalizedLocation,
+        c.description, c.name, c.unit, c.locationType, c.caseType, c.repairNote
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(kw);
+    });
+  }
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (queryPage>totalPages) queryPage=totalPages;
@@ -1975,7 +2032,9 @@ function renderPubCard(c) {
   const isFlagged = !!c.flagReason;
   const locDisplay = c.normalizedLocation||c.location||'—';
   const flagLabel = isFlagged ? (c.flagReason||'已標記') : '';
-  return `<div class="pub-card${isFlagged?' is-flagged':''}">
+  const area = effArea(c);
+  const areaClass = area.startsWith('會館') ? 'area-館' : area.startsWith('雅舍') ? 'area-雅' : area.startsWith('研究') ? 'area-研' : area.startsWith('智尊') ? 'area-智' : 'area-其';
+  return `<div class="case-card ${areaClass}${isFlagged?' is-flagged':''}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
         <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
