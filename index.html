@@ -479,14 +479,14 @@
       <span id="queryKeywordClear" onclick="clearQueryKeyword()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#bbb;cursor:pointer;font-size:16px;">×</span>
     </div>
     <div class="filter-row" style="flex-wrap:wrap;gap:6px;" id="query-area-row">
-      <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('all',this)">全部</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('會館',this)">會館</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍一棟',this)">雅一</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍二棟',this)">雅二</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍三棟',this)">雅三</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('研究園',this)">研究園</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('智尊',this)">智尊</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('其他',this)">其他</button>
+      <button class="filter-btn active" data-area="all" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('all',this)">全部</button>
+      <button class="filter-btn" data-area="會館" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('會館',this)">會館</button>
+      <button class="filter-btn" data-area="雅舍一棟" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍一棟',this)">雅一</button>
+      <button class="filter-btn" data-area="雅舍二棟" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍二棟',this)">雅二</button>
+      <button class="filter-btn" data-area="雅舍三棟" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍三棟',this)">雅三</button>
+      <button class="filter-btn" data-area="研究園" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('研究園',this)">研究園</button>
+      <button class="filter-btn" data-area="智尊" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('智尊',this)">智尊</button>
+      <button class="filter-btn" data-area="其他" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('其他',this)">其他</button>
     </div>
     <div id="queryListGm" class="case-grid"><div class="empty-state">載入中…</div></div>
     <div id="queryPaginationGm" class="pagination"></div>
@@ -1187,16 +1187,16 @@ function renderCases() {
       <div class="mgr-field">
         <div class="mgr-label">結案人 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
         <div class="flag-row" id="closer-${c.rowIndex}">
-          ${['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','其他'].map(f=>{
-            const fixedNames = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'];
+          ${['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','郭于賢','其他'].map(f=>{
+            const fixedNames = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','郭于賢'];
             const savedNames = (c.closerName||'').split('、');
             const isActive = savedNames.includes(f) || (f==='其他' && c.closerName && c.closerName.split('、').some(n=>!fixedNames.includes(n)));
             return `<button class="flag-btn${isActive?' active-flag':''}" data-closer="${f}" onclick="toggleCloser(${c.rowIndex},'${f}',this)">${f}</button>`;
           }).join('')}
         </div>
         <input type="text" id="closer-other-${c.rowIndex}" placeholder="請輸入結案人姓名"
-          style="display:${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'].includes(c.closerName)&&c.closerName?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
-          value="${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'].includes(c.closerName)?c.closerName:''}">
+          style="display:${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','郭于賢'].includes(c.closerName)&&c.closerName?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
+          value="${c.closerName&&!['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','郭于賢'].includes(c.closerName)?c.closerName:''}">
       </div>
       <div class="mgr-field">
         <div class="mgr-label">維修記錄</div>
@@ -1314,7 +1314,7 @@ function toggleCloser(rowIndex, name, btn) {
 function getSelectedCloser(rowIndex) {
   const el = document.getElementById('closer-'+rowIndex);
   if (!el) return '';
-  const fixedNames = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬'];
+  const fixedNames = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','郭于賢'];
   const selected = [];
   el.querySelectorAll('.flag-btn.active-flag').forEach(b => {
     if (b.textContent === '其他') {
@@ -1485,10 +1485,16 @@ function enterGmMode(areaScope) {
   if (pendingBtn) pendingBtn.classList.add('active');
   const areaRow = document.getElementById('query-area-row');
   if (areaRow) {
-    areaRow.style.display = 'flex'; // 一律顯示區域篩選鈕，不因進入方式而隱藏
+    areaRow.style.display = 'flex';
     areaRow.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
     const allAreaBtn = areaRow.querySelector('.filter-btn');
     if (allAreaBtn) allAreaBtn.classList.add('active');
+    // 範圍鎖定時(如營運快捷字)，只顯示範圍內相關的區域按鈕，避免點到範圍外的按鈕變成空白清單
+    areaRow.querySelectorAll('.filter-btn[data-area]').forEach(b => {
+      const a = b.dataset.area;
+      const relevant = a === 'all' || !currentQueryAreaScope || currentQueryAreaScope.some(scope => a === scope || a.startsWith(scope) || scope.startsWith(a));
+      b.style.display = relevant ? '' : 'none';
+    });
   }
   document.getElementById('queryKeywordInput').value = '';
   renderQueryGm();
@@ -1517,7 +1523,6 @@ function renderQueryByName(name) {
 
 function filterQueryArea(area, btn) {
   currentQueryArea = area;
-  currentQueryAreaScope = null; // 手動點選區域按鈕時，解除營運快捷字設定的範圍鎖定
   queryPage = 1;
   document.querySelectorAll('#query-area-row .filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -1549,9 +1554,13 @@ function renderQueryGm() {
   const list = document.getElementById('queryListGm');
   let filtered = allCases;
   if (currentQueryFilter!=='all') filtered=filtered.filter(c=>c.status===currentQueryFilter);
+  // 範圍鎖定(如營運快捷字設定的會館+雅舍)永遠是外層邊界，不管區域按鈕怎麼點都不會超出這個範圍
   if (currentQueryAreaScope) {
     filtered = filtered.filter(c => currentQueryAreaScope.some(a => areaMatchesFilter(effArea(c), a)));
-  } else if (currentQueryArea!=='all') {
+    // 新規則：營運範圍檢視不顯示「園區營繕」單位自己報修的工單
+    filtered = filtered.filter(c => c.unit !== '園區營繕');
+  }
+  if (currentQueryArea!=='all') {
     filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentQueryArea));
   }
   const kw = currentQueryKeyword.toLowerCase();
