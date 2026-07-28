@@ -1485,7 +1485,7 @@ function enterGmMode(areaScope) {
   if (pendingBtn) pendingBtn.classList.add('active');
   const areaRow = document.getElementById('query-area-row');
   if (areaRow) {
-    areaRow.style.display = currentQueryAreaScope ? 'none' : 'flex'; // 指定範圍時隱藏區域篩選鈕，避免混淆
+    areaRow.style.display = 'flex'; // 一律顯示區域篩選鈕，不因進入方式而隱藏
     areaRow.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
     const allAreaBtn = areaRow.querySelector('.filter-btn');
     if (allAreaBtn) allAreaBtn.classList.add('active');
@@ -1517,6 +1517,7 @@ function renderQueryByName(name) {
 
 function filterQueryArea(area, btn) {
   currentQueryArea = area;
+  currentQueryAreaScope = null; // 手動點選區域按鈕時，解除營運快捷字設定的範圍鎖定
   queryPage = 1;
   document.querySelectorAll('#query-area-row .filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
