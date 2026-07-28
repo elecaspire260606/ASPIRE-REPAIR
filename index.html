@@ -32,7 +32,6 @@
 
   /* ── Stats bar ── */
   .stats-bar { background: #FFFFFF; border-bottom: 1px solid #f2ede8; padding: 9px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: sticky; top: 41px; z-index: 49; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
-  .stats-slime { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
   .stats-item { display: flex; align-items: baseline; gap: 5px; font-size: 12px; color: #999; }
   .stats-item b { font-size: 15px; color: #E8761A; font-weight: 700; }
   .stats-item span.val { font-size: 13px; color: #1a1a1a; font-weight: 600; }
@@ -105,6 +104,9 @@
 
   /* ── Case cards ── */
   .case-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:15px; margin-bottom:11px; position:relative; }
+  .case-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; align-items:start; }
+  .case-grid .case-card { margin-bottom:0; }
+  @media (max-width:700px) { .case-grid { grid-template-columns:1fr; } }
   .case-card.area-館 { background:#FDEBD0; }
   .case-card.area-雅 { background:#DDE9F7; }
   .case-card.area-研 { background:#D5EDD9; }
@@ -310,461 +312,6 @@
   #normPreview { display:none; margin-top:5px; font-size:12px; color:#E8761A; background:#FEF0E3; border-radius:7px; padding:5px 10px; }
   .dash-filter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
 
-  /* ── 🎮 史萊姆放置遊戲 ── */
-  #slimeGameOverlay {
-    display:none; position:fixed; inset:0; background:rgba(20,15,10,0.75);
-    z-index:1000; align-items:center; justify-content:center; padding:20px;
-  }
-  #slimeGameOverlay.open { display:flex; }
-  .sg-panel {
-    background:linear-gradient(180deg,#241a12 0%,#150e08 100%);
-    border-radius:22px; width:100%; max-width:420px; max-height:88vh;
-    overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 2px #6b4a26;
-    position:relative;
-  }
-  .sg-header {
-    background:linear-gradient(135deg,#3a2815,#241a12); color:#F2D46E;
-    padding:16px 20px; border-radius:22px 22px 0 0;
-    display:flex; justify-content:space-between; align-items:center;
-    position:sticky; top:0; z-index:2; border-bottom:2px solid #6b4a26;
-  }
-  .sg-title { font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px; text-shadow:0 1px 2px rgba(0,0,0,0.6); }
-  .sg-close { cursor:pointer; font-size:22px; opacity:0.85; line-height:1; color:#F2D46E; }
-  .sg-body { padding:18px 20px 26px; color:#f0e4d0; }
-  .sg-stage {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:16px; padding:14px; text-align:center;
-    box-shadow:inset 0 0 20px rgba(0,0,0,0.4); margin-bottom:16px; position:relative; overflow:hidden;
-  }
-  .sg-toast {
-    position:absolute; top:10px; left:50%; transform:translateX(-50%) translateY(-10px);
-    background:rgba(20,15,10,0.92); color:white; padding:9px 16px; border-radius:10px;
-    font-size:12px; font-weight:600; opacity:0; pointer-events:none; transition:all 0.25s;
-    z-index:50; max-width:92%; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.3);
-    line-height:1.4;
-  }
-  .sg-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-  .sg-slime-wrap {
-    width:100px; height:100px; margin:0 auto; cursor:pointer; user-select:none;
-    display:flex; align-items:center; justify-content:center; position:relative;
-  }
-  .sg-slime-wrap svg { width:100%; height:100%; overflow:visible; transition:transform 0.05s; }
-  .sg-slime-wrap.squish svg { animation:sgSquish 0.38s cubic-bezier(.34,1.9,.64,1); }
-  @keyframes sgSquish {
-    0%   { transform:scale(1,1); }
-    22%  { transform:scale(1.28,0.72) translateY(8px); }
-    45%  { transform:scale(0.85,1.18) translateY(-6px); }
-    65%  { transform:scale(1.1,0.92) translateY(2px); }
-    100% { transform:scale(1,1); }
-  }
-  .sg-slime-wrap.idle svg { animation:sgIdleBob 2.6s ease-in-out infinite; }
-  @keyframes sgIdleBob {
-    0%,100% { transform:translateY(0) scale(1,1); }
-    50%     { transform:translateY(-4px) scale(1.02,0.98); }
-  }
-  .sg-eye-blink { animation:sgBlink 4s ease-in-out infinite; }
-  @keyframes sgBlink { 0%,92%,100% { transform:scaleY(1); } 95% { transform:scaleY(0.1); } }
-  .sg-sparkle { position:absolute; font-size:16px; pointer-events:none; animation:sgSparkle 0.7s ease-out forwards; }
-  @keyframes sgSparkle {
-    0%   { opacity:1; transform:translate(0,0) scale(0.5) rotate(0deg); }
-    100% { opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.2) rotate(180deg); }
-  }
-  .sg-crit-float { color:#ff8a65 !important; font-size:17px !important; font-weight:900 !important; }
-  .sg-combo-bar { height:5px; background:#1a1210; border-radius:3px; overflow:hidden; margin-top:10px; border:1px solid #4a3520; }
-  .sg-combo-fill { height:100%; background:linear-gradient(90deg,#F2D46E,#C9971F); border-radius:3px; transition:width 0.15s; width:0%; }
-  .sg-combo-label { font-size:10px; color:#d8a0a0; margin-top:3px; text-align:center; min-height:14px; font-weight:700; }
-  .sg-achv-item {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:10px 12px; margin-bottom:6px;
-    display:flex; align-items:center; gap:10px;
-  }
-  .sg-achv-item.locked { opacity:0.4; }
-  .sg-achv-icon { font-size:22px; flex-shrink:0; }
-  .sg-achv-info { flex:1; min-width:0; }
-  .sg-achv-name { font-size:12px; font-weight:700; color:#f0e4d0; }
-  .sg-achv-desc { font-size:10px; color:#a8927a; margin-top:1px; }
-  .sg-achv-reward { font-size:10px; color:#7ED9A8; font-weight:700; white-space:nowrap; }
-
-  /* 分頁導覽 */
-  .sg-tabs { display:flex; gap:4px; margin:14px 0 10px; overflow-x:auto; padding-bottom:2px; }
-  .sg-tab-btn {
-    flex-shrink:0; padding:7px 12px; border:2px solid #4a3520; border-radius:20px; background:rgba(0,0,0,0.35);
-    color:#a8927a; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
-  }
-  .sg-tab-btn.active { background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; border-color:#F2D46E; }
-
-  /* 幸運史萊姆 */
-  .sg-lucky {
-    position:absolute; font-size:34px; cursor:pointer; z-index:10;
-    animation:sgLuckyPulse 0.6s ease-in-out infinite, sgLuckyIn 0.25s ease-out;
-    filter:drop-shadow(0 4px 8px rgba(255,200,0,0.5));
-  }
-  @keyframes sgLuckyPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
-  @keyframes sgLuckyIn { 0%{opacity:0; transform:scale(0.3);} 100%{opacity:1; transform:scale(1);} }
-
-  /* 轉生 */
-  .sg-prestige-box {
-    background:linear-gradient(135deg,#2b1a4a,#4a2a7a); border-radius:14px; padding:16px;
-    text-align:center; color:white; margin-bottom:14px;
-  }
-  .sg-prestige-crystal { font-size:28px; font-weight:800; }
-  .sg-prestige-desc { font-size:11px; opacity:0.85; margin:6px 0 12px; line-height:1.5; }
-  .sg-prestige-btn {
-    background:#FFD700; color:#4a2a00; border:none; border-radius:10px; padding:10px 18px;
-    font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; width:100%;
-  }
-  .sg-prestige-btn:disabled { background:#6b5d8a; color:#a89bc4; cursor:not-allowed; }
-
-  /* 天賦分支選擇 */
-  .sg-talent-choice { display:flex; gap:8px; margin-top:12px; }
-  .sg-talent-card {
-    flex:1; background:rgba(255,255,255,0.12); border:2px solid transparent; border-radius:10px;
-    padding:10px 8px; text-align:center; cursor:pointer; transition:all 0.15s;
-  }
-  .sg-talent-card:hover { background:rgba(255,255,255,0.2); }
-  .sg-talent-card.selected { border-color:#FFD700; background:rgba(255,215,0,0.18); }
-  .sg-talent-icon { font-size:20px; }
-  .sg-talent-name { font-size:11px; font-weight:800; margin:4px 0 2px; }
-  .sg-talent-desc { font-size:9px; opacity:0.85; line-height:1.4; }
-  .sg-talent-current { font-size:10px; background:rgba(255,255,255,0.15); border-radius:8px; padding:8px 10px; margin-top:10px; text-align:center; }
-
-  .sg-buy-row { display:flex; flex-wrap:wrap; gap:4px; flex-shrink:0; max-width:130px; justify-content:flex-end; }
-  .sg-buy-row .sg-buy-btn { padding:6px 8px; font-size:10px; line-height:1.3; min-width:34px; }
-  .sg-shop-item { flex-wrap:wrap; align-items:flex-start; }
-  .sg-crystal-lv-card {
-    background:rgba(255,255,255,0.12); border-radius:10px; padding:10px 12px; margin-bottom:8px;
-    display:flex; align-items:center; justify-content:space-between; gap:10px; color:white;
-  }
-  .sg-crystal-lv-info { flex:1; min-width:0; }
-  .sg-crystal-lv-name { font-size:12px; font-weight:800; }
-  .sg-crystal-lv-desc { font-size:10px; opacity:0.85; margin-top:2px; }
-  .sg-crystal-lv-btn {
-    flex-shrink:0; padding:7px 12px; border:none; border-radius:9px; font-size:11px; font-weight:700;
-    cursor:pointer; font-family:inherit; background:#FFD700; color:#4a2a00;
-  }
-  .sg-crystal-lv-btn:disabled { background:rgba(255,255,255,0.2); color:rgba(255,255,255,0.4); cursor:not-allowed; }
-
-  /* 寶箱掉落提示 */
-  .sg-drop-banner {
-    position:absolute; left:50%; top:8px; transform:translateX(-50%);
-    border:2px solid; border-radius:12px; padding:8px 16px; text-align:center;
-    z-index:20; box-shadow:0 4px 16px rgba(0,0,0,0.15); white-space:nowrap;
-    animation:sgDropIn 0.3s ease-out;
-  }
-  .sg-drop-banner.sg-drop-out { animation:sgDropOut 0.3s ease-in forwards; }
-  @keyframes sgDropIn { 0%{opacity:0; transform:translateX(-50%) translateY(-12px) scale(0.85);} 100%{opacity:1; transform:translateX(-50%) translateY(0) scale(1);} }
-  @keyframes sgDropOut { 0%{opacity:1;} 100%{opacity:0; transform:translateX(-50%) translateY(-8px);} }
-  .sg-drop-rarity { font-size:11px; font-weight:800; }
-  .sg-drop-name { font-size:13px; font-weight:800; margin-top:2px; }
-  .sg-drop-desc { font-size:10px; opacity:0.85; margin-top:2px; }
-
-  /* 道具背包分頁 */
-  .sg-inventory-item {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:10px 12px; margin-bottom:6px;
-    display:flex; align-items:center; gap:10px;
-    border-left:4px solid transparent;
-  }
-  .sg-inv-name { font-size:12px; font-weight:700; color:#f0e4d0; }
-  .sg-inv-desc { font-size:10px; color:#a8927a; margin-top:1px; }
-  .sg-inv-count { font-size:11px; font-weight:800; white-space:nowrap; }
-  .sg-crystal-upgrade {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:10px 12px; margin-bottom:8px;
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-  }
-  .sg-crystal-buy-btn {
-    padding:7px 12px; border:1px solid #8a6a10; border-radius:9px; font-size:11px; font-weight:700; cursor:pointer;
-    font-family:inherit; background:linear-gradient(180deg,#c89bf5,#8B4FD9); color:white; flex-shrink:0;
-  }
-  .sg-crystal-buy-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; cursor:not-allowed; }
-
-  /* 圖鑑 */
-  .sg-colleague-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .sg-colleague-item {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:12px; padding:12px 6px; text-align:center;
-    position:relative;
-  }
-  .sg-colleague-item.locked { opacity:0.45; }
-  .sg-colleague-item.can-afford { border:2px solid #F2D46E; box-shadow:0 0 8px rgba(242,212,110,0.35); }
-  .sg-colleague-crystal-bar {
-    display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;
-    background:rgba(0,0,0,0.4); color:#F2D46E; border:2px solid #4a3520; border-radius:10px; padding:8px 12px; margin-bottom:10px;
-    font-size:12px; font-weight:800; text-align:center;
-  }
-
-  /* 裝備疊圖(視覺已停用,保留樣式避免殘留呼叫報錯) */
-  .sg-slime-wrap { position:relative; }
-  .sg-equip-head { position:absolute; top:-6px; left:50%; transform:translateX(-50%); font-size:32px; z-index:5; pointer-events:none; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
-  .sg-equip-hand { position:absolute; bottom:6px; right:-4px; font-size:26px; z-index:5; pointer-events:none; transform:rotate(18deg); filter:drop-shadow(0 2px 3px rgba(0,0,0,0.25)); }
-
-  /* 職級光環：投資越多、職級越高，光環越強烈，呈現「越來越厲害」的持續視覺感 */
-  .sg-job-aura {
-    position:absolute; top:50%; left:50%; width:100%; height:100%;
-    transform:translate(-50%,-50%); border-radius:50%; z-index:0; pointer-events:none;
-    animation:sgAuraPulse 2.4s ease-in-out infinite;
-  }
-  .sg-job-aura-t2 { box-shadow:0 0 18px 6px rgba(139,92,246,0.35); }
-  .sg-job-aura-t3 { box-shadow:0 0 26px 10px rgba(224,168,0,0.4); }
-  .sg-job-aura-t4 { box-shadow:0 0 36px 16px rgba(255,215,0,0.55); }
-  @keyframes sgAuraPulse { 0%,100%{opacity:0.7; transform:translate(-50%,-50%) scale(0.96);} 50%{opacity:1; transform:translate(-50%,-50%) scale(1.05);} }
-  .sg-colleague-emoji { font-size:26px; }
-  .sg-colleague-name { font-size:9px; font-weight:700; color:#f0e4d0; margin-top:4px; line-height:1.3; }
-  .sg-colleague-bonus { font-size:9px; color:#7ED9A8; margin-top:2px; font-weight:700; line-height:1.3; }
-  .sg-colleague-cost { font-size:9px; color:#a8927a; margin-top:2px; }
-  .sg-colleague-buy { margin-top:6px; width:100%; padding:5px; border:1px solid #8a6a10; border-radius:7px; font-size:10px; font-weight:700; cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; }
-  .sg-colleague-buy:disabled { background:linear-gradient(180deg,#555,#333); color:#888; border-color:#222; cursor:not-allowed; }
-
-  /* 每日任務 */
-  .sg-daily-item {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:12px 14px; margin-bottom:8px;
-  }
-  .sg-daily-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-  .sg-daily-name { font-size:12px; font-weight:700; color:#f0e4d0; }
-  .sg-daily-reward { font-size:11px; color:#F2D46E; font-weight:700; }
-  .sg-daily-track { height:6px; background:#1a1210; border-radius:3px; overflow:hidden; border:1px solid #4a3520; }
-  .sg-daily-fill { height:100%; background:linear-gradient(90deg,#7ED9A8,#2D9E5F); border-radius:3px; transition:width 0.3s; }
-  .sg-daily-prog { font-size:10px; color:#a8927a; margin-top:4px; text-align:right; }
-  .sg-daily-claim {
-    margin-top:8px; width:100%; padding:7px; border:1px solid #1f5a2c; border-radius:8px; font-size:11px; font-weight:700;
-    cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#4fbf6a,#2D7A3E); color:white;
-  }
-  .sg-daily-claim:disabled { background:linear-gradient(180deg,#555,#333); color:#888; cursor:not-allowed; }
-  .sg-stage-name { font-size:13px; color:#F2D46E; font-weight:700; margin-top:8px; text-shadow:0 1px 2px rgba(0,0,0,0.5); }
-  .sg-job-rank { margin-top:8px; padding-top:8px; border-top:1px dashed #4a3520; }
-  .sg-job-rank-name { font-size:12px; color:#f0e4d0; font-weight:700; }
-  .sg-job-rank-tier { font-size:10px; color:#c89bf5; font-weight:800; }
-  .sg-job-rank-track { height:5px; background:#1a1210; border-radius:3px; overflow:hidden; margin:6px 0 4px; border:1px solid #4a3520; }
-  .sg-job-rank-fill { height:100%; background:linear-gradient(90deg,#8B5CF6,#5B3FA8); border-radius:3px; transition:width 0.3s; }
-  .sg-job-rank-next { font-size:10px; color:#a8927a; }
-
-  /* 職級點擊特效：中階主管(2) 星星爆發 */
-  .sg-click-fx-tier2 { position:absolute; font-size:16px; pointer-events:none; animation:sgFxTier2 0.7s ease-out forwards; }
-  @keyframes sgFxTier2 { 0%{opacity:1; transform:translate(0,0) scale(0.6);} 100%{opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.3) rotate(180deg);} }
-  /* 職級點擊特效：高階主管(3) 金幣飛濺 */
-  .sg-click-fx-tier3 { position:absolute; font-size:18px; pointer-events:none; animation:sgFxTier3 0.8s ease-out forwards; }
-  @keyframes sgFxTier3 { 0%{opacity:1; transform:translate(0,0) scale(0.7) rotate(0deg);} 100%{opacity:0; transform:translate(var(--sx),var(--sy)) scale(1.1) rotate(360deg);} }
-  /* 職級點擊特效：集團高層(4) 金色光環脈衝 */
-  .sg-click-fx-tier4-ring {
-    position:absolute; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
-    border-radius:50%; border:3px solid #FFD700; pointer-events:none;
-    animation:sgFxTier4Ring 0.6s ease-out forwards;
-  }
-  @keyframes sgFxTier4Ring { 0%{opacity:0.9; transform:scale(0.5);} 100%{opacity:0; transform:scale(4);} }
-  .sg-xp-row { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-top:10px; }
-  .sg-xp-num { font-size:24px; font-weight:800; color:#F2D46E; text-shadow:0 1px 3px rgba(0,0,0,0.5); }
-  .sg-xp-label { font-size:12px; color:#a8927a; }
-  .sg-xp-rate { font-size:11px; color:#7ED9A8; margin-top:4px; font-weight:600; }
-  .sg-secondary-stats { display:flex; justify-content:center; gap:14px; margin-top:4px; font-size:10px; color:#a8927a; }
-  .sg-secondary-stats b { color:#c89bf5; font-size:11px; }
-  .sg-float { position:absolute; font-size:14px; font-weight:800; color:#F2D46E; pointer-events:none; animation:sgFloat 0.8s ease-out forwards; text-shadow:0 1px 2px rgba(0,0,0,0.5); }
-  @keyframes sgFloat { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-40px);} }
-  .sg-raid-card { position:relative; overflow:visible; }
-  .sg-raid-dmg-float { position:absolute; top:8px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:900; pointer-events:none; animation:sgFloat 0.9s ease-out forwards; z-index:5; }
-  .sg-raid-dmg-enemy { color:#E85A4A; }
-  .sg-raid-dmg-player { color:#C0392B; }
-  .sg-raid-hpbar-fill { transition:width 0.35s ease-out; }
-  .sg-raid-boss-warn { background:linear-gradient(90deg,#FFD54F,#FF7043); color:#3a2000; font-weight:800; text-align:center; padding:8px; border-radius:8px; margin:8px 0; animation:sgRaidPulse 1s ease-in-out infinite; }
-  @keyframes sgRaidPulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
-  .sg-raid-event-card { text-align:center; padding:20px; background:linear-gradient(135deg,#FFF8E1,#FFECB3); border-radius:12px; }
-
-  /* ══════ 🗡️ 巡邏戰鬥畫面：復古地牢RPG主題 ══════ */
-  .sg-raid-frame {
-    background:
-      radial-gradient(circle at 20% 10%, rgba(232,118,26,0.15), transparent 40%),
-      linear-gradient(180deg,#241a12,#150e08);
-    border:3px solid #6b4a26;
-    border-radius:14px;
-    box-shadow: inset 0 0 0 2px #3a2815, inset 0 0 24px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
-    padding:14px;
-    position:relative;
-    color:#f0e4d0;
-  }
-  .sg-raid-frame::before, .sg-raid-frame::after {
-    content:''; position:absolute; width:10px; height:10px; border-radius:50%;
-    background:radial-gradient(circle at 35% 35%, #ff8a65, #b71c1c);
-    box-shadow:0 0 6px rgba(255,110,64,0.8);
-    top:8px;
-  }
-  .sg-raid-frame::before { left:8px; }
-  .sg-raid-frame::after { right:8px; }
-  .sg-raid-zonebar {
-    text-align:center; font-weight:800; font-size:13px; color:#F2D46E;
-    letter-spacing:0.03em; margin-bottom:10px;
-    text-shadow:0 1px 2px rgba(0,0,0,0.6);
-  }
-  .sg-raid-combatants { display:flex; gap:10px; margin-bottom:10px; }
-  .sg-raid-unit {
-    flex:1; background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px;
-    padding:10px; text-align:center; position:relative; overflow:visible;
-  }
-  .sg-raid-unit-name { font-size:12px; font-weight:700; color:#f0e4d0; margin-bottom:2px; }
-  .sg-raid-unit-emoji { font-size:38px; line-height:1; margin:4px 0; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
-  .sg-raid-bar-track {
-    height:14px; background:#1a1210; border:1px solid #000; border-radius:7px; overflow:hidden;
-    box-shadow:inset 0 1px 3px rgba(0,0,0,0.8); position:relative; margin-top:4px;
-  }
-  .sg-raid-bar-fill { height:100%; transition:width 0.35s ease-out; }
-  .sg-raid-bar-fill.hp { background:linear-gradient(180deg,#ff6b5b,#c0392b); }
-  .sg-raid-bar-fill.stamina { background:linear-gradient(180deg,#5bb8ff,#2d6cb0); }
-  .sg-raid-bar-label { font-size:10px; color:#d8c8ae; margin-top:2px; }
-  .sg-raid-warn {
-    background:linear-gradient(90deg,#FFD54F,#FF7043); color:#3a2000; font-weight:800;
-    text-align:center; padding:8px; border-radius:8px; margin-bottom:10px;
-    animation:sgRaidPulse 1s ease-in-out infinite; font-size:12px;
-    border:1px solid rgba(0,0,0,0.3);
-  }
-  .sg-raid-log-box {
-    background:rgba(0,0,0,0.4); border:2px solid #4a3520; border-radius:10px;
-    padding:8px 10px; font-size:11px; color:#d8c8ae; line-height:1.7;
-    max-height:110px; overflow-y:auto; margin-bottom:10px;
-  }
-  .sg-raid-log-box div:first-child { color:#F2D46E; font-weight:700; }
-  .sg-raid-actionbar {
-    display:flex; flex-wrap:wrap; gap:6px; justify-content:center;
-    background:rgba(0,0,0,0.3); border:2px solid #4a3520; border-radius:10px; padding:8px;
-  }
-  .sg-raid-actbtn {
-    flex:1 1 30%; min-width:76px; background:linear-gradient(180deg,#2d3a52,#1a2338);
-    border:2px solid #4a5a7a; border-radius:8px; color:#e8eef7; font-size:10px; font-weight:700;
-    padding:8px 4px; cursor:pointer; text-align:center; transition:transform 0.1s, box-shadow 0.1s;
-  }
-  .sg-raid-actbtn .ic { font-size:18px; display:block; margin-bottom:2px; }
-  .sg-raid-actbtn:not(:disabled):hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,0.4); }
-  .sg-raid-actbtn:disabled { opacity:0.4; cursor:not-allowed; }
-  .sg-raid-actbtn.attack { background:linear-gradient(180deg,#c0392b,#7a2015); border-color:#e85a4a; }
-  .sg-raid-actbtn.guard { background:linear-gradient(180deg,#2d6cb0,#1a3d66); border-color:#5bb8ff; }
-  .sg-raid-actbtn.skill.weak { border-color:#2D9E5F; box-shadow:0 0 8px rgba(45,158,95,0.6); }
-  .sg-raid-actbtn.run { background:linear-gradient(180deg,#555,#2a2a2a); border-color:#888; }
-  .sg-raid-footer {
-    display:flex; justify-content:space-between; align-items:center; margin-top:10px;
-    font-size:11px; color:#d8c8ae; padding-top:8px; border-top:1px solid #4a3520;
-  }
-
-  /* ══════ 公司分頁 復古風格測試版 ══════ */
-  .sg-raid-shop-toggle {
-    display:flex; align-items:center; justify-content:space-between;
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px;
-    padding:10px 12px; margin-bottom:10px; font-size:12px; font-weight:700; color:#f0e4d0;
-  }
-  .sg-raid-shop-subtabs { display:flex; gap:6px; margin-bottom:10px; }
-  .sg-raid-shop-subtab {
-    flex:1; text-align:center; padding:8px 4px; font-size:12px; font-weight:700;
-    background:linear-gradient(180deg,#2d2015,#1a1209); border:2px solid #4a3520; border-radius:8px;
-    color:#a8927a; cursor:pointer;
-  }
-  .sg-raid-shop-subtab.active { color:#F2D46E; border-color:#F2D46E; box-shadow:0 0 8px rgba(242,212,110,0.4); }
-  .sg-raid-shop-item {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px;
-    padding:10px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:10px;
-  }
-  .sg-raid-shop-item.locked { opacity:0.5; }
-  .sg-raid-shop-name { font-weight:700; color:#f0e4d0; font-size:13px; }
-  .sg-raid-shop-desc { font-size:11px; color:#a8927a; margin-top:2px; }
-  .sg-raid-shop-owned { font-size:10px; color:#7ED9A8; margin-top:2px; }
-  .sg-raid-buy-row { display:flex; gap:4px; flex-shrink:0; }
-  .sg-raid-buy-btn {
-    background:linear-gradient(180deg,#F2D46E,#C9971F); border:1px solid #8a6a10; border-radius:6px;
-    color:#3a2000; font-size:10px; font-weight:800; padding:6px 8px; cursor:pointer; text-align:center; line-height:1.3;
-  }
-  .sg-raid-buy-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; border-color:#222; cursor:not-allowed; }
-  .sg-section-label { font-size:11px; font-weight:700; color:#a8927a; text-transform:uppercase; letter-spacing:0.06em; margin:14px 0 8px; }
-  .sg-shop-item {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:12px; padding:12px 14px; margin-bottom:8px;
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-  }
-  .sg-shop-info { flex:1; min-width:0; }
-  .sg-shop-name { font-size:13px; font-weight:700; color:#f0e4d0; display:flex; align-items:center; gap:6px; }
-  .sg-shop-desc { font-size:11px; color:#a8927a; margin-top:2px; }
-  .sg-shop-owned { font-size:11px; color:#7ED9A8; font-weight:700; margin-top:2px; }
-  .sg-shop-locked { opacity:0.6; background:rgba(0,0,0,0.5); }
-  .sg-shop-locked .sg-shop-name { color:#a8927a; }
-  .sg-shop-locked .sg-shop-desc { color:#7a6a5a; }
-  .sg-shop-cat-tag {
-    font-size:9px; font-weight:700; color:white; background:#B08968; border-radius:10px;
-    padding:1px 7px; margin-left:4px; vertical-align:middle;
-  }
-  .sg-shop-subtabs { display:flex; gap:6px; margin-bottom:10px; }
-
-  /* 股票賭博機制 */
-  .sg-stock-panel {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:14px; padding:16px;
-    text-align:center; color:#f0e4d0; margin-bottom:14px;
-  }
-  .sg-stock-title { font-size:15px; font-weight:800; margin-bottom:4px; color:#F2D46E; }
-  .sg-stock-desc { font-size:11px; opacity:0.8; margin-bottom:12px; line-height:1.5; }
-  .sg-stock-btn {
-    width:100%; padding:14px; border:1px solid #8a6a10; border-radius:12px; font-size:14px; font-weight:800;
-    cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000;
-    box-shadow:0 4px 12px rgba(242,212,110,0.25);
-  }
-  .sg-stock-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; box-shadow:none; cursor:not-allowed; }
-  .sg-stock-heat { font-size:11px; opacity:0.75; margin-top:10px; }
-  .sg-stock-stats { font-size:10px; opacity:0.6; margin-top:4px; }
-  .sg-stock-table { background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:10px; padding:6px 10px; }
-  .sg-stock-row { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid #4a3520; }
-  .sg-stock-row:last-child { border-bottom:none; }
-  .sg-stock-row.good { color:#7ED9A8; }
-  .sg-stock-row.bad { color:#E85A4A; }
-  .sg-stock-debuff-alert {
-    background:rgba(200,60,50,0.2); color:#ff8a75; border-radius:8px; padding:8px 12px; margin-bottom:10px;
-    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #E85A4A;
-  }
-  .sg-stock-buff-alert {
-    background:rgba(60,160,90,0.2); color:#7ED9A8; border-radius:8px; padding:8px 12px; margin-bottom:10px;
-    font-size:11px; font-weight:700; text-align:center; border-left:3px solid #2D9E5F;
-  }
-  .sg-shop-subtab {
-    flex:1; padding:8px; border:2px solid #4a3520; border-radius:10px; background:rgba(0,0,0,0.35); color:#a8927a;
-    font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s;
-  }
-  .sg-shop-subtab.active { background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; border-color:#F2D46E; }
-  .sg-setbonus-mini {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:8px; padding:8px 12px; margin-bottom:10px;
-    font-size:11px; color:#d8c8ae; cursor:pointer; text-align:center; font-weight:600;
-  }
-  .sg-setbonus-mini:hover { background:rgba(0,0,0,0.5); }
-  .sg-setbonus-panel {
-    background:rgba(0,0,0,0.35); border:2px solid #4a3520; border-radius:12px; padding:12px 14px;
-    margin-bottom:12px; color:#f0e4d0;
-  }
-  .sg-setbonus-title { font-size:12px; font-weight:800; margin-bottom:8px; color:#F2D46E; }
-  .sg-setbonus-row { font-size:11px; margin-bottom:6px; }
-  .sg-setbonus-row:last-child { margin-bottom:0; }
-  .sg-setbonus-name { font-weight:700; margin-bottom:2px; }
-  .sg-setbonus-info { opacity:0.9; font-size:10px; margin-top:2px; }
-  .sg-buy-btn {
-    flex-shrink:0; padding:8px 14px; border:1px solid #8a6a10; border-radius:10px; font-size:12px; font-weight:700;
-    cursor:pointer; font-family:inherit; background:linear-gradient(180deg,#F2D46E,#C9971F); color:#3a2000; transition:all 0.15s;
-  }
-  .sg-buy-btn:disabled { background:linear-gradient(180deg,#555,#333); color:#888; cursor:not-allowed; }
-  .sg-buy-btn:not(:disabled):hover { filter:brightness(1.08); }
-  .sg-reset-btn { font-size:11px; color:#a8927a; text-align:center; margin-top:16px; cursor:pointer; text-decoration:underline; }
-  .sg-offline-toast {
-    background:rgba(60,160,90,0.2); color:#7ED9A8; border-radius:10px; padding:10px 14px; font-size:12px;
-    margin-bottom:14px; text-align:center; border-left:3px solid #2D9E5F;
-  }
-
-  /* 收假報告面板 */
-  .sg-welcome-panel {
-    background:linear-gradient(160deg,#2b1a4a,#1a3a5c); border-radius:16px; padding:18px 16px;
-    color:white; margin-bottom:14px; text-align:center; box-shadow:0 6px 20px rgba(0,0,0,0.2);
-  }
-  .sg-welcome-title { font-size:15px; font-weight:800; margin-bottom:4px; }
-  .sg-welcome-duration { font-size:12px; opacity:0.8; margin-bottom:12px; }
-  .sg-welcome-xp-box {
-    background:rgba(255,255,255,0.1); border-radius:12px; padding:12px; margin-bottom:10px;
-  }
-  .sg-welcome-xp-label { font-size:11px; opacity:0.75; }
-  .sg-welcome-xp-num { font-size:24px; font-weight:800; color:#7ED9A8; margin-top:2px; }
-  .sg-welcome-drops-box {
-    background:rgba(255,255,255,0.08); border-radius:12px; padding:10px 12px; margin-bottom:12px; text-align:left;
-  }
-  .sg-welcome-drops-title { font-size:12px; font-weight:800; margin-bottom:6px; text-align:center; }
-  .sg-welcome-drop-row { font-size:11px; padding:3px 0; display:flex; justify-content:space-between; gap:8px; }
-  .sg-welcome-btn-row { display:flex; gap:8px; }
-  .sg-welcome-btn {
-    flex:1; padding:10px; border:none; border-radius:10px; font-size:12px; font-weight:800;
-    cursor:pointer; font-family:inherit;
-  }
-  .sg-welcome-btn.primary { background:#FFD700; color:#4a2a00; }
-  .sg-welcome-btn.secondary { background:rgba(255,255,255,0.15); color:white; }
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -782,7 +329,6 @@
 </nav>
 
 <div class="stats-bar">
-  <img src="slime.png" alt="slime" class="stats-slime" id="slimeIcon" onclick="onSlimeIconClick()" style="cursor:pointer;">
   <div class="stats-item">今日報修　<b id="statTodayCount">0</b>　件</div>
   <div class="stats-item">最後報修　<span class="val" id="statLastTime">無</span></div>
   <div class="stats-item"><span class="val" id="statLastLocation"></span></div>
@@ -925,8 +471,7 @@
       <button onclick="exitGmMode()" style="font-size:12px;color:#999;background:none;border:none;cursor:pointer;">退出</button>
     </div>
     <div class="filter-row">
-      <button class="filter-btn active" data-status="all" onclick="filterQuery('all',this)">全部</button>
-      <button class="filter-btn" data-status="待處理" onclick="filterQuery('待處理',this)">待處理</button>
+      <button class="filter-btn active" data-status="待處理" onclick="filterQuery('待處理',this)">待處理</button>
       <button class="filter-btn" data-status="已結案" onclick="filterQuery('已結案',this)">已結案</button>
     </div>
     <div style="position:relative;margin-bottom:10px;">
@@ -936,12 +481,14 @@
     <div class="filter-row" style="flex-wrap:wrap;gap:6px;" id="query-area-row">
       <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('all',this)">全部</button>
       <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('會館',this)">會館</button>
-      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍',this)">雅舍</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍一棟',this)">雅一</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍二棟',this)">雅二</button>
+      <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('雅舍三棟',this)">雅三</button>
       <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('研究園',this)">研究園</button>
       <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('智尊',this)">智尊</button>
       <button class="filter-btn" style="flex:none;padding:7px 12px;" onclick="filterQueryArea('其他',this)">其他</button>
     </div>
-    <div id="queryListGm"><div class="empty-state">載入中…</div></div>
+    <div id="queryListGm" class="case-grid"><div class="empty-state">載入中…</div></div>
     <div id="queryPaginationGm" class="pagination"></div>
   </div>
 </div>
@@ -1928,14 +1475,14 @@ function filterQueryStatus(status, btn) {
 function enterGmMode(areaScope) {
   gmMode = true;
   currentQueryAreaScope = areaScope || null; // 若有指定(如['會館','雅舍'])，只顯示這些區域，不受區域篩選鈕影響
-  currentQueryFilter = 'all'; // 進入時預設顯示全部狀態(待處理+已結案)
+  currentQueryFilter = '待處理'; // 進入時預設顯示待處理
   currentQueryArea = 'all';
   queryPage = 1;
   document.getElementById('query-name-mode').style.display = 'none';
   document.getElementById('query-gm-mode').style.display = 'block';
   document.querySelectorAll('#query-gm-mode [data-status]').forEach(b=>b.classList.remove('active'));
-  const allStatusBtn = document.querySelector('#query-gm-mode [data-status="all"]');
-  if (allStatusBtn) allStatusBtn.classList.add('active');
+  const pendingBtn = document.querySelector('#query-gm-mode [data-status="待處理"]');
+  if (pendingBtn) pendingBtn.classList.add('active');
   const areaRow = document.getElementById('query-area-row');
   if (areaRow) {
     areaRow.style.display = currentQueryAreaScope ? 'none' : 'flex'; // 指定範圍時隱藏區域篩選鈕，避免混淆
@@ -2988,53 +2535,9 @@ function getClosePhotos(rowIndex) {
 }
 
 function showToast(msg) {
-  const gameOpen = document.getElementById('slimeGameOverlay') && document.getElementById('slimeGameOverlay').classList.contains('open');
-  const sgToastEl = document.getElementById('sgToast');
-  if (gameOpen && sgToastEl) {
-    sgToastEl.textContent = msg;
-    sgToastEl.classList.add('show');
-    clearTimeout(sgToastEl._hideTimer);
-    sgToastEl._hideTimer = setTimeout(()=>sgToastEl.classList.remove('show'), 2800);
-    return;
-  }
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2800);
-}
-
-// ══════════════════════════════════════════════
-// 🎮 史萊姆放置遊戲（延遲載入器）
-// 遊戲主體搬到獨立的 slime-game.js，只有玩家真的觸發彩蛋時才動態載入，
-// 避免報修系統開啟時就要多讀一大段跟主系統無關的程式碼。
-// ══════════════════════════════════════════════
-let sgClickCount = 0;
-let sgClickTimer = null;
-let sgScriptLoaded = false;
-let sgScriptLoadingPromise = null;
-
-function sgEnsureScriptLoaded() {
-  if (sgScriptLoaded) return Promise.resolve();
-  if (sgScriptLoadingPromise) return sgScriptLoadingPromise;
-  sgScriptLoadingPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'slime-game.js';
-    script.onload = () => { sgScriptLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error('slime-game.js 載入失敗'));
-    document.body.appendChild(script);
-  });
-  return sgScriptLoadingPromise;
-}
-
-function onSlimeIconClick() {
-  sgClickCount++;
-  clearTimeout(sgClickTimer);
-  sgClickTimer = setTimeout(()=>{ sgClickCount = 0; }, 1500);
-  if (sgClickCount >= 2) {
-    sgClickCount = 0;
-    sgEnsureScriptLoaded()
-      .then(() => openSlimeGame())
-      .catch(() => showToast('小遊戲載入失敗，請檢查網路後再試一次'));
-  }
 }
 
 </script>
@@ -3060,16 +2563,5 @@ if ('serviceWorker' in navigator) {
   <div class="panel-body" id="panelBody"></div>
 </div>
 <div id="panelBackdrop" style="display:none;position:fixed;inset:0;z-index:399;" onclick="closeCasePanel()"></div>
-
-<!-- 🎮 史萊姆放置遊戲 -->
-<div id="slimeGameOverlay" onclick="if(event.target===this)closeSlimeGame()">
-  <div class="sg-panel">
-    <div class="sg-header">
-      <div class="sg-title">🌟 史萊姆放置屋</div>
-      <span class="sg-close" onclick="closeSlimeGame()">×</span>
-    </div>
-    <div class="sg-body" id="sgBody"></div>
-  </div>
-</div>
 
 </body></html>
