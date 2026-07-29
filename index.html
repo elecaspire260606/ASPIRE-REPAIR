@@ -786,6 +786,9 @@ function setUnit(unit, btn) {
   } else {
     input.style.display = 'none';
     input.value = unit;
+    // 自動把單位名稱帶入申請人姓名，省得再打一次；想改名字的話可以自己刪掉重打
+    const nameInput = document.getElementById('f-name');
+    if (nameInput) nameInput.value = unit;
   }
 }
 
