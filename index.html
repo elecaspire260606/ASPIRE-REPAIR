@@ -712,6 +712,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyDHXpaV6JUrlLynauBCtYr
 const PAGE_SIZE = 20;
 
 let allCases = [];
+let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
 let currentFilter = '待處理';
 let currentQueryFilter = '待處理';
 let currentMgrArea = 'all';
@@ -770,7 +771,7 @@ function updateStatsBar() {
 async function refreshStats() {
   const btn = document.getElementById('statsRefreshBtn');
   btn.classList.add('spinning');
-  await loadCases();
+  await loadCases(true);
   setTimeout(()=>btn.classList.remove('spinning'), 700);
 }
 
@@ -1013,16 +1014,21 @@ async function submitForm() {
 }
 
 // ── 載入案件 ──
-async function loadCases() {
+async function loadCases(force) {
+  // 節流：8秒內剛讀取過就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
+  // (Apps Script在短時間內收到大量重複請求容易變慢或逾時，會被誤以為是網路斷線)
+  if (!force && Date.now() - lastCasesLoadTime < 8000 && allCases.length) return;
   try {
     const res = await fetch(API_URL+'?action=getAll');
     const data = await res.json();
     if (data.success) {
       allCases = data.cases.reverse();
+      lastCasesLoadTime = Date.now();
       renderCases(); renderQuery(); renderDashboard(); updateStatsBar();
     }
   } catch(e) {
-    document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請檢查連線</div>';
+    console.error('loadCases 失敗:', e);
+    document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
   }
 }
 
@@ -1365,7 +1371,7 @@ async function autoCloseAsFlagged(rowIndex, reason) {
     });
     if (data.success) {
       showToast(`✓ 已標記「${label}」並結案`);
-      await loadCases();
+      await loadCases(true);
     } else {
       showToast('操作失敗：'+(data.message||'未知錯誤'));
     }
@@ -1394,7 +1400,7 @@ async function updateCase(rowIndex) {
   if (btn) { btn.disabled=true; btn.textContent='更新中…'; }
   try {
     const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos});
-    if (data && data.success) { showToast('✓ 已更新案件狀況'); loadCases(); }
+    if (data && data.success) { showToast('✓ 已更新案件狀況'); loadCases(true); }
     else { showToast('❌ 更新失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
   if (btn) { btn.disabled=false; btn.textContent='更新案件狀況'; }
@@ -1414,7 +1420,7 @@ async function closeCase(rowIndex) {
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
     const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos, closeFingerprint: getDeviceFingerprint()});
-    if (data && data.success) { showToast('✓ 案件已結案'); loadCases(); }
+    if (data && data.success) { showToast('✓ 案件已結案'); loadCases(true); }
     else { showToast('❌ 結案失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
   if (btn) { btn.disabled=false; btn.textContent='結案'; }
@@ -1424,7 +1430,7 @@ async function reopenCase(rowIndex) {
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
     const data = await callApi({action:'reopen', rowIndex});
-    if (data && data.success) { showToast('✓ 已取消結案'); loadCases(); }
+    if (data && data.success) { showToast('✓ 已取消結案'); loadCases(true); }
     else { showToast('❌ 操作失敗，請重試'); }
   } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
   if (btn) { btn.disabled=false; btn.textContent='取消結案'; }
@@ -1832,7 +1838,7 @@ async function importBackup(file) {
     if (data.success) {
       const skipMsg = data.skipped ? `，略過重複 ${data.skipped} 筆` : '';
       showToast('✓ 匯入完成，新增 '+data.imported+' 筆'+skipMsg);
-      await loadCases();
+      await loadCases(true);
     } else {
       showToast('匯入失敗：'+(data.message||'未知錯誤'));
     }
@@ -2488,7 +2494,7 @@ async function deleteReportPhoto(rowIndex, idx) {
     const data = await callApi({action:'deletePhoto', rowIndex, photoType:'report', index:idx});
     if (data.success) {
       showToast('✓ 照片已刪除');
-      await loadCases();
+      await loadCases(true);
     } else {
       showToast('刪除失敗：'+(data.message||'未知錯誤'));
     }
