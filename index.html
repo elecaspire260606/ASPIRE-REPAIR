@@ -1062,11 +1062,7 @@ function filterCases(status, btn) {
   currentFilter=status; mgrPage=1;
   document.querySelectorAll('#page-mgr .filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if (status === '已結案') {
-    loadCases(false, 'all'); // 瀏覽已結案需要完整歷史資料，不受近期窗口限制
-  } else {
-    renderCases();
-  }
+  renderCases(); // 已結案也用近期窗口就好，不用一開啟就強制抓全部歷史，想看更早的用「載入更早案件」按鈕
 }
 
 function renderCases() {
