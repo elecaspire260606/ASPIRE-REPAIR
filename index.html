@@ -176,6 +176,8 @@
 
   /* ── Mgr fields ── */
   .mgr-field { margin-bottom:10px; }
+  .mgr-advanced-toggle { font-size:12px; color:#1a3a5c; font-weight:600; text-align:center; padding:10px 0 4px; cursor:pointer; border-top:1px dashed #e8e8e8; margin-top:6px; }
+  .mgr-advanced-fields { margin-top:8px; }
   .mgr-label { font-size:11px; color:#aaa; display:flex; align-items:center; gap:5px; margin-bottom:5px; font-weight:500; }
   .opt-tag { font-size:10px; color:#bbb; background:#f2f2f2; padding:1px 6px; border-radius:4px; }
   .tooltip-wrap { position:relative; display:inline-flex; }
@@ -1157,6 +1159,20 @@ function renderCases() {
         </div>
       <div class="case-desc">${c.description}</div>
       <div class="mgr-field">
+        <div class="mgr-label">📷 照片 <span class="opt-tag">結案照片選填，最多 2 張</span></div>
+        <div class="photo-upload-area" id="close-photo-area-${c.rowIndex}">
+          <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',0)" id="close-slot-${c.rowIndex}-0">
+            ${c.closePhotos===undefined?'<span class="photo-loading">…</span>':(c.closePhotos[0]?`<img src="${c.closePhotos[0]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',0)">×</div>`:'<span class="photo-add">+</span>')}
+          </div>
+          <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',1)" id="close-slot-${c.rowIndex}-1">
+            ${c.closePhotos===undefined?'<span class="photo-loading">…</span>':(c.closePhotos[1]?`<img src="${c.closePhotos[1]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',1)">×</div>`:'<span class="photo-add">+</span>')}
+          </div>
+        </div>
+        <input type="file" id="close-file-${c.rowIndex}-0" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',0,this)">
+        <input type="file" id="close-file-${c.rowIndex}-1" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',1,this)">
+        <div id="reportPhotosWrap-${c.rowIndex}">${c.reportPhotos===undefined?'<div style="font-size:11px;color:#ccc;margin-top:8px;">照片載入中…</div>':(c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" src="${url}" onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`:'')}</div>
+      </div>
+      <div class="mgr-field">
         <div class="mgr-label">案件類型 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
         <div class="flag-row" id="ctype-${c.rowIndex}">
           ${['給排水','電力','消防','空調','弱電','電梯','建物','木工','鐵工','照明','衛浴','庶務','其他'].map(f=>`<button class="flag-btn${normalizeCaseType(c.caseType).startsWith(f)?' active-flag':''}" onclick="toggleCaseType(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
@@ -1164,40 +1180,6 @@ function renderCases() {
         <input type="text" id="ctype-other-${c.rowIndex}" placeholder="請描述類型（選填）"
           style="display:${c.caseType&&c.caseType.startsWith('其他')&&c.caseType.length>2?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
           value="${c.caseType&&c.caseType.startsWith('其他')?c.caseType.replace('其他：',''):''}">
-      </div>
-      <div class="mgr-field">
-        <div class="mgr-label">更正區域 <span class="opt-tag">選填</span></div>
-        <div class="flag-row" id="carea-${c.rowIndex}">
-          ${['會館','雅舍一棟','雅舍二棟','雅舍三棟','研究園','智尊','其他'].map(f=>{
-            const isActive = c.correctedArea === f;
-            const isOriginal = !c.correctedArea && c.area === f;
-            const style = isOriginal ? 'opacity:0.4;border-style:dashed;' : '';
-            return `<button class="flag-btn${isActive?' active-flag':''}" style="${style}" onclick="toggleArea(${c.rowIndex},'${f}',this)" title="${isOriginal?'報修人原始值，點擊確認更正':''}">${f}</button>`;
-          }).join('')}
-        </div>
-      </div>
-      <div class="mgr-field">
-        <div class="mgr-label">更正位置類型 <span class="opt-tag">選填</span></div>
-        <div class="flag-row" id="ltype-${c.rowIndex}">
-          ${(()=>{
-            const isOffice = (c.area==='研究園'||c.area==='智尊');
-            return ['客房','餐廳','設施','公共區域／其他'].map(f=>{
-              const label = (f==='客房'&&isOffice)?'辦公室':f;
-              const matchVal = (f==='客房'&&isOffice)?'辦公室':f;
-              const isActive = c.correctedLocType === matchVal;
-              const isOriginal = !c.correctedLocType && (c.locationType === matchVal || (f==='客房'&&isOffice&&c.locationType==='辦公室'));
-              const style = isOriginal ? 'opacity:0.4;border-style:dashed;' : '';
-              return `<button class="flag-btn${isActive?' active-flag':''}" style="${style}" onclick="toggleLocType(${c.rowIndex},'${matchVal}',this)" title="${isOriginal?'報修人原始值，點擊確認更正':''}">${label}</button>`;
-            }).join('');
-          })()}
-        </div>
-      </div>
-      <div class="mgr-field">
-        <div class="mgr-label">
-          標準化位置 <span class="opt-tag">選填</span>
-          <span class="tooltip-wrap"><span class="tooltip-icon">ⓘ</span><span class="tooltip-box">填入後病歷表將優先以此統計，可隨時修改</span></span>
-        </div>
-        <input type="text" id="norm-${c.rowIndex}" value="${c.normalizedLocation||''}" placeholder="例：3F走廊、502（統一名稱）" />
       </div>
       <div class="mgr-field">
         <div class="mgr-label">結案人 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">必填</span></div>
@@ -1217,36 +1199,60 @@ function renderCases() {
         <div class="mgr-label">維修記錄</div>
         <textarea id="note-${c.rowIndex}" placeholder="填寫處理情形…">${c.repairNote||''}</textarea>
       </div>
-      <div class="mgr-field">
-        <div class="mgr-label">結案照片 <span class="opt-tag">選填，最多 2 張</span></div>
-        <div class="photo-upload-area" id="close-photo-area-${c.rowIndex}">
-          <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',0)" id="close-slot-${c.rowIndex}-0">
-            ${c.closePhotos===undefined?'<span class="photo-loading">…</span>':(c.closePhotos[0]?`<img src="${c.closePhotos[0]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',0)">×</div>`:'<span class="photo-add">+</span>')}
-          </div>
-          <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',1)" id="close-slot-${c.rowIndex}-1">
-            ${c.closePhotos===undefined?'<span class="photo-loading">…</span>':(c.closePhotos[1]?`<img src="${c.closePhotos[1]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',1)">×</div>`:'<span class="photo-add">+</span>')}
-          </div>
-        </div>
-        <input type="file" id="close-file-${c.rowIndex}-0" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',0,this)">
-        <input type="file" id="close-file-${c.rowIndex}-1" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',1,this)">
-        <div id="reportPhotosWrap-${c.rowIndex}">${c.reportPhotos===undefined?'<div style="font-size:11px;color:#ccc;margin-top:8px;">照片載入中…</div>':(c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" src="${url}" onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`:'')}</div>
-      </div>
-      <div class="mgr-field">
-        <div class="mgr-label">標記原因 <span class="opt-tag">選填，標記後不列入病歷表統計</span></div>
-        <div class="flag-row" id="flags-${c.rowIndex}">
-          ${['寫錯','重複報修','測試'].map(f=>`<button class="flag-btn${c.flagReason===f?' active-flag':''}" onclick="toggleFlag(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
-        </div>
-      </div>
       <div class="btn-row">
         <button class="btn-save" onclick="updateCase(${c.rowIndex})">更新案件狀況</button>
         ${c.status==='待處理'
           ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">結案</button>`
           : `<button class="btn-reopen" onclick="reopenCase(${c.rowIndex})">取消結案</button>`}
       </div>
+      <div class="mgr-advanced-toggle" onclick="toggleAdvancedFields(${c.rowIndex},this)">更多修正選項（區域/位置/標準化/標記） ▾</div>
+      <div class="mgr-advanced-fields" id="advanced-${c.rowIndex}" style="display:none">
+        <div class="mgr-field">
+          <div class="mgr-label">更正區域 <span class="opt-tag">選填</span></div>
+          <div class="flag-row" id="carea-${c.rowIndex}">
+            ${['會館','雅舍一棟','雅舍二棟','雅舍三棟','研究園','智尊','其他'].map(f=>{
+              const isActive = c.correctedArea === f;
+              const isOriginal = !c.correctedArea && c.area === f;
+              const style = isOriginal ? 'opacity:0.4;border-style:dashed;' : '';
+              return `<button class="flag-btn${isActive?' active-flag':''}" style="${style}" onclick="toggleArea(${c.rowIndex},'${f}',this)" title="${isOriginal?'報修人原始值，點擊確認更正':''}">${f}</button>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="mgr-field">
+          <div class="mgr-label">更正位置類型 <span class="opt-tag">選填</span></div>
+          <div class="flag-row" id="ltype-${c.rowIndex}">
+            ${(()=>{
+              const isOffice = (c.area==='研究園'||c.area==='智尊');
+              return ['客房','餐廳','設施','公共區域／其他'].map(f=>{
+                const label = (f==='客房'&&isOffice)?'辦公室':f;
+                const matchVal = (f==='客房'&&isOffice)?'辦公室':f;
+                const isActive = c.correctedLocType === matchVal;
+                const isOriginal = !c.correctedLocType && (c.locationType === matchVal || (f==='客房'&&isOffice&&c.locationType==='辦公室'));
+                const style = isOriginal ? 'opacity:0.4;border-style:dashed;' : '';
+                return `<button class="flag-btn${isActive?' active-flag':''}" style="${style}" onclick="toggleLocType(${c.rowIndex},'${matchVal}',this)" title="${isOriginal?'報修人原始值，點擊確認更正':''}">${label}</button>`;
+              }).join('');
+            })()}
+          </div>
+        </div>
+        <div class="mgr-field">
+          <div class="mgr-label">
+            標準化位置 <span class="opt-tag">選填</span>
+            <span class="tooltip-wrap"><span class="tooltip-icon">ⓘ</span><span class="tooltip-box">填入後病歷表將優先以此統計，可隨時修改</span></span>
+          </div>
+          <input type="text" id="norm-${c.rowIndex}" value="${c.normalizedLocation||''}" placeholder="例：3F走廊、502（統一名稱）" />
+        </div>
+        <div class="mgr-field">
+          <div class="mgr-label">標記原因 <span class="opt-tag">選填，標記後不列入病歷表統計</span></div>
+          <div class="flag-row" id="flags-${c.rowIndex}">
+            ${['寫錯','重複報修','測試'].map(f=>`<button class="flag-btn${c.flagReason===f?' active-flag':''}" onclick="toggleFlag(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
+          </div>
+        </div>
+      </div>
       </div>`;
 
     return `<div class="${cls}">${collapsedView}${expandedView}</div>`;
   }).join('');
+
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
   renderLoadMoreBtn('mgrLoadMoreWrap');
@@ -1290,6 +1296,15 @@ async function loadAndShowPhotos(rowIndex, hintEl) {
   } catch(e) {
     hintEl.textContent = '照片載入失敗';
   }
+}
+
+function toggleAdvancedFields(rowIndex, el) {
+  event.stopPropagation();
+  const box = document.getElementById('advanced-'+rowIndex);
+  if (!box) return;
+  const isOpen = box.style.display !== 'none';
+  box.style.display = isOpen ? 'none' : 'block';
+  el.textContent = isOpen ? '更多修正選項（區域/位置/標準化/標記） ▾' : '收起修正選項 ▴';
 }
 
 async function toggleCardEdit(rowIndex) {
