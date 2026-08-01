@@ -329,9 +329,6 @@
 </nav>
 
 <div class="stats-bar">
-  <div class="stats-item">今日報修　<b id="statTodayCount">0</b>　件</div>
-  <div class="stats-item">最後報修　<span class="val" id="statLastTime">無</span></div>
-  <div class="stats-item"><span class="val" id="statLastLocation"></span></div>
   <div class="stats-refresh" id="statsRefreshBtn" onclick="refreshStats()" title="重新整理">↻</div>
 </div>
 
@@ -490,6 +487,7 @@
     </div>
     <div id="queryListGm" class="case-grid"><div class="empty-state">載入中…</div></div>
     <div id="queryPaginationGm" class="pagination"></div>
+    <div id="queryLoadMoreWrap" style="text-align:center;margin-top:6px;"></div>
   </div>
 </div>
 
@@ -516,6 +514,7 @@
   </div>
   <div id="caseList"><div class="empty-state">載入中…</div></div>
   <div id="mgrPagination" class="pagination"></div>
+  <div id="mgrLoadMoreWrap" style="text-align:center;margin-top:6px;"></div>
 </div>
 
 <!-- ══ 後台統計 ══ -->
@@ -713,6 +712,9 @@ const PAGE_SIZE = 20;
 
 let allCases = [];
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
+let casesRangeDays = 10; // 目前抓取的天數範圍(待處理案件不受此限制，一律都會抓到)
+let casesHasMore = false; // 後端是否還有更早的已結案案件沒抓進來
+let lastLoadedDays = null; // 記錄上次實際抓到的資料範圍(數字或'all')，避免用windowed資料誤當成full資料
 let currentFilter = '待處理';
 let currentQueryFilter = '待處理';
 let currentMgrArea = 'all';
@@ -747,26 +749,14 @@ window.onload = () => {
   const d = String(now.getDate()).padStart(2,'0');
   document.getElementById('f-date').value = `${y}/${m}/${d}`;
   initTimeFilterBtn();
-  loadCases();
+  // 不在這裡打loadCases()了：報修表單本身不需要任何案件資料，純填表送出
+  // 切到查詢/修繕管理/後台統計時，switchPage()才會真正去抓資料
 };
 
 // ── 上方統計列 ──
-function updateStatsBar() {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
-  const todayCases = allCases.filter(c => c.datetime && c.datetime.startsWith(todayStr));
-  document.getElementById('statTodayCount').textContent = todayCases.length;
-  if (todayCases.length === 0) {
-    document.getElementById('statLastTime').textContent = '無';
-    document.getElementById('statLastLocation').textContent = '';
-  } else {
-    // allCases 已是新到舊排序，取第一筆今日案件的時間部分
-    const latest = todayCases[0];
-    const parts = latest.datetime.split(' ');
-    document.getElementById('statLastTime').textContent = parts[1] || latest.datetime;
-    document.getElementById('statLastLocation').textContent = `${latest.area} · ${latest.locationType}`;
-  }
-}
+// 頂部「今日報修/最後報修」文字已移除(避免報修頁面載入時打不必要的API)，此函式保留但不做事，
+// 避免其他地方呼叫時找不到對應元素而噴錯
+function updateStatsBar() {}
 
 async function refreshStats() {
   const btn = document.getElementById('statsRefreshBtn');
@@ -951,7 +941,8 @@ function switchPage(id) {
   document.getElementById('page-'+id).classList.add('active');
   const idx = ['form','query','mgr','dash'].indexOf(id);
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
-  if (['mgr','dash','query'].includes(id)) loadCases();
+  if (id === 'dash' || id === 'query') loadCases(false, 'all'); // 統計跟查詢需要完整歷史資料才會準確
+  else if (id === 'mgr') loadCases(); // 修繕管理預設用近期窗口即可(待處理案件本來就一律完整)
 }
 
 // ── 送出報修 ──
@@ -1014,15 +1005,20 @@ async function submitForm() {
 }
 
 // ── 載入案件 ──
-async function loadCases(force) {
-  // 節流：8秒內剛讀取過就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
+async function loadCases(force, daysOverride) {
+  const targetDays = daysOverride || casesRangeDays;
+  // 判斷目前手上的資料夠不夠用：已經是全量的話什麼都夠；不是全量的話，天數範圍要大於等於本次需要的才算夠
+  const alreadyHaveEnough = lastLoadedDays === 'all' || (lastLoadedDays !== null && targetDays !== 'all' && lastLoadedDays >= targetDays);
+  // 節流：8秒內剛讀取過「足夠的資料」就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
   // (Apps Script在短時間內收到大量重複請求容易變慢或逾時，會被誤以為是網路斷線)
-  if (!force && Date.now() - lastCasesLoadTime < 8000 && allCases.length) return;
+  if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < 8000 && allCases.length) return;
   try {
-    const res = await fetch(API_URL+'?action=getAll');
+    const res = await fetch(API_URL+'?action=getAll&days='+targetDays);
     const data = await res.json();
     if (data.success) {
       allCases = data.cases.reverse();
+      casesHasMore = !!data.hasMore;
+      lastLoadedDays = targetDays;
       lastCasesLoadTime = Date.now();
       renderCases(); renderQuery(); renderDashboard(); updateStatsBar();
     }
@@ -1030,6 +1026,13 @@ async function loadCases(force) {
     console.error('loadCases 失敗:', e);
     document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
   }
+}
+
+// 載入更早的已結案案件：每次多擴大10天範圍再重新讀取
+async function loadMoreHistory(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
+  casesRangeDays += 10;
+  await loadCases(true);
 }
 
 // ── 修繕管理 ──
@@ -1058,7 +1061,12 @@ function filterMgrArea(area, btn) {
 function filterCases(status, btn) {
   currentFilter=status; mgrPage=1;
   document.querySelectorAll('#page-mgr .filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); renderCases();
+  btn.classList.add('active');
+  if (status === '已結案') {
+    loadCases(false, 'all'); // 瀏覽已結案需要完整歷史資料，不受近期窗口限制
+  } else {
+    renderCases();
+  }
 }
 
 function renderCases() {
@@ -1090,7 +1098,7 @@ function renderCases() {
     };
     filtered = [...filtered].sort((a,b)=> toTs(b) - toTs(a));
   }
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
+  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; renderLoadMoreBtn('mgrLoadMoreWrap'); return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (mgrPage>totalPages) mgrPage=totalPages;
   const paged = filtered.slice((mgrPage-1)*PAGE_SIZE, mgrPage*PAGE_SIZE);
@@ -1243,6 +1251,16 @@ function renderCases() {
   }).join('');
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
+  renderLoadMoreBtn('mgrLoadMoreWrap');
+}
+
+// 共用：在指定容器顯示「載入更早案件」按鈕(僅在後端回報還有更早的已結案案件時顯示)
+function renderLoadMoreBtn(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  wrap.innerHTML = casesHasMore
+    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早案件（目前範圍：近${casesRangeDays}天 + 全部待處理）</button>`
+    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（近${casesRangeDays}天內已結案 + 全部待處理）</div>`;
 }
 
 function toggleCardEdit(rowIndex) {
@@ -1582,12 +1600,13 @@ function renderQueryGm() {
       return haystack.includes(kw);
     });
   }
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; return; }
+  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; renderLoadMoreBtn('queryLoadMoreWrap'); return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (queryPage>totalPages) queryPage=totalPages;
   const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
   list.innerHTML = paged.map(c => renderPubCard(c)).join('');
   renderPagination('queryPaginationGm', queryPage, totalPages, p=>{queryPage=p;renderQueryGm();});
+  renderLoadMoreBtn('queryLoadMoreWrap');
 }
 
 function renderQuery() {
@@ -2186,7 +2205,12 @@ function getPrintListFilteredCases() {
 }
 
 // 篩選條件變更時：重新抓案件清單，並將目前符合條件的案件預設全部勾選
-function refreshPrintCaseList() {
+async function refreshPrintCaseList() {
+  const includeClosed = document.getElementById('printIncludeClosed').checked;
+  if (includeClosed && lastLoadedDays !== 'all') {
+    document.getElementById('printCaseListWrap').innerHTML = '<div class="empty-state" style="padding:20px 0;">載入歷史案件中…</div>';
+    await loadCases(false, 'all'); // 要納入已結案案件時，需要完整歷史資料才不會漏掉舊案件
+  }
   const cases = getPrintListFilteredCases();
   printCheckedIds = new Set(cases.map(c => c.rowIndex));
   renderPrintCaseList(cases);
