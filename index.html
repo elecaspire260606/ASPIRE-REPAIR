@@ -288,8 +288,10 @@
   .photo-slot:hover { border-color:#E8761A; }
   .photo-slot img { width:100%; height:100%; object-fit:cover; border-radius:9px; }
   .photo-slot .photo-add { font-size:24px; color:#ccc; }
+  .photo-slot .photo-loading { font-size:16px; color:#ccc; }
   .photo-slot .photo-del { position:absolute; top:2px; right:2px; width:18px; height:18px; background:rgba(0,0,0,0.5); color:white; border-radius:50%; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:1; }
   .photo-preview-wrap { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .photo-count-hint { font-size:11px; color:#C05E0A; background:#FEF0E3; display:inline-block; padding:3px 10px; border-radius:20px; margin-top:6px; margin-right:6px; font-weight:600; }
   .photo-preview-img { width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; }
 
   /* ── Export Modal ── */
@@ -1108,8 +1110,8 @@ function renderCases() {
     const titleHtml = `${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
     const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>`;
     const photosHtml = `
-      ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="event.stopPropagation();window.open('${url}')">`).join('')}</div>`:''}
-      ${c.closePhotos&&c.closePhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">結案照片：</div><div class="photo-preview-wrap">${c.closePhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="event.stopPropagation();window.open('${url}')">`).join('')}</div>`:''}
+      ${(c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length))?`<div class="photo-count-hint">📷 報修照片 ${c.reportPhotoCount||c.reportPhotos.length} 張（點開查看）</div>`:''}
+      ${(c.closePhotoCount||(c.closePhotos&&c.closePhotos.length))?`<div class="photo-count-hint">📷 結案照片 ${c.closePhotoCount||c.closePhotos.length} 張（點開查看）</div>`:''}
     `;
     const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
 
@@ -1219,15 +1221,15 @@ function renderCases() {
         <div class="mgr-label">結案照片 <span class="opt-tag">選填，最多 2 張</span></div>
         <div class="photo-upload-area" id="close-photo-area-${c.rowIndex}">
           <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',0)" id="close-slot-${c.rowIndex}-0">
-            ${c.closePhotos&&c.closePhotos[0]?`<img src="${c.closePhotos[0]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',0)">×</div>`:'<span class="photo-add">+</span>'}
+            ${c.closePhotos===undefined?'<span class="photo-loading">…</span>':(c.closePhotos[0]?`<img src="${c.closePhotos[0]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',0)">×</div>`:'<span class="photo-add">+</span>')}
           </div>
           <div class="photo-slot" onclick="triggerPhotoUpload('close-${c.rowIndex}',1)" id="close-slot-${c.rowIndex}-1">
-            ${c.closePhotos&&c.closePhotos[1]?`<img src="${c.closePhotos[1]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',1)">×</div>`:'<span class="photo-add">+</span>'}
+            ${c.closePhotos===undefined?'<span class="photo-loading">…</span>':(c.closePhotos[1]?`<img src="${c.closePhotos[1]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',1)">×</div>`:'<span class="photo-add">+</span>')}
           </div>
         </div>
         <input type="file" id="close-file-${c.rowIndex}-0" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',0,this)">
         <input type="file" id="close-file-${c.rowIndex}-1" accept="image/*" style="display:none" onchange="handlePhotoUpload('close-${c.rowIndex}',1,this)">
-        ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" src="${url}" onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`:''}
+        <div id="reportPhotosWrap-${c.rowIndex}">${c.reportPhotos===undefined?'<div style="font-size:11px;color:#ccc;margin-top:8px;">照片載入中…</div>':(c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" src="${url}" onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`:'')}</div>
       </div>
       <div class="mgr-field">
         <div class="mgr-label">標記原因 <span class="opt-tag">選填，標記後不列入病歷表統計</span></div>
@@ -1259,7 +1261,38 @@ function renderLoadMoreBtn(wrapId) {
     : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（近${casesRangeDays}天內已結案 + 全部待處理）</div>`;
 }
 
-function toggleCardEdit(rowIndex) {
+async // 共用：純顯示用的照片區塊(案件查詢/鑽取彈窗)。還沒載入時顯示可點擊的張數提示，點了才真的去抓照片網址。
+function photoDisplayBlock(c, kind, label) {
+  const photos = kind === 'report' ? c.reportPhotos : c.closePhotos;
+  const count = kind === 'report' ? (c.reportPhotoCount||0) : (c.closePhotoCount||0);
+  if (photos !== undefined) {
+    return photos.length ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">${label}：</div><div class="photo-preview-wrap">${photos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>` : '';
+  }
+  if (!count) return '';
+  return `<div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this)">📷 ${label} ${count} 張（點擊查看）</div>`;
+}
+
+// 點擊張數提示時才真的去抓這筆案件的照片，抓到後直接把提示換成實際照片
+async function loadAndShowPhotos(rowIndex, hintEl) {
+  const c = allCases.find(x => x.rowIndex === rowIndex);
+  if (!c) return;
+  hintEl.textContent = '載入中…';
+  try {
+    const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
+    const data = await res.json();
+    if (data.success) {
+      c.reportPhotos = data.reportPhotos;
+      c.closePhotos = data.closePhotos;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = photoDisplayBlock(c, 'report', '報修照片') + photoDisplayBlock(c, 'close', '結案照片');
+      hintEl.replaceWith(...wrap.childNodes);
+    }
+  } catch(e) {
+    hintEl.textContent = '照片載入失敗';
+  }
+}
+
+async function toggleCardEdit(rowIndex) {
   const collapsed = document.getElementById('collapsed-'+rowIndex);
   const expanded = document.getElementById('expanded-'+rowIndex);
   if (!collapsed || !expanded) return;
@@ -1268,10 +1301,46 @@ function toggleCardEdit(rowIndex) {
     collapsed.style.display = 'none';
     expanded.style.display = 'block';
     if (card) card.classList.add('expanded-card');
+    ensureCasePhotosLoaded(rowIndex); // 第一次展開這張卡片時才去抓照片，之後收合再展開不會重抓
   } else {
     collapsed.style.display = 'block';
     expanded.style.display = 'none';
     if (card) card.classList.remove('expanded-card');
+  }
+}
+
+// 照片改成「點開才載入」：清單本身只給張數，真的展開某張案件卡片時才另外打一次輕量請求拿實際網址
+async function ensureCasePhotosLoaded(rowIndex) {
+  const c = allCases.find(x => x.rowIndex === rowIndex);
+  if (!c || c.closePhotos !== undefined) return; // undefined代表還沒抓過；已經抓過就不重複打
+  try {
+    const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
+    const data = await res.json();
+    if (data.success) {
+      c.reportPhotos = data.reportPhotos;
+      c.closePhotos = data.closePhotos;
+      renderCasePhotoSlots(c);
+    }
+  } catch(e) {
+    console.error('getPhotos 失敗:', e);
+  }
+}
+
+// 把剛拿到的照片網址，局部更新進展開視圖的照片欄位(不整頁重繪，避免打斷正在編輯的其他卡片)
+function renderCasePhotoSlots(c) {
+  const slot0 = document.getElementById(`close-slot-${c.rowIndex}-0`);
+  const slot1 = document.getElementById(`close-slot-${c.rowIndex}-1`);
+  if (slot0) slot0.innerHTML = c.closePhotos[0]
+    ? `<img src="${c.closePhotos[0]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',0)">×</div>`
+    : '<span class="photo-add">+</span>';
+  if (slot1) slot1.innerHTML = c.closePhotos[1]
+    ? `<img src="${c.closePhotos[1]}"><div class="photo-del" onclick="event.stopPropagation();removePhoto('close-${c.rowIndex}',1)">×</div>`
+    : '<span class="photo-add">+</span>';
+  const wrap = document.getElementById(`reportPhotosWrap-${c.rowIndex}`);
+  if (wrap) {
+    wrap.innerHTML = c.reportPhotos.length
+      ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" src="${url}" onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`
+      : '';
   }
 }
 
@@ -1629,8 +1698,8 @@ function renderPubCard(c) {
     </div>
     <div class="pub-desc">${c.description}</div>
     ${c.repairNote?`<div class="pub-note"><div class="pub-note-label">✅ 處理結果</div>${c.repairNote}</div>`:''}
-    ${c.reportPhotos&&c.reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${c.reportPhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
-    ${c.closePhotos&&c.closePhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">結案照片：</div><div class="photo-preview-wrap">${c.closePhotos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>`:''}
+    ${photoDisplayBlock(c, 'report', '報修照片')}
+    ${photoDisplayBlock(c, 'close', '結案照片')}
   </div>`;
 }
 
@@ -2031,12 +2100,25 @@ function openCasePanel(c) {
     ${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}
     ${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}
   `;
-  const photos = (arr, label) => arr && arr.length ? `
+  const photos = (arr, label, kind) => {
+    const count = kind === 'report' ? (c.reportPhotoCount||0) : (c.closePhotoCount||0);
+    if (arr !== undefined) {
+      if (!arr.length) return '';
+      return `
     <hr class="panel-divider">
     <div class="panel-section">
       <div class="panel-label">${label}</div>
       <div class="photo-preview-wrap">${arr.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')" style="cursor:pointer;">`).join('')}</div>
-    </div>` : '';
+    </div>`;
+    }
+    if (!count) return '';
+    return `
+    <hr class="panel-divider">
+    <div class="panel-section">
+      <div class="panel-label">${label}</div>
+      <div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this)">📷 ${count} 張（點擊查看）</div>
+    </div>`;
+  };
 
   document.getElementById('panelBody').innerHTML = `
     <div class="panel-section" style="display:flex;justify-content:space-between;align-items:center;">
@@ -2081,8 +2163,8 @@ function openCasePanel(c) {
         ✅結案：${c.closeFingerprint||'—'}
       </div>
     </div>`:''}
-    ${photos(c.reportPhotos, '報修照片')}
-    ${photos(c.closePhotos, '結案照片')}
+    ${photos(c.reportPhotos, '報修照片', 'report')}
+    ${photos(c.closePhotos, '結案照片', 'close')}
   `;
 
   document.getElementById('panelBackdrop').style.display = 'block';
