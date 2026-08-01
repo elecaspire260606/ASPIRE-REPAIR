@@ -1267,7 +1267,7 @@ function renderLoadMoreBtn(wrapId) {
     : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（近${casesRangeDays}天內已結案 + 全部待處理）</div>`;
 }
 
-async // 共用：純顯示用的照片區塊(案件查詢/鑽取彈窗)。還沒載入時顯示可點擊的張數提示，點了才真的去抓照片網址。
+// 共用：純顯示用的照片區塊(案件查詢/鑽取彈窗)。還沒載入時顯示可點擊的張數提示，點了才真的去抓照片網址。
 function photoDisplayBlock(c, kind, label) {
   const photos = kind === 'report' ? c.reportPhotos : c.closePhotos;
   const count = kind === 'report' ? (c.reportPhotoCount||0) : (c.closePhotoCount||0);
