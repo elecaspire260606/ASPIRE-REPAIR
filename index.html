@@ -353,7 +353,7 @@
 <!-- ══ 報修表單 ══ -->
 <div id="page-form" class="page active">
   <div class="card">
-    <div class="card-header">🔧 設施報修申請</div>
+    <div class="card-header">🔧 設施報修申請 <span id="today-label" style="font-size:12px;font-weight:400;opacity:0.85;"></span></div>
     <div class="card-body">
       <div class="section-label">基本資料</div>
       <div class="field">
@@ -374,7 +374,6 @@
         <input type="text" id="f-unit" placeholder="請輸入單位名稱" style="display:none;margin-top:8px;">
       </div>
       <div class="field"><label>申請人姓名 *</label><input type="text" id="f-name" placeholder="請輸入姓名"></div>
-      <div class="field"><label>報修日期</label><input type="text" id="f-date" readonly=""></div>
       <div class="divider"></div>
       <div class="section-label">報修地點</div>
       <div class="field">
@@ -748,10 +747,9 @@ function areaMatchesFilter(caseArea, filterArea) {
 // ── 初始化 ──
 window.onload = () => {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth()+1).padStart(2,'0');
-  const d = String(now.getDate()).padStart(2,'0');
-  document.getElementById('f-date').value = `${y}/${m}/${d}`;
+  const m = now.getMonth()+1;
+  const d = now.getDate();
+  document.getElementById('today-label').textContent = `今天 ${m}/${d}`;
   initTimeFilterBtn();
   // 不在這裡打loadCases()了：報修表單本身不需要任何案件資料，純填表送出
   // 切到查詢/修繕管理/後台統計時，switchPage()才會真正去抓資料
@@ -966,8 +964,6 @@ async function submitForm() {
   if (locType === 'restaurant' || locType === 'facility') {
     // 快速按鈕帶入的也算，上面已確認 locVal 有值
   }
-  const now = new Date();
-  const datetime = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const btn = document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='送出中…';
   try {
@@ -977,11 +973,20 @@ async function submitForm() {
     const location = normalizeLocation(document.getElementById('f-location').value.trim());
     const email = document.getElementById('f-email').value.trim();
     const reportPhotos = (photoData.report||[]).filter(Boolean);
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action:'submit', unit, name, datetime, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, deviceFingerprint: getDeviceFingerprint() })
-    });
-    const data = await res.json();
+    // 不再送datetime，報修時間一律由後端記錄伺服器時間(手機時間可能不準，伺服器時間比較可靠)
+    let response;
+    try {
+      response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action:'submit', unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, deviceFingerprint: getDeviceFingerprint() })
+      });
+    } catch (e) {
+      throw new Error('連線失敗，請檢查網路後再試');
+    }
+    const text = await response.text();
+    if (!response.ok) throw new Error(`伺服器錯誤（HTTP ${response.status}），請稍後再試`);
+    let data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error('伺服器回傳格式異常，可能是暫時忙碌，請稍後再試'); }
     if (data.success) {
       showToast('✓ '+data.message);
       ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
@@ -1004,7 +1009,7 @@ async function submitForm() {
       document.getElementById('f-unit').style.display='none';
       locType='';
     } else { showToast('錯誤：'+data.message); }
-  } catch(e) { showToast('連線失敗，請檢查網路'); }
+  } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   btn.disabled=false; btn.textContent='送出報修申請';
 }
 
@@ -1500,7 +1505,7 @@ async function updateCase(rowIndex) {
     const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos});
     if (data && data.success) { showToast('✓ 已更新案件狀況'); loadCases(true); }
     else { showToast('❌ 更新失敗，請重試'); }
-  } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
+  } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='更新案件狀況'; }
 }
 async function closeCase(rowIndex) {
@@ -1520,7 +1525,7 @@ async function closeCase(rowIndex) {
     const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos, closeFingerprint: getDeviceFingerprint()});
     if (data && data.success) { showToast('✓ 案件已結案'); loadCases(true); }
     else { showToast('❌ 結案失敗，請重試'); }
-  } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
+  } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='結案'; }
 }
 async function reopenCase(rowIndex) {
@@ -1530,16 +1535,29 @@ async function reopenCase(rowIndex) {
     const data = await callApi({action:'reopen', rowIndex});
     if (data && data.success) { showToast('✓ 已取消結案'); loadCases(true); }
     else { showToast('❌ 操作失敗，請重試'); }
-  } catch(e) { showToast('❌ 連線失敗，請檢查網路'); }
+  } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='取消結案'; }
 }
 async function callApi(params) {
   const token = sessionStorage.getItem('adminToken');
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ ...params, token })
-  });
-  return res.json();
+  let response;
+  try {
+    response = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ ...params, token })
+    });
+  } catch (e) {
+    throw new Error('連線失敗，請檢查網路後再試');
+  }
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`伺服器錯誤（HTTP ${response.status}），請稍後再試`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error('伺服器回傳格式異常，可能是暫時忙碌，請稍後再試');
+  }
 }
 
 // ── 案件查詢（公開）──
@@ -2538,7 +2556,7 @@ async function exportExcel() {
       showToast('生成失敗：'+(data.message||'未知錯誤'));
     }
   } catch(e) {
-    showToast('生成失敗，請檢查網路');
+    showToast('生成失敗：' + (e.message || '請檢查網路'));
   }
 
   btn.textContent = '下載 Excel'; btn.disabled = false;
@@ -2600,7 +2618,7 @@ async function generateReport(rowIndex, btn) {
     } else {
       showToast('生成失敗：'+(data.message||'未知錯誤'));
     }
-  } catch(e) { showToast('生成失敗，請檢查網路'); }
+  } catch(e) { showToast('生成失敗：' + (e.message || '請檢查網路')); }
   btn.disabled = false;
   btn.textContent = originalText;
 }
@@ -2615,7 +2633,7 @@ async function deleteReportPhoto(rowIndex, idx) {
     } else {
       showToast('刪除失敗：'+(data.message||'未知錯誤'));
     }
-  } catch(e) { showToast('刪除失敗，請檢查網路'); }
+  } catch(e) { showToast('刪除失敗：' + (e.message || '請檢查網路')); }
 }
 
 function removePhoto(prefix, idx) {
