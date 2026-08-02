@@ -936,6 +936,16 @@ function logout() {
 }
 
 // ── 頁面切換 ──
+let currentPageId = 'form'; // 追蹤目前所在分頁，讓loadCases只渲染需要的內容
+
+// 只渲染使用者目前所在的分頁，避免每次抓資料都把四個分頁全部重畫一次
+function renderCurrentPage() {
+  if (currentPageId === 'mgr') renderCases();
+  else if (currentPageId === 'query') renderQuery();
+  else if (currentPageId === 'dash') renderDashboard();
+  updateStatsBar(); // 目前是空函式(頂部統計文字已移除)，保留呼叫點以便未來需要時擴充
+}
+
 function switchPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-lock').style.display='none';
@@ -943,6 +953,7 @@ function switchPage(id) {
   document.getElementById('page-'+id).classList.add('active');
   const idx = ['form','query','mgr','dash'].indexOf(id);
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  currentPageId = id;
   if (id === 'dash' || id === 'query') loadCases(false, 'all'); // 統計跟查詢需要完整歷史資料才會準確
   else if (id === 'mgr') loadCases(); // 修繕管理預設用近期窗口即可(待處理案件本來就一律完整)
 }
@@ -981,12 +992,23 @@ async function submitForm() {
         body: JSON.stringify({ action:'submit', unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, deviceFingerprint: getDeviceFingerprint() })
       });
     } catch (e) {
-      throw new Error('連線失敗，請檢查網路後再試');
+      console.error('submitForm 網路層錯誤:', e);
+      throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
     }
     const text = await response.text();
-    if (!response.ok) throw new Error(`伺服器錯誤（HTTP ${response.status}），請稍後再試`);
+    if (!response.ok) {
+      console.error('submitForm HTTP錯誤:', response.status, text);
+      throw new Error('系統暫時無法連線，剛才填寫的內容仍保留，請稍後再試');
+    }
+    if (!text) {
+      console.error('submitForm 回傳空內容');
+      throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
+    }
     let data;
-    try { data = JSON.parse(text); } catch (e) { throw new Error('伺服器回傳格式異常，可能是暫時忙碌，請稍後再試'); }
+    try { data = JSON.parse(text); } catch (e) {
+      console.error('submitForm JSON解析失敗:', text);
+      throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
+    }
     if (data.success) {
       showToast('✓ '+data.message);
       ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
@@ -1020,7 +1042,10 @@ async function loadCases(force, daysOverride) {
   const alreadyHaveEnough = lastLoadedDays === 'all' || (lastLoadedDays !== null && targetDays !== 'all' && lastLoadedDays >= targetDays);
   // 節流：8秒內剛讀取過「足夠的資料」就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
   // (Apps Script在短時間內收到大量重複請求容易變慢或逾時，會被誤以為是網路斷線)
-  if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < 8000 && allCases.length) return;
+  if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < 8000 && allCases.length) {
+    renderCurrentPage(); // 資料還新鮮，直接用手上的資料渲染目前分頁，不用重打API，也不會讓切換分頁後畫面空白
+    return;
+  }
   try {
     const res = await fetch(API_URL+'?action=getAll&days='+targetDays);
     const data = await res.json();
@@ -1029,7 +1054,7 @@ async function loadCases(force, daysOverride) {
       casesHasMore = !!data.hasMore;
       lastLoadedDays = targetDays;
       lastCasesLoadTime = Date.now();
-      renderCases(); renderQuery(); renderDashboard(); updateStatsBar();
+      renderCurrentPage(); // 只渲染目前所在的分頁，不會四個分頁一起重畫
     }
   } catch(e) {
     console.error('loadCases 失敗:', e);
@@ -1045,14 +1070,19 @@ async function loadMoreHistory(btn) {
 }
 
 // ── 修繕管理 ──
+let mgrSearchDebounceTimer = null;
 function onMgrSearchInput() {
   const val = document.getElementById('mgrSearchInput').value;
   document.getElementById('mgrSearchClear').style.display = val ? 'block' : 'none';
-  mgrPage = 1;
-  renderCases();
+  clearTimeout(mgrSearchDebounceTimer); // 取消上一個還沒執行的計時器，避免舊的延遲結果蓋掉新的
+  mgrSearchDebounceTimer = setTimeout(() => {
+    mgrPage = 1;
+    renderCases();
+  }, 250);
 }
 
 function clearMgrSearch() {
+  clearTimeout(mgrSearchDebounceTimer); // 清除按鈕要立即生效，不用等debounce
   document.getElementById('mgrSearchInput').value = '';
   document.getElementById('mgrSearchClear').style.display = 'none';
   mgrPage = 1;
@@ -1547,16 +1577,23 @@ async function callApi(params) {
       body: JSON.stringify({ ...params, token })
     });
   } catch (e) {
-    throw new Error('連線失敗，請檢查網路後再試');
+    console.error('callApi 網路層錯誤:', e);
+    throw new Error('網路目前不穩定，請再試一次');
   }
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(`伺服器錯誤（HTTP ${response.status}），請稍後再試`);
+    console.error('callApi HTTP錯誤:', response.status, text);
+    throw new Error('系統暫時無法連線，請稍後再試');
+  }
+  if (!text) {
+    console.error('callApi 回傳空內容');
+    throw new Error('系統暫時忙碌，請稍後再試');
   }
   try {
     return JSON.parse(text);
   } catch (e) {
-    throw new Error('伺服器回傳格式異常，可能是暫時忙碌，請稍後再試');
+    console.error('callApi JSON解析失敗:', text);
+    throw new Error('系統暫時忙碌，請稍後再試');
   }
 }
 
@@ -1660,14 +1697,20 @@ function filterQuery(status, btn) {
   btn.classList.add('active'); renderQueryGm();
 }
 
+let queryKeywordDebounceTimer = null;
 function onQueryKeywordInput() {
-  currentQueryKeyword = document.getElementById('queryKeywordInput').value.trim();
-  document.getElementById('queryKeywordClear').style.display = currentQueryKeyword ? 'block' : 'none';
-  queryPage = 1;
-  renderQueryGm();
+  const val = document.getElementById('queryKeywordInput').value;
+  document.getElementById('queryKeywordClear').style.display = val.trim() ? 'block' : 'none';
+  clearTimeout(queryKeywordDebounceTimer); // 取消上一個還沒執行的計時器，避免舊的延遲結果蓋掉新的
+  queryKeywordDebounceTimer = setTimeout(() => {
+    currentQueryKeyword = document.getElementById('queryKeywordInput').value.trim();
+    queryPage = 1;
+    renderQueryGm();
+  }, 250);
 }
 
 function clearQueryKeyword() {
+  clearTimeout(queryKeywordDebounceTimer); // 清除按鈕要立即生效，不用等debounce
   document.getElementById('queryKeywordInput').value = '';
   currentQueryKeyword = '';
   document.getElementById('queryKeywordClear').style.display = 'none';
@@ -2043,26 +2086,57 @@ function locPagerGo(dir) {
 function renderDashboard() {
   const cases = getFilteredCases();
   dashboardCases = cases;
-  const total=cases.length, pending=cases.filter(c=>c.status==='待處理').length, done=cases.filter(c=>c.status==='已結案').length;
+  const areaF = currentAreaDashFilter;
+  const showCloserChart = sessionStorage.getItem('adminToken') === 'py5678';
+
+  // 單一主要迴圈：一次遍歷計算全部統計數字(總數/待處理/已結案/各區域/位置類型/案件類型/結案人/位置病歷)
+  // 取代原本對同一份cases分開跑好幾次filter/forEach的寫法
+  let total = 0, pending = 0, done = 0, closedTotal = 0, closedWithCloserTotal = 0;
+  const areaCounts = {};
+  const locTypeCounts = {};
+  const typeCounts = {};   // 只計已結案
+  const closerCounts = {}; // 只計已結案且有結案人(僅密碼py5678需要，其他情況不浪費時間累計)
+  const locMap = {};       // 位置病歷統計，依目前區域篩選(areaF)決定要不要納入
+
+  cases.forEach(c => {
+    total++;
+    const isDone = c.status === '已結案';
+    if (isDone) done++; else pending++;
+
+    const area = effArea(c);
+    areaCounts[area] = (areaCounts[area]||0) + 1;
+
+    const lt = c.correctedLocType || c.locationType || '';
+    if (lt) locTypeCounts[lt] = (locTypeCounts[lt]||0) + 1;
+
+    if (isDone) {
+      closedTotal++;
+      const ct = normalizeCaseType(c.caseType);
+      if (ct) typeCounts[ct] = (typeCounts[ct]||0) + 1;
+      if (showCloserChart && c.closerName) {
+        closedWithCloserTotal++;
+        closerCounts[c.closerName] = (closerCounts[c.closerName]||0) + 1;
+      }
+    }
+
+    // 位置病歷統計：只算目前區域篩選範圍內的案件(對應原本locCases那個子集合)
+    if (areaF === 'all' || areaMatchesFilter(area, areaF)) {
+      const loc = c.normalizedLocation || normalizeLocation(c.location) || '（未填位置）';
+      const key = area + '|' + loc;
+      if (!locMap[key]) locMap[key] = { area, loc, total:0, pending:0, done:0, cases:[] };
+      locMap[key].total++;
+      if (isDone) locMap[key].done++; else locMap[key].pending++;
+      locMap[key].cases.push(c);
+    }
+  });
+
   document.getElementById('d-total').textContent=total;
   document.getElementById('d-pending').textContent=pending;
   document.getElementById('d-done').textContent=done;
   document.getElementById('d-rate').textContent=total>0?Math.round(done/total*100)+'%':'—';
 
-  const areaCounts={};
-  cases.forEach(c=>{areaCounts[effArea(c)]=(areaCounts[effArea(c)]||0)+1;});
   renderPieChart('areaChart', areaCounts, AREA_COLORS, total, 'drillByArea');
 
-  const areaF=currentAreaDashFilter;
-  const locCases=areaF==='all'?cases:cases.filter(c=>areaMatchesFilter(effArea(c),areaF));
-  const locMap={};
-  locCases.forEach(c=>{
-    const loc=c.normalizedLocation||normalizeLocation(c.location)||'（未填位置）';
-    const key=c.area+'|'+loc;
-    if(!locMap[key]) locMap[key]={area:c.area,loc,total:0,pending:0,done:0,cases:[]};
-    locMap[key].total++; if(c.status==='待處理') locMap[key].pending++; else locMap[key].done++;
-    locMap[key].cases.push(c);
-  });
   const locEntries=Object.values(locMap).sort((a,b)=>b.total-a.total);
   locPagerMultiArea = new Set(locEntries.map(e=>e.area)).size > 1;
   locPagerMaxL=Math.max(...locEntries.map(e=>e.total),1);
@@ -2071,30 +2145,19 @@ function renderDashboard() {
   renderLocPage();
 
   const locTypeColors = {'客房':'#E8761A','辦公室':'#E8761A','餐廳':'#3B82F6','設施':'#8B5CF6','公共區域／其他':'#aaa'};
-  const locTypeCounts = {};
-  cases.forEach(c=>{
-    const lt = c.correctedLocType || c.locationType || '';
-    if (lt) locTypeCounts[lt]=(locTypeCounts[lt]||0)+1;
-  });
   renderPieChart('locTypeChart', locTypeCounts, locTypeColors, total, 'drillByLocType');
 
   const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物':'#10B981','木工':'#A0522D','鐵工':'#6B7280','照明':'#F97316','衛浴':'#14B8A6','庶務':'#A78BFA','其他':'#aaa'};
-  const typeCounts = {};
-  const closedForType = cases.filter(c=>c.status==='已結案');
-  closedForType.forEach(c=>{ const ct=normalizeCaseType(c.caseType); if(ct) typeCounts[ct]=(typeCounts[ct]||0)+1; });
-  renderPieChart('caseTypeChart', typeCounts, typeColors, closedForType.length, 'drillByCaseType');
+  renderPieChart('caseTypeChart', typeCounts, typeColors, closedTotal, 'drillByCaseType');
 
   // 結案人比例圖（限定密碼 py5678 才顯示）
   const closerChartWrap = document.getElementById('closerChartWrap');
-  if (sessionStorage.getItem('adminToken') === 'py5678') {
+  if (showCloserChart) {
     closerChartWrap.style.display = '';
     const closerColors = {};
     const palette = ['#E8761A','#1a3a5c','#2D7A3E','#8B5CF6','#EC4899','#06B6D4','#F59E0B','#14B8A6'];
-    const closedCases = cases.filter(c=>c.status==='已結案' && c.closerName);
-    const closerCounts = {};
-    closedCases.forEach(c=>{ closerCounts[c.closerName]=(closerCounts[c.closerName]||0)+1; });
     Object.keys(closerCounts).forEach((name,i)=>{ closerColors[name]=palette[i%palette.length]; });
-    renderPieChart('closerChart', closerCounts, closerColors, closedCases.length, 'drillByCloser');
+    renderPieChart('closerChart', closerCounts, closerColors, closedWithCloserTotal, 'drillByCloser');
   } else {
     closerChartWrap.style.display = 'none';
   }
