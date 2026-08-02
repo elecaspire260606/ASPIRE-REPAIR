@@ -1320,16 +1320,23 @@ async function loadAndShowPhotos(rowIndex, hintEl) {
   hintEl.textContent = '載入中…';
   try {
     const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
-    const data = await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text) throw new Error('回應內容為空');
+    const data = JSON.parse(text);
     if (data.success) {
       c.reportPhotos = data.reportPhotos;
       c.closePhotos = data.closePhotos;
       const wrap = document.createElement('div');
       wrap.innerHTML = photoDisplayBlock(c, 'report', '報修照片') + photoDisplayBlock(c, 'close', '結案照片');
       hintEl.replaceWith(...wrap.childNodes);
+    } else {
+      // 後端回傳success:false，顯示可重試的錯誤狀態，不要卡在「載入中」
+      hintEl.textContent = '⚠️ 載入失敗（點擊重試）：' + (data.message||'未知錯誤');
     }
   } catch(e) {
-    hintEl.textContent = '照片載入失敗';
+    console.error('loadAndShowPhotos 失敗:', e);
+    hintEl.textContent = '⚠️ 照片載入失敗（點擊重試）';
   }
 }
 
@@ -1365,15 +1372,45 @@ async function ensureCasePhotosLoaded(rowIndex) {
   if (!c || c.closePhotos !== undefined) return; // undefined代表還沒抓過；已經抓過就不重複打
   try {
     const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
-    const data = await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text) throw new Error('回應內容為空');
+    const data = JSON.parse(text);
     if (data.success) {
       c.reportPhotos = data.reportPhotos;
       c.closePhotos = data.closePhotos;
       renderCasePhotoSlots(c);
+    } else {
+      console.error('getPhotos 回傳失敗:', data.message);
+      renderCasePhotoSlotsError(rowIndex);
     }
   } catch(e) {
     console.error('getPhotos 失敗:', e);
+    renderCasePhotoSlotsError(rowIndex);
   }
+}
+
+// 照片載入失敗時，展開視圖的照片欄位顯示可重試的錯誤狀態，不會卡在「…」載入中永遠不動
+function renderCasePhotoSlotsError(rowIndex) {
+  const slot0 = document.getElementById(`close-slot-${rowIndex}-0`);
+  const slot1 = document.getElementById(`close-slot-${rowIndex}-1`);
+  const retryHtml = `<span class="photo-loading" style="cursor:pointer;font-size:11px;" onclick="event.stopPropagation();retryLoadCasePhotos(${rowIndex})">⚠️ 重試</span>`;
+  if (slot0) slot0.innerHTML = retryHtml;
+  if (slot1) slot1.innerHTML = '';
+  const wrap = document.getElementById(`reportPhotosWrap-${rowIndex}`);
+  if (wrap) wrap.innerHTML = `<div style="font-size:11px;color:#e05252;margin-top:8px;cursor:pointer;" onclick="retryLoadCasePhotos(${rowIndex})">⚠️ 報修照片載入失敗，點擊重試</div>`;
+}
+
+function retryLoadCasePhotos(rowIndex) {
+  const c = allCases.find(x => x.rowIndex === rowIndex);
+  if (c) { c.reportPhotos = undefined; c.closePhotos = undefined; } // 重設成「未載入」狀態，讓ensureCasePhotosLoaded願意重抓
+  const slot0 = document.getElementById(`close-slot-${rowIndex}-0`);
+  const slot1 = document.getElementById(`close-slot-${rowIndex}-1`);
+  if (slot0) slot0.innerHTML = '<span class="photo-loading">…</span>';
+  if (slot1) slot1.innerHTML = '<span class="photo-loading">…</span>';
+  const wrap = document.getElementById(`reportPhotosWrap-${rowIndex}`);
+  if (wrap) wrap.innerHTML = '<div style="font-size:11px;color:#ccc;margin-top:8px;">照片載入中…</div>';
+  ensureCasePhotosLoaded(rowIndex);
 }
 
 // 把剛拿到的照片網址，局部更新進展開視圖的照片欄位(不整頁重繪，避免打斷正在編輯的其他卡片)
