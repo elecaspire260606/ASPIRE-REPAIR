@@ -1126,20 +1126,23 @@ function renderCases() {
       return haystack.includes(mgrSearchKeyword);
     });
   }
-  if (currentFilter==='已結案') {
-    const toTs = (c) => {
-      const raw = c.closeDatetime || c.datetime || c.date || '';
-      if (!raw) return 0;
-      const s = String(raw).trim();
-      // ISO 格式 (含 T 或 Z) 直接解析，不做斜線替換
-      if (/T.*Z?$|^\d{4}-\d{2}-\d{2}T/.test(s)) {
-        const d = new Date(s);
-        return isNaN(d) ? 0 : d.getTime();
-      }
-      const d = new Date(s.replace(/-/g,'/'));
+  // 統一明確排序：待處理依報修日期新到舊，已結案依結案日期(沒有就用報修日期)新到舊
+  // 不依賴allCases傳進來時剛好是什麼順序，避免後端排序邏輯調整時前端跟著跑掉
+  const toTs = (raw) => {
+    if (!raw) return 0;
+    const s = String(raw).trim();
+    // ISO 格式 (含 T 或 Z) 直接解析，不做斜線替換
+    if (/T.*Z?$|^\d{4}-\d{2}-\d{2}T/.test(s)) {
+      const d = new Date(s);
       return isNaN(d) ? 0 : d.getTime();
-    };
-    filtered = [...filtered].sort((a,b)=> toTs(b) - toTs(a));
+    }
+    const d = new Date(s.replace(/-/g,'/'));
+    return isNaN(d) ? 0 : d.getTime();
+  };
+  if (currentFilter==='已結案') {
+    filtered = [...filtered].sort((a,b)=> toTs(b.closeDatetime||b.datetime||b.date) - toTs(a.closeDatetime||a.datetime||a.date));
+  } else {
+    filtered = [...filtered].sort((a,b)=> toTs(b.datetime||b.date) - toTs(a.datetime||a.date));
   }
   if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; renderLoadMoreBtn('mgrLoadMoreWrap'); return; }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
