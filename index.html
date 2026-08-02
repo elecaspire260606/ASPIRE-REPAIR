@@ -103,7 +103,13 @@
   .page-ellipsis { font-size:13px; color:#bbb; padding:0 4px; }
 
   /* ── Case cards ── */
-  .case-card { background:white; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:15px; margin-bottom:11px; position:relative; }
+  .case-card { background:white; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.06); padding:11px 13px; margin-bottom:8px; position:relative; }
+  .case-row-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .case-row-title { font-size:14px; font-weight:600; color:#1a1a1a; line-height:1.3; }
+  .case-row-meta { font-size:11px; color:#aaa; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .case-row-meta .photo-tag { color:#C05E0A; font-weight:600; }
+  .case-row-desc { font-size:12.5px; color:#555; margin-top:5px; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .case-row-note { font-size:11.5px; color:#1E7A3E; margin-top:5px; background:#E6F4EA; border-radius:6px; padding:5px 9px; line-height:1.4; }
   .case-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; align-items:start; }
   .case-grid .case-card { margin-bottom:0; }
   @media (max-width:700px) { .case-grid { grid-template-columns:1fr; } }
@@ -714,8 +720,9 @@ const PAGE_SIZE = 20;
 
 let allCases = [];
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
-let casesRangeDays = 10; // 目前抓取的天數範圍(待處理案件不受此限制，一律都會抓到)
-let casesHasMore = false; // 後端是否還有更早的已結案案件沒抓進來
+let casesRangeDays = 10; // 目前抓取的天數範圍(已結案適用)
+let casesPendingLimit = 50; // 目前待處理案件的筆數上限(跟casesRangeDays同步成長，避免待處理案件量大時單次回應過大)
+let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
 let lastLoadedDays = null; // 記錄上次實際抓到的資料範圍(數字或'all')，避免用windowed資料誤當成full資料
 let currentFilter = '待處理';
 let currentQueryFilter = '待處理';
@@ -1037,6 +1044,7 @@ async function submitForm() {
 // ── 載入案件 ──
 async function loadCases(force, daysOverride) {
   const targetDays = daysOverride || casesRangeDays;
+  const targetPendingLimit = targetDays === 'all' ? 'all' : casesPendingLimit;
   // 判斷目前手上的資料夠不夠用：已經是全量的話什麼都夠；不是全量的話，天數範圍要大於等於本次需要的才算夠
   const alreadyHaveEnough = lastLoadedDays === 'all' || (lastLoadedDays !== null && targetDays !== 'all' && lastLoadedDays >= targetDays);
   // 節流：8秒內剛讀取過「足夠的資料」就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
@@ -1046,7 +1054,7 @@ async function loadCases(force, daysOverride) {
     return;
   }
   try {
-    const res = await fetch(API_URL+'?action=getAll&days='+targetDays);
+    const res = await fetch(API_URL+'?action=getAll&days='+targetDays+'&pendingLimit='+targetPendingLimit);
     const data = await res.json();
     if (data.success) {
       allCases = data.cases.reverse();
@@ -1061,10 +1069,11 @@ async function loadCases(force, daysOverride) {
   }
 }
 
-// 載入更早的已結案案件：每次多擴大10天範圍再重新讀取
+// 載入更早的案件：已結案擴大10天範圍、待處理上限同步擴大50筆，兩者一起成長
 async function loadMoreHistory(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
   casesRangeDays += 10;
+  casesPendingLimit += 50;
   await loadCases(true);
 }
 
@@ -1145,10 +1154,11 @@ function renderCases() {
     const locDisplay = c.normalizedLocation || c.location || '—';
     const titleHtml = `${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
     const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>`;
-    const photosHtml = `
-      ${(c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length))?`<div class="photo-count-hint">📷 報修照片 ${c.reportPhotoCount||c.reportPhotos.length} 張（點開查看）</div>`:''}
-      ${(c.closePhotoCount||(c.closePhotos&&c.closePhotos.length))?`<div class="photo-count-hint">📷 結案照片 ${c.closePhotoCount||c.closePhotos.length} 張（點開查看）</div>`:''}
-    `;
+    const photoTag = [
+      (c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length)) ? `📷報修${c.reportPhotoCount||c.reportPhotos.length}` : '',
+      (c.closePhotoCount||(c.closePhotos&&c.closePhotos.length)) ? `📷結案${c.closePhotoCount||c.closePhotos.length}` : '',
+    ].filter(Boolean).join(' ');
+    const shortDate = (c.datetime||c.date||'').split(' ')[0].replace(/^\d{4}\//,'');
     const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
 
     const reportBtnHtml = (c.status==='已結案' && !isFlagged) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
@@ -1158,22 +1168,13 @@ function renderCases() {
     const collapsedView = `
       <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
         ${stampHtml}
-        <div class="case-top">
-          <div>
-            <div class="case-id">${c.caseId}</div>
-            <div style="margin:4px 0;">${timeBadges}</div>
-            <div class="case-title">${titleHtml}</div>
-            <div class="case-meta">${c.unit} · ${c.name}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-            ${badgeHtml}
-            ${reportBtnHtml}
-          </div>
+        <div class="case-row-top">
+          <div class="case-row-title">${titleHtml}</div>
+          ${badgeHtml}
         </div>
-        <div class="case-desc">${c.description}</div>
-        ${c.repairNote?`<div class="pub-note"><div class="pub-note-label">✅ 處理結果</div>${c.repairNote}</div>`:''}
-        ${photosHtml}
-        <div class="case-tap-hint">點擊展開修繕作業 ▾</div>
+        <div class="case-row-meta">${shortDate} · ${c.unit} · ${c.name}${photoTag?` · <span class="photo-tag">${photoTag}</span>`:''}</div>
+        <div class="case-row-desc">${c.description}</div>
+        ${c.repairNote?`<div class="case-row-note">✅ ${c.repairNote}</div>`:''}
       </div>`;
 
     const expandedView = `
@@ -1298,8 +1299,8 @@ function renderLoadMoreBtn(wrapId) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
   wrap.innerHTML = casesHasMore
-    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早案件（目前範圍：近${casesRangeDays}天 + 全部待處理）</button>`
-    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（近${casesRangeDays}天內已結案 + 全部待處理）</div>`;
+    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早案件（目前範圍：近${casesRangeDays}天已結案 + 最新${casesPendingLimit}筆待處理）</button>`
+    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（近${casesRangeDays}天內已結案 + 最新${casesPendingLimit}筆待處理）</div>`;
 }
 
 // 共用：純顯示用的照片區塊(案件查詢/鑽取彈窗)。還沒載入時顯示可點擊的張數提示，點了才真的去抓照片網址。
