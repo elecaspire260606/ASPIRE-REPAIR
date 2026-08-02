@@ -1291,6 +1291,7 @@ function renderCases() {
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
   renderLoadMoreBtn('mgrLoadMoreWrap');
+  prefetchPhotosForCases(paged); // 背景自動把這一頁看得到的案件照片抓回來，不用手動點
 }
 
 // 共用：在指定容器顯示「載入更早案件」按鈕(僅在後端回報還有更早的已結案案件時顯示)
@@ -1310,13 +1311,79 @@ function photoDisplayBlock(c, kind, label) {
     return photos.length ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">${label}：</div><div class="photo-preview-wrap">${photos.map(url=>`<img class="photo-preview-img" src="${url}" onclick="window.open('${url}')">`).join('')}</div>` : '';
   }
   if (!count) return '';
-  return `<div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this)">📷 ${label} ${count} 張（點擊查看）</div>`;
+  return `<div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this,'${kind}')">📷 ${label} ${count} 張（點擊查看）</div>`;
 }
 
 // 點擊張數提示時才真的去抓這筆案件的照片，抓到後直接把提示換成實際照片
-async function loadAndShowPhotos(rowIndex, hintEl) {
+// 背景批次預抓照片：清單渲染完後自動呼叫，一次把「這一頁看得到的案件」的照片都抓回來，
+// 不用等使用者點擊，也不會一張案件各打一次getPhotos(那樣才會常常卡住)
+let photoPrefetchInFlight = new Set(); // 記錄正在抓取中的rowIndex，避免同一批被重複觸發
+async function prefetchPhotosForCases(casesArr) {
+  const targets = casesArr.filter(c =>
+    c.reportPhotos === undefined &&
+    (c.reportPhotoCount || c.closePhotoCount) &&
+    !photoPrefetchInFlight.has(c.rowIndex)
+  );
+  if (!targets.length) return;
+  targets.forEach(c => photoPrefetchInFlight.add(c.rowIndex));
+  try {
+    const rowIndexes = targets.map(c => c.rowIndex).join(',');
+    const res = await fetch(API_URL+'?action=getPhotosForRows&rowIndexes='+rowIndexes);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text) throw new Error('回應內容為空');
+    const data = JSON.parse(text);
+    if (data.success) {
+      targets.forEach(c => {
+        const p = data.photos[c.rowIndex];
+        if (p) {
+          c.reportPhotos = p.reportPhotos;
+          c.closePhotos = p.closePhotos;
+          renderCasePhotoSlots(c); // 修繕管理展開視圖若剛好開著，順便更新
+        }
+      });
+      // 若鑽取詳情面板剛好開著、顯示的正是這筆案件，直接重新整個面板(格式含分隔線/標籤比較完整)
+      const panelOpen = document.getElementById('caseDetailPanel').classList.contains('open');
+      const panelCaseId = document.getElementById('panelCaseId').textContent;
+      targets.forEach(c => {
+        if (c.reportPhotos === undefined) return;
+        if (panelOpen && panelCaseId === c.caseId) {
+          openCasePanel(c);
+          return;
+        }
+        // 其餘情況(修繕管理清單/案件查詢卡片)：悄悄局部更新張數提示，換成實際縮圖，不整頁重繪
+        document.querySelectorAll(`[onclick*="loadAndShowPhotos(${c.rowIndex},"]`).forEach(hintEl => {
+          const kindMatch = hintEl.getAttribute('onclick').match(/'(\w+)'\)$/);
+          const kind = kindMatch ? kindMatch[1] : 'report';
+          const label = kind === 'report' ? '報修照片' : '結案照片';
+          const wrap = document.createElement('div');
+          wrap.innerHTML = photoDisplayBlock(c, kind, label);
+          if (wrap.childNodes.length) hintEl.replaceWith(...wrap.childNodes);
+        });
+      });
+    }
+  } catch(e) {
+    console.error('prefetchPhotosForCases 失敗:', e);
+    // 背景預抓失敗不用特別提示使用者，畫面上的「點擊查看」提示還在，仍可手動點擊重試
+  } finally {
+    targets.forEach(c => photoPrefetchInFlight.delete(c.rowIndex));
+  }
+}
+
+async function loadAndShowPhotos(rowIndex, hintEl, kind) {
   const c = allCases.find(x => x.rowIndex === rowIndex);
   if (!c) return;
+  const label = kind === 'report' ? '報修照片' : '結案照片';
+
+  // 另一種類型可能已經被點過、資料已經在記憶體裡了，這種情況不用再打API，直接渲染
+  const alreadyLoaded = kind === 'report' ? c.reportPhotos !== undefined : c.closePhotos !== undefined;
+  if (alreadyLoaded) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = photoDisplayBlock(c, kind, label);
+    hintEl.replaceWith(...wrap.childNodes);
+    return;
+  }
+
   hintEl.textContent = '載入中…';
   try {
     const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
@@ -1328,10 +1395,9 @@ async function loadAndShowPhotos(rowIndex, hintEl) {
       c.reportPhotos = data.reportPhotos;
       c.closePhotos = data.closePhotos;
       const wrap = document.createElement('div');
-      wrap.innerHTML = photoDisplayBlock(c, 'report', '報修照片') + photoDisplayBlock(c, 'close', '結案照片');
+      wrap.innerHTML = photoDisplayBlock(c, kind, label); // 只換掉被點擊的這一種，不動另一種的提示
       hintEl.replaceWith(...wrap.childNodes);
     } else {
-      // 後端回傳success:false，顯示可重試的錯誤狀態，不要卡在「載入中」
       hintEl.textContent = '⚠️ 載入失敗（點擊重試）：' + (data.message||'未知錯誤');
     }
   } catch(e) {
@@ -1718,6 +1784,7 @@ function renderQueryByName(name) {
   const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
   list.innerHTML = paged.map(c => renderPubCard(c)).join('');
   renderPagination('queryPagination', queryPage, totalPages, p=>{queryPage=p;renderQueryByName(name);});
+  prefetchPhotosForCases(paged);
 }
 
 function filterQueryArea(area, btn) {
@@ -1785,6 +1852,7 @@ function renderQueryGm() {
   list.innerHTML = paged.map(c => renderPubCard(c)).join('');
   renderPagination('queryPaginationGm', queryPage, totalPages, p=>{queryPage=p;renderQueryGm();});
   renderLoadMoreBtn('queryLoadMoreWrap');
+  prefetchPhotosForCases(paged);
 }
 
 function renderQuery() {
@@ -2249,7 +2317,7 @@ function openCasePanel(c) {
     <hr class="panel-divider">
     <div class="panel-section">
       <div class="panel-label">${label}</div>
-      <div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this)">📷 ${count} 張（點擊查看）</div>
+      <div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this,'${kind}')">📷 ${count} 張（點擊查看）</div>
     </div>`;
   };
 
@@ -2302,6 +2370,7 @@ function openCasePanel(c) {
 
   document.getElementById('panelBackdrop').style.display = 'block';
   document.getElementById('caseDetailPanel').classList.add('open');
+  prefetchPhotosForCases([c]); // 開面板當下自動抓這一筆的照片，不用在裡面再點一次
 }
 
 function closeCasePanel() {
