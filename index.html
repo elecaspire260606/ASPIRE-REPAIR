@@ -991,29 +991,41 @@ async function submitForm() {
     const email = document.getElementById('f-email').value.trim();
     const reportPhotos = (photoData.report||[]).filter(Boolean);
     // 不再送datetime，報修時間一律由後端記錄伺服器時間(手機時間可能不準，伺服器時間比較可靠)
-    let response;
-    try {
-      response = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action:'submit', unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, deviceFingerprint: getDeviceFingerprint() })
-      });
-    } catch (e) {
-      console.error('submitForm 網路層錯誤:', e);
-      throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
-    }
-    const text = await response.text();
-    if (!response.ok) {
-      console.error('submitForm HTTP錯誤:', response.status, text);
-      throw new Error('系統暫時無法連線，剛才填寫的內容仍保留，請稍後再試');
-    }
-    if (!text) {
-      console.error('submitForm 回傳空內容');
-      throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
-    }
+    const payload = { action:'submit', unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, deviceFingerprint: getDeviceFingerprint() };
+
+    const attemptSubmit = async () => {
+      let response;
+      try {
+        response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+      } catch (e) {
+        console.error('submitForm 網路層錯誤:', e);
+        throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
+      }
+      const text = await response.text();
+      if (!response.ok) {
+        console.error('submitForm HTTP錯誤:', response.status, text);
+        throw new Error('系統暫時無法連線，剛才填寫的內容仍保留，請稍後再試');
+      }
+      if (!text) {
+        console.error('submitForm 回傳空內容');
+        throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error('submitForm JSON解析失敗:', text);
+        throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
+      }
+    };
+
+    // 失敗時安靜自動重試一次(後端可能其實有做完，只是等待期間網路瞬斷)，不用使用者自己再按一次
     let data;
-    try { data = JSON.parse(text); } catch (e) {
-      console.error('submitForm JSON解析失敗:', text);
-      throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
+    try {
+      data = await attemptSubmit();
+    } catch (e) {
+      console.warn('submitForm 第一次失敗，1.5秒後自動重試一次:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+      data = await attemptSubmit();
     }
     if (data.success) {
       showToast('✓ '+data.message);
@@ -1053,9 +1065,16 @@ async function loadCases(force, daysOverride) {
     renderCurrentPage(); // 資料還新鮮，直接用手上的資料渲染目前分頁，不用重打API，也不會讓切換分頁後畫面空白
     return;
   }
+  const attemptLoad = () => fetch(API_URL+'?action=getAll&days='+targetDays+'&pendingLimit='+targetPendingLimit).then(r=>r.json());
   try {
-    const res = await fetch(API_URL+'?action=getAll&days='+targetDays+'&pendingLimit='+targetPendingLimit);
-    const data = await res.json();
+    let data;
+    try {
+      data = await attemptLoad();
+    } catch (e) {
+      console.warn('loadCases 第一次失敗，1.5秒後自動重試一次:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+      data = await attemptLoad();
+    }
     if (data.success) {
       allCases = data.cases.reverse();
       casesHasMore = !!data.hasMore;
@@ -1674,7 +1693,8 @@ async function reopenCase(rowIndex) {
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='取消結案'; }
 }
-async function callApi(params) {
+// 實際發送一次請求(不含重試邏輯)
+async function callApiOnce(params) {
   const token = sessionStorage.getItem('adminToken');
   let response;
   try {
@@ -1700,6 +1720,19 @@ async function callApi(params) {
   } catch (e) {
     console.error('callApi JSON解析失敗:', text);
     throw new Error('系統暫時忙碌，請稍後再試');
+  }
+}
+
+// 對外用的callApi：失敗時安靜自動重試一次，中間等1.5秒再試
+// (背景推測：後端其實常常有把事情做完，只是手機在等待期間網路瞬斷或切到背景，導致這次請求連線中斷；
+//  安靜重試一次可以撐過這種暫時性狀況，不用讓使用者自己再按一次)
+async function callApi(params) {
+  try {
+    return await callApiOnce(params);
+  } catch (e) {
+    console.warn('callApi 第一次失敗，1.5秒後自動重試一次:', e.message);
+    await new Promise(r => setTimeout(r, 1500));
+    return await callApiOnce(params); // 第二次若還是失敗，錯誤會直接往外拋給呼叫端處理
   }
 }
 
