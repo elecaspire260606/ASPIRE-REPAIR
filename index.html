@@ -720,8 +720,8 @@ const PAGE_SIZE = 20;
 
 let allCases = [];
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
-let casesRangeDays = 10; // 目前抓取的天數範圍(已結案適用)
-let casesPendingLimit = 50; // 目前待處理案件的筆數上限(跟casesRangeDays同步成長，避免待處理案件量大時單次回應過大)
+let casesClosedLimit = 20; // 目前已結案案件的筆數上限
+let casesPendingLimit = 20; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長，避免案件量大時單次回應過大)
 let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
 let lastLoadedDays = null; // 記錄上次實際抓到的資料範圍(數字或'all')，避免用windowed資料誤當成full資料
 let currentFilter = '待處理';
@@ -1067,11 +1067,11 @@ async function submitForm() {
 // ── 載入案件 ──
 let loadCasesRequestSeq = 0; // 請求序號:避免比較舊、比較慢的請求(不管成功或失敗)蓋掉後來更新的畫面結果
 
-async function loadCases(force, daysOverride) {
-  const targetDays = daysOverride || casesRangeDays;
-  const targetPendingLimit = targetDays === 'all' ? 'all' : casesPendingLimit;
-  // 判斷目前手上的資料夠不夠用：已經是全量的話什麼都夠；不是全量的話，天數範圍要大於等於本次需要的才算夠
-  const alreadyHaveEnough = lastLoadedDays === 'all' || (lastLoadedDays !== null && targetDays !== 'all' && lastLoadedDays >= targetDays);
+async function loadCases(force, closedLimitOverride) {
+  const targetClosedLimit = closedLimitOverride || casesClosedLimit;
+  const targetPendingLimit = targetClosedLimit === 'all' ? 'all' : casesPendingLimit;
+  // 判斷目前手上的資料夠不夠用：已經是全量的話什麼都夠；不是全量的話，範圍要大於等於本次需要的才算夠
+  const alreadyHaveEnough = lastLoadedDays === 'all' || (lastLoadedDays !== null && targetClosedLimit !== 'all' && lastLoadedDays >= targetClosedLimit);
   // 節流：8秒內剛讀取過「足夠的資料」就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
   // (Apps Script在短時間內收到大量重複請求容易變慢或逾時，會被誤以為是網路斷線)
   if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < 8000 && allCases.length) {
@@ -1079,7 +1079,7 @@ async function loadCases(force, daysOverride) {
     return;
   }
   const mySeq = ++loadCasesRequestSeq; // 這次請求的序號，稍後回來時要跟最新序號比對
-  const attemptLoad = () => fetch(API_URL+'?action=getAll&days='+targetDays+'&pendingLimit='+targetPendingLimit).then(r=>r.json());
+  const attemptLoad = () => fetch(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit).then(r=>r.json());
   try {
     let data;
     try {
@@ -1093,7 +1093,7 @@ async function loadCases(force, daysOverride) {
     if (data.success) {
       allCases = data.cases.reverse();
       casesHasMore = !!data.hasMore;
-      lastLoadedDays = targetDays;
+      lastLoadedDays = targetClosedLimit;
       lastCasesLoadTime = Date.now();
       renderCurrentPage(); // 只渲染目前所在的分頁，不會四個分頁一起重畫
     }
@@ -1104,11 +1104,11 @@ async function loadCases(force, daysOverride) {
   }
 }
 
-// 載入更早的案件：已結案擴大10天範圍、待處理上限同步擴大50筆，兩者一起成長
+// 載入更早的案件：已結案、待處理筆數上限同步各+20筆
 async function loadMoreHistory(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
-  casesRangeDays += 10;
-  casesPendingLimit += 50;
+  casesClosedLimit += 20;
+  casesPendingLimit += 20;
   await loadCases(true);
 }
 
@@ -1337,8 +1337,8 @@ function renderLoadMoreBtn(wrapId) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
   wrap.innerHTML = casesHasMore
-    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早案件（目前範圍：近${casesRangeDays}天已結案 + 最新${casesPendingLimit}筆待處理）</button>`
-    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（近${casesRangeDays}天內已結案 + 最新${casesPendingLimit}筆待處理）</div>`;
+    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早案件（目前顯示：最新${casesClosedLimit}筆已結案 + 最新${casesPendingLimit}筆待處理）</button>`
+    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（最新${casesClosedLimit}筆已結案 + 最新${casesPendingLimit}筆待處理）</div>`;
 }
 
 // 共用：純顯示用的照片區塊(案件查詢/鑽取彈窗)。還沒載入時顯示可點擊的張數提示，點了才真的去抓照片網址。
