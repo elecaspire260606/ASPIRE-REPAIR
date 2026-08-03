@@ -913,12 +913,28 @@ async function checkPassword() {
   if (!pw) return;
   const btn = document.querySelector('#page-lock button');
   if (btn) { btn.textContent='驗證中…'; btn.disabled=true; }
-  try {
+
+  const attemptAuth = async () => {
     const r = await fetch(API_URL, {
       method:'POST',
       body: JSON.stringify({ action:'auth', password:pw })
     });
-    const data = await r.json();
+    const text = await r.text();
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!text) throw new Error('回應內容為空');
+    return JSON.parse(text);
+  };
+
+  try {
+    let data;
+    try {
+      data = await attemptAuth();
+    } catch (e) {
+      // 登入驗證沒有重複風險(不會造成資料重複)，失敗時可以安全地安靜重試一次
+      console.warn('checkPassword 第一次失敗，1.5秒後自動重試一次:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+      data = await attemptAuth();
+    }
     if (btn) { btn.textContent='確認'; btn.disabled=false; }
     if (data.success) {
       sessionStorage.setItem('adminToken', data.token);
@@ -932,7 +948,8 @@ async function checkPassword() {
     }
   } catch(e) {
     if (btn) { btn.textContent='確認'; btn.disabled=false; }
-    document.getElementById('pwErr').textContent='網路異常，請重試';
+    console.error('checkPassword 失敗:', e);
+    document.getElementById('pwErr').textContent='系統暫時無法連線，請稍後再試';
   }
 }
 function logout() {
