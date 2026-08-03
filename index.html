@@ -720,8 +720,8 @@ const PAGE_SIZE = 20;
 
 let allCases = [];
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
-let casesClosedLimit = 20; // 目前已結案案件的筆數上限
-let casesPendingLimit = 20; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長，避免案件量大時單次回應過大)
+let casesClosedLimit = 10; // 目前已結案案件的筆數上限
+let casesPendingLimit = 10; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長，避免案件量大時單次回應過大)
 let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
 let lastLoadedDays = null; // 記錄上次實際抓到的資料範圍(數字或'all')，避免用windowed資料誤當成full資料
 let currentFilter = '待處理';
@@ -1107,8 +1107,8 @@ async function loadCases(force, closedLimitOverride) {
 // 載入更早的案件：已結案、待處理筆數上限同步各+20筆
 async function loadMoreHistory(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
-  casesClosedLimit += 20;
-  casesPendingLimit += 20;
+  casesClosedLimit += 10;
+  casesPendingLimit += 10;
   await loadCases(true);
 }
 
