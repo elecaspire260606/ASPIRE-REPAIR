@@ -1018,15 +1018,9 @@ async function submitForm() {
       }
     };
 
-    // 失敗時安靜自動重試一次(後端可能其實有做完，只是等待期間網路瞬斷)，不用使用者自己再按一次
-    let data;
-    try {
-      data = await attemptSubmit();
-    } catch (e) {
-      console.warn('submitForm 第一次失敗，1.5秒後自動重試一次:', e.message);
-      await new Promise(r => setTimeout(r, 1500));
-      data = await attemptSubmit();
-    }
+    // 送出報修會新增一筆案件，如果自動重試、第一次其實已經成功，會造成重複報修，
+    // 所以這裡不做自動重試，失敗就讓使用者自己看訊息決定要不要再送一次(填寫內容仍保留)。
+    const data = await attemptSubmit();
     if (data.success) {
       showToast('✓ '+data.message);
       ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
@@ -1054,6 +1048,8 @@ async function submitForm() {
 }
 
 // ── 載入案件 ──
+let loadCasesRequestSeq = 0; // 請求序號:避免比較舊、比較慢的請求(不管成功或失敗)蓋掉後來更新的畫面結果
+
 async function loadCases(force, daysOverride) {
   const targetDays = daysOverride || casesRangeDays;
   const targetPendingLimit = targetDays === 'all' ? 'all' : casesPendingLimit;
@@ -1065,6 +1061,7 @@ async function loadCases(force, daysOverride) {
     renderCurrentPage(); // 資料還新鮮，直接用手上的資料渲染目前分頁，不用重打API，也不會讓切換分頁後畫面空白
     return;
   }
+  const mySeq = ++loadCasesRequestSeq; // 這次請求的序號，稍後回來時要跟最新序號比對
   const attemptLoad = () => fetch(API_URL+'?action=getAll&days='+targetDays+'&pendingLimit='+targetPendingLimit).then(r=>r.json());
   try {
     let data;
@@ -1075,6 +1072,7 @@ async function loadCases(force, daysOverride) {
       await new Promise(r => setTimeout(r, 1500));
       data = await attemptLoad();
     }
+    if (mySeq !== loadCasesRequestSeq) return; // 已經有更新的請求了，這筆結果太舊，不要蓋掉畫面
     if (data.success) {
       allCases = data.cases.reverse();
       casesHasMore = !!data.hasMore;
@@ -1083,6 +1081,7 @@ async function loadCases(force, daysOverride) {
       renderCurrentPage(); // 只渲染目前所在的分頁，不會四個分頁一起重畫
     }
   } catch(e) {
+    if (mySeq !== loadCasesRequestSeq) return; // 同樣道理：舊的失敗不該蓋掉後來已經成功顯示的畫面
     console.error('loadCases 失敗:', e);
     document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
   }
@@ -1726,14 +1725,11 @@ async function callApiOnce(params) {
 // 對外用的callApi：失敗時安靜自動重試一次，中間等1.5秒再試
 // (背景推測：後端其實常常有把事情做完，只是手機在等待期間網路瞬斷或切到背景，導致這次請求連線中斷；
 //  安靜重試一次可以撐過這種暫時性狀況，不用讓使用者自己再按一次)
+// callApi只用於「寫入類」動作(更新/結案/生成報告/刪除照片等)，這些動作都有副作用(建立雲端硬碟檔案、
+// 寫入試算表)，如果自動重試、而第一次其實已經成功(只是回應沒送達手機)，重試會造成重複結案/重複照片/重複報告。
+// 所以這裡刻意不做自動重試，失敗就讓使用者自己決定要不要再按一次。
 async function callApi(params) {
-  try {
-    return await callApiOnce(params);
-  } catch (e) {
-    console.warn('callApi 第一次失敗，1.5秒後自動重試一次:', e.message);
-    await new Promise(r => setTimeout(r, 1500));
-    return await callApiOnce(params); // 第二次若還是失敗，錯誤會直接往外拋給呼叫端處理
-  }
+  return await callApiOnce(params);
 }
 
 // ── 案件查詢（公開）──
