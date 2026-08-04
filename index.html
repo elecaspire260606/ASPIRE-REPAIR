@@ -715,6 +715,24 @@
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbyDHXpaV6JUrlLynauBCtYrgIw4kYKwDxpuPdSJmZ_7xpzPLczsijgIc2LE_3koJbMj/exec';
+
+// 統一的fetch包裝：加上逾時控制(AbortController)，避免請求無限期卡在「等待中」
+// timeoutMs逾時後會主動中止請求，AbortError轉換成容易理解的訊息，不同動作可以給不同的合理逾時秒數
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('請求逾時，請稍後再試');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 // 密碼驗證已移至後端
 const PAGE_SIZE = 20;
 
@@ -919,10 +937,10 @@ async function checkPassword() {
   if (btn) { btn.textContent='驗證中…'; btn.disabled=true; }
 
   const attemptAuth = async () => {
-    const r = await fetch(API_URL, {
+    const r = await fetchWithTimeout(API_URL, {
       method:'POST',
       body: JSON.stringify({ action:'auth', password:pw })
-    });
+    }, 12000);
     const text = await r.text();
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     if (!text) throw new Error('回應內容為空');
@@ -1019,7 +1037,7 @@ async function submitForm() {
     const attemptSubmit = async () => {
       let response;
       try {
-        response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+        response = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(payload) }, 40000);
       } catch (e) {
         console.error('submitForm 網路層錯誤:', e);
         throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
@@ -1085,7 +1103,7 @@ async function loadCases(force, closedLimitOverride) {
     return;
   }
   const mySeq = ++loadCasesRequestSeq; // 這次請求的序號，稍後回來時要跟最新序號比對
-  const attemptLoad = () => fetch(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit).then(r=>r.json());
+  const attemptLoad = () => fetchWithTimeout(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit, {}, 15000).then(r=>r.json());
   try {
     let data;
     try {
@@ -1372,7 +1390,7 @@ async function prefetchPhotosForCases(casesArr) {
   targets.forEach(c => photoPrefetchInFlight.add(c.rowIndex));
   try {
     const rowIndexes = targets.map(c => c.rowIndex).join(',');
-    const res = await fetch(API_URL+'?action=getPhotosForRows&rowIndexes='+rowIndexes);
+    const res = await fetchWithTimeout(API_URL+'?action=getPhotosForRows&rowIndexes='+rowIndexes, {}, 15000);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     if (!text) throw new Error('回應內容為空');
@@ -1430,7 +1448,7 @@ async function loadAndShowPhotos(rowIndex, hintEl, kind) {
 
   hintEl.textContent = '載入中…';
   try {
-    const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
+    const res = await fetchWithTimeout(API_URL+'?action=getPhotos&rowIndex='+rowIndex, {}, 15000);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     if (!text) throw new Error('回應內容為空');
@@ -1481,7 +1499,7 @@ async function ensureCasePhotosLoaded(rowIndex) {
   const c = allCases.find(x => x.rowIndex === rowIndex);
   if (!c || c.closePhotos !== undefined) return; // undefined代表還沒抓過；已經抓過就不重複打
   try {
-    const res = await fetch(API_URL+'?action=getPhotos&rowIndex='+rowIndex);
+    const res = await fetchWithTimeout(API_URL+'?action=getPhotos&rowIndex='+rowIndex, {}, 15000);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     if (!text) throw new Error('回應內容為空');
@@ -1648,7 +1666,7 @@ async function autoCloseAsFlagged(rowIndex, reason) {
       closerName: '',
       closePhotos: [],
       closeFingerprint: getDeviceFingerprint()
-    });
+    }, 45000);
     if (data.success) {
       showToast(`✓ 已標記「${label}」並結案`);
       await loadCases(true);
@@ -1699,7 +1717,7 @@ async function closeCase(rowIndex) {
   const btn = document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
-    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos, closeFingerprint: getDeviceFingerprint()});
+    const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos, closeFingerprint: getDeviceFingerprint()}, 45000);
     if (data && data.success) { showToast('✓ 案件已結案'); loadCases(true); }
     else { showToast('❌ 結案失敗，請重試'); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
@@ -1716,17 +1734,17 @@ async function reopenCase(rowIndex) {
   if (btn) { btn.disabled=false; btn.textContent='取消結案'; }
 }
 // 實際發送一次請求(不含重試邏輯)
-async function callApiOnce(params) {
+async function callApiOnce(params, timeoutMs) {
   const token = sessionStorage.getItem('adminToken');
   let response;
   try {
-    response = await fetch(API_URL, {
+    response = await fetchWithTimeout(API_URL, {
       method: 'POST',
       body: JSON.stringify({ ...params, token })
-    });
+    }, timeoutMs || 20000); // 預設20秒(一般更新)，結案/報告生成等較重的動作由呼叫端傳入更長的逾時
   } catch (e) {
     console.error('callApi 網路層錯誤:', e);
-    throw new Error('網路目前不穩定，請再試一次');
+    throw new Error(e.message === '請求逾時，請稍後再試' ? e.message : '網路目前不穩定，請再試一次');
   }
   const text = await response.text();
   if (!response.ok) {
@@ -1751,8 +1769,8 @@ async function callApiOnce(params) {
 // callApi只用於「寫入類」動作(更新/結案/生成報告/刪除照片等)，這些動作都有副作用(建立雲端硬碟檔案、
 // 寫入試算表)，如果自動重試、而第一次其實已經成功(只是回應沒送達手機)，重試會造成重複結案/重複照片/重複報告。
 // 所以這裡刻意不做自動重試，失敗就讓使用者自己決定要不要再按一次。
-async function callApi(params) {
-  return await callApiOnce(params);
+async function callApi(params, timeoutMs) {
+  return await callApiOnce(params, timeoutMs);
 }
 
 // ── 案件查詢（公開）──
@@ -2150,10 +2168,10 @@ async function importBackup(file) {
     const cases = Array.isArray(payload) ? payload : payload.cases;
     if (!Array.isArray(cases) || !cases.length) { showToast('備份檔案格式錯誤或無資料'); return; }
     showToast('匯入中，請稍候…');
-    const res = await fetch(API_URL, {
+    const res = await fetchWithTimeout(API_URL, {
       method: 'POST',
       body: JSON.stringify({ action:'import', cases, token: sessionStorage.getItem('adminToken') })
-    });
+    }, 90000);
     const data = await res.json();
     if (data.success) {
       const skipMsg = data.skipped ? `，略過重複 ${data.skipped} 筆` : '';
@@ -2765,7 +2783,7 @@ async function exportExcel() {
   const stats = { rangeLabel, total, pending, done, rate, areas, types, pendingTop, detail };
 
   try {
-    const data = await callApi({ action: 'generateExcelReport', stats });
+    const data = await callApi({ action: 'generateExcelReport', stats }, 60000);
     if (data.success) {
       const a = document.createElement('a');
       a.href = data.url;
@@ -2829,7 +2847,7 @@ async function generateReport(rowIndex, btn) {
   btn.disabled = true;
   btn.textContent = '生成中…';
   try {
-    const data = await callApi({action:'generateReport', rowIndex});
+    const data = await callApi({action:'generateReport', rowIndex}, 60000);
     if (data.success) {
       const a = document.createElement('a');
       a.href = data.url;
