@@ -737,6 +737,21 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
 const PAGE_SIZE = 20;
 
 let allCases = [];
+// 姓名查詢與GM全覽模式各自獨立的資料，不再共用allCases，彼此不會互相覆蓋，
+// 且進頁不會再抓全部歷史案件，只有實際查詢/篩選時才向後端要目前這一頁的資料
+let queryResults = [];
+let queryResultsTotal = 0;
+let queryResultsHasMore = false;
+let gmCases = [];
+let gmCasesTotal = 0;
+let gmCasesHasMore = false;
+// 依rowIndex找案件物件：管理頁在allCases、姓名查詢在queryResults、GM全覽在gmCases，
+// 共用函式統一查找，避免loadAndShowPhotos等共用邏輯漏掉查詢/GM來源的案件
+function findCaseByRowIndex_(rowIndex) {
+  return allCases.find(x => x.rowIndex === rowIndex)
+    || queryResults.find(x => x.rowIndex === rowIndex)
+    || gmCases.find(x => x.rowIndex === rowIndex);
+}
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
 let casesClosedLimit = 10; // 目前已結案案件的筆數上限
 let casesPendingLimit = 10; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長，避免案件量大時單次回應過大)
@@ -1028,7 +1043,8 @@ function switchPage(id) {
   const idx = ['form','query','mgr','dash'].indexOf(id);
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   currentPageId = id;
-  if (id === 'dash' || id === 'query') loadCases(false, 'all'); // 統計跟查詢需要完整歷史資料才會準確
+  // 查詢頁不再進頁就抓資料：姓名查詢/GM模式改成使用者實際輸入姓名或進入GM模式時，才各自呼叫專用API
+  if (id === 'dash') loadCases(false, 'all'); // 統計頁仍需要完整歷史資料才能算得準確
   else if (id === 'mgr') loadCases(); // 修繕管理預設用近期窗口即可(待處理案件本來就一律完整)
 }
 
@@ -1460,7 +1476,7 @@ async function prefetchPhotosForCases(casesArr) {
 }
 
 async function loadAndShowPhotos(rowIndex, hintEl, kind) {
-  const c = allCases.find(x => x.rowIndex === rowIndex);
+  const c = findCaseByRowIndex_(rowIndex);
   if (!c) return;
   const label = kind === 'report' ? '報修照片' : '結案照片';
 
@@ -1828,14 +1844,13 @@ async function searchByName() {
     enterGmMode(['會館','雅舍']);
     return;
   }
-  if (!allCases.length) await loadCases();
   currentQueryName = input;
   currentQueryStatusFilter = '待處理';
   document.querySelectorAll('#query-status-filter .filter-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector('#query-status-filter .filter-btn').classList.add('active');
   document.getElementById('query-status-filter').style.display = 'block';
   queryPage = 1;
-  renderQueryByName(input);
+  await renderQueryByName(input);
 }
 
 function filterQueryStatus(status, btn) {
@@ -1844,6 +1859,20 @@ function filterQueryStatus(status, btn) {
   document.querySelectorAll('#query-status-filter .filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderQueryByName(currentQueryName);
+}
+
+// 相同姓名+狀態+頁碼的查詢短時間內重複觸發時共用同一個進行中的請求，避免手滑連點或debounce邊界重複打後端
+let queryByNameInFlight = null;
+let queryByNameInFlightKey = '';
+async function fetchCasesByName(name, status, page) {
+  const key = name+'_'+status+'_'+page;
+  if (queryByNameInFlight && queryByNameInFlightKey === key) return queryByNameInFlight;
+  const url = API_URL+'?action=searchCasesByName&name='+encodeURIComponent(name)+'&status='+encodeURIComponent(status)+'&page='+page+'&pageSize='+PAGE_SIZE;
+  queryByNameInFlightKey = key;
+  queryByNameInFlight = fetchWithTimeout(url, {}, 15000)
+    .then(r => r.json())
+    .finally(() => { queryByNameInFlight = null; });
+  return queryByNameInFlight;
 }
 
 function enterGmMode(areaScope) {
@@ -1874,6 +1903,28 @@ function enterGmMode(areaScope) {
   renderQueryGm();
 }
 
+// 相同篩選條件短時間內重複觸發時共用同一個進行中的請求
+let gmCasesInFlight = null;
+let gmCasesInFlightKey = '';
+async function fetchGmCases() {
+  const key = [currentQueryFilter, currentQueryArea, currentQueryKeyword, (currentQueryAreaScope||[]).join(','), queryPage].join('|');
+  if (gmCasesInFlight && gmCasesInFlightKey === key) return gmCasesInFlight;
+  const params = new URLSearchParams({
+    action: 'getGmCases',
+    status: currentQueryFilter,
+    area: currentQueryArea,
+    keyword: currentQueryKeyword,
+    page: queryPage,
+    pageSize: PAGE_SIZE
+  });
+  if (currentQueryAreaScope) params.set('areaScope', currentQueryAreaScope.join(','));
+  gmCasesInFlightKey = key;
+  gmCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
+    .then(r => r.json())
+    .finally(() => { gmCasesInFlight = null; });
+  return gmCasesInFlight;
+}
+
 function exitGmMode() {
   gmMode = false;
   currentQueryAreaScope = null;
@@ -1883,17 +1934,27 @@ function exitGmMode() {
   document.getElementById('query-name-input').value = '';
 }
 
-function renderQueryByName(name) {
+async function renderQueryByName(name) {
   const list = document.getElementById('queryList');
-  let filtered = allCases.filter(c => c.name && String(c.name).trim() === name);
-  if (currentQueryStatusFilter !== 'all') filtered = filtered.filter(c => c.status === currentQueryStatusFilter);
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">查無符合條件的記錄</div>'; document.getElementById('queryPagination').innerHTML=''; return; }
-  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
-  if (queryPage>totalPages) queryPage=totalPages;
-  const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
-  list.innerHTML = paged.map(c => renderPubCard(c)).join('');
+  list.innerHTML = '<div class="empty-state">查詢中…</div>';
+  let data;
+  try {
+    data = await fetchCasesByName(name, currentQueryStatusFilter, queryPage);
+  } catch(e) {
+    console.error('renderQueryByName 失敗:', e);
+    list.innerHTML = '<div class="empty-state">查詢失敗，請稍後再試</div>';
+    return;
+  }
+  if (!data || !data.success) { list.innerHTML = '<div class="empty-state">查詢失敗，請稍後再試</div>'; return; }
+  queryResults = data.cases;
+  queryResultsTotal = data.total;
+  queryResultsHasMore = data.hasMore;
+  if (!queryResults.length) { list.innerHTML='<div class="empty-state">查無符合條件的記錄</div>'; document.getElementById('queryPagination').innerHTML=''; return; }
+  const totalPages = Math.max(1, Math.ceil(queryResultsTotal/PAGE_SIZE));
+  if (queryPage>totalPages) { queryPage=totalPages; return renderQueryByName(name); }
+  list.innerHTML = queryResults.map(c => renderPubCard(c)).join('');
   renderPagination('queryPagination', queryPage, totalPages, p=>{queryPage=p;renderQueryByName(name);});
-  prefetchPhotosForCases(paged);
+  prefetchPhotosForCases(queryResults);
 }
 
 function filterQueryArea(area, btn) {
@@ -1931,37 +1992,29 @@ function clearQueryKeyword() {
   renderQueryGm();
 }
 
-function renderQueryGm() {
+// GM全覽模式改成向後端要「目前這一頁」就好，狀態/區域/關鍵字/範圍鎖定都在後端篩選完成，
+// 不再從allCases篩選(GM資料也不會因此覆蓋管理頁或姓名查詢手上的資料)
+async function renderQueryGm() {
   const list = document.getElementById('queryListGm');
-  let filtered = allCases;
-  if (currentQueryFilter!=='all') filtered=filtered.filter(c=>c.status===currentQueryFilter);
-  // 範圍鎖定(如營運快捷字設定的會館+雅舍)永遠是外層邊界，不管區域按鈕怎麼點都不會超出這個範圍
-  if (currentQueryAreaScope) {
-    filtered = filtered.filter(c => currentQueryAreaScope.some(a => areaMatchesFilter(effArea(c), a)));
-    // 新規則：營運範圍檢視不顯示「園區營繕」單位自己報修的工單
-    filtered = filtered.filter(c => c.unit !== '園區營繕');
+  list.innerHTML = '<div class="empty-state">查詢中…</div>';
+  let data;
+  try {
+    data = await fetchGmCases();
+  } catch(e) {
+    console.error('renderQueryGm 失敗:', e);
+    list.innerHTML = '<div class="empty-state">查詢失敗，請稍後再試</div>';
+    return;
   }
-  if (currentQueryArea!=='all') {
-    filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentQueryArea));
-  }
-  const kw = currentQueryKeyword.toLowerCase();
-  if (kw) {
-    filtered = filtered.filter(c => {
-      const haystack = [
-        c.caseId, c.area, effArea(c), c.location, c.normalizedLocation,
-        c.description, c.name, c.unit, c.locationType, c.caseType, c.repairNote
-      ].filter(Boolean).join(' ').toLowerCase();
-      return haystack.includes(kw);
-    });
-  }
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; renderLoadMoreBtn('queryLoadMoreWrap'); return; }
-  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
-  if (queryPage>totalPages) queryPage=totalPages;
-  const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
-  list.innerHTML = paged.map(c => renderPubCard(c)).join('');
+  if (!data || !data.success) { list.innerHTML = '<div class="empty-state">查詢失敗，請稍後再試</div>'; return; }
+  gmCases = data.cases;
+  gmCasesTotal = data.total;
+  gmCasesHasMore = data.hasMore;
+  if (!gmCases.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; return; }
+  const totalPages = Math.max(1, Math.ceil(gmCasesTotal/PAGE_SIZE));
+  if (queryPage>totalPages) { queryPage=totalPages; return renderQueryGm(); }
+  list.innerHTML = gmCases.map(c => renderPubCard(c)).join('');
   renderPagination('queryPaginationGm', queryPage, totalPages, p=>{queryPage=p;renderQueryGm();});
-  renderLoadMoreBtn('queryLoadMoreWrap');
-  prefetchPhotosForCases(paged);
+  prefetchPhotosForCases(gmCases);
 }
 
 function renderQuery() {
