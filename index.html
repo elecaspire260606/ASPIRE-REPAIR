@@ -775,6 +775,11 @@ window.onload = () => {
   const d = now.getDate();
   document.getElementById('today-label').textContent = `今天 ${m}/${d}`;
   initTimeFilterBtn();
+  // 檢查本機是否已有未過期的登入token，有的話顯示登出按鈕(純本機檢查，不主動打API驗證，
+  // 真正的權限驗證留給使用者實際進入管理功能、呼叫管理API時由後端驗證)
+  if (getStoredAuthToken()) {
+    document.getElementById('logoutBtn').style.display='flex';
+  }
   // 不在這裡打loadCases()了：報修表單本身不需要任何案件資料，純填表送出
   // 切到查詢/修繕管理/後台統計時，switchPage()才會真正去抓資料
 };
@@ -914,7 +919,7 @@ function showNormPreview() {
 
 // ── 權限 ──
 function requireAuth(id) {
-  if (sessionStorage.getItem('adminToken')) { switchPage(id); }
+  if (getStoredAuthToken()) { switchPage(id); }
   else { pendingPage = id; showLock(); }
 }
 function showLock() {
@@ -927,6 +932,26 @@ function showLock() {
   setTimeout(()=>document.getElementById('pwInput').focus(),100);
 }
 let checkPasswordInFlight = false; // 防止Enter鍵跟按鈕重複觸發，導致多個驗證流程互相干擾、清空彼此的畫面
+
+// ── 登入狀態管理(改用localStorage,關閉分頁/瀏覽器/重開PWA後不用重新輸入密碼) ──
+// 取得目前有效的登入token；不存在或已過期就清掉、回傳空字串
+function getStoredAuthToken() {
+  const token = localStorage.getItem('adminToken');
+  const expiresAt = Number(localStorage.getItem('adminTokenExpiresAt') || 0);
+  if (!token || !expiresAt || Date.now() >= expiresAt) {
+    clearStoredAuth();
+    return '';
+  }
+  return token;
+}
+
+function clearStoredAuth() {
+  localStorage.removeItem('adminToken');
+  localStorage.removeItem('adminTokenExpiresAt');
+  localStorage.removeItem('adminRole');
+  // 舊版本是存在sessionStorage、而且token其實就是原始密碼，不能信任，一併清掉強制走一次新版登入
+  sessionStorage.removeItem('adminToken');
+}
 
 async function checkPassword() {
   if (checkPasswordInFlight) return; // 已經有一個驗證正在跑，忽略這次重複觸發(不管是Enter還是按鈕)
@@ -959,7 +984,9 @@ async function checkPassword() {
     }
     if (btn) { btn.textContent='確認'; btn.disabled=false; }
     if (data.success) {
-      sessionStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminTokenExpiresAt', String(data.expiresAt || (Date.now() + 21600*1000)));
+      localStorage.setItem('adminRole', data.role || 'admin');
       document.getElementById('page-lock').style.display='none';
       document.getElementById('logoutBtn').style.display='flex';
       switchPage(pendingPage||'mgr'); pendingPage=null;
@@ -977,7 +1004,7 @@ async function checkPassword() {
   }
 }
 function logout() {
-  sessionStorage.removeItem('adminToken');
+  clearStoredAuth(); // 清除localStorage的token/到期時間/角色，以及舊版sessionStorage殘留
   document.getElementById('logoutBtn').style.display='none';
   switchPage('form'); showToast('已登出後台');
 }
@@ -1735,7 +1762,7 @@ async function reopenCase(rowIndex) {
 }
 // 實際發送一次請求(不含重試邏輯)
 async function callApiOnce(params, timeoutMs) {
-  const token = sessionStorage.getItem('adminToken');
+  const token = localStorage.getItem('adminToken');
   let response;
   try {
     response = await fetchWithTimeout(API_URL, {
@@ -1755,12 +1782,21 @@ async function callApiOnce(params, timeoutMs) {
     console.error('callApi 回傳空內容');
     throw new Error('系統暫時忙碌，請稍後再試');
   }
+  let data;
   try {
-    return JSON.parse(text);
+    data = JSON.parse(text);
   } catch (e) {
     console.error('callApi JSON解析失敗:', text);
     throw new Error('系統暫時忙碌，請稍後再試');
   }
+  if (data && data.code === 'UNAUTHORIZED') {
+    clearStoredAuth();
+    document.getElementById('logoutBtn').style.display='none';
+    pendingPage = currentPageId;
+    showLock();
+    showToast('登入已過期，請重新登入');
+  }
+  return data;
 }
 
 // 對外用的callApi：失敗時安靜自動重試一次，中間等1.5秒再試
@@ -2170,7 +2206,7 @@ async function importBackup(file) {
     showToast('匯入中，請稍候…');
     const res = await fetchWithTimeout(API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action:'import', cases, token: sessionStorage.getItem('adminToken') })
+      body: JSON.stringify({ action:'import', cases, token: localStorage.getItem('adminToken') })
     }, 90000);
     const data = await res.json();
     if (data.success) {
@@ -2265,7 +2301,7 @@ function renderDashboard() {
   const cases = getFilteredCases();
   dashboardCases = cases;
   const areaF = currentAreaDashFilter;
-  const showCloserChart = sessionStorage.getItem('adminToken') === 'py5678';
+  const showCloserChart = localStorage.getItem('adminRole') === 'super';
 
   // 單一主要迴圈：一次遍歷計算全部統計數字(總數/待處理/已結案/各區域/位置類型/案件類型/結案人/位置病歷)
   // 取代原本對同一份cases分開跑好幾次filter/forEach的寫法
