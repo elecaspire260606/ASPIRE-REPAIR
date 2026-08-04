@@ -1259,9 +1259,15 @@ async function fetchManagerCases(keyword) {
     page: mgrPage,
     pageSize: MGR_PAGE_SIZE
   });
+  const url = API_URL+'?'+params.toString();
+  const attempt = () => fetchWithTimeout(url, {}, 25000).then(r => parseGetResponse_(r));
   mgrCasesInFlightKey = key;
-  mgrCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
-    .then(r => parseGetResponse_(r))
+  mgrCasesInFlight = attempt()
+    .catch(async (e) => {
+      console.warn('fetchManagerCases 第一次失敗，1.5秒後自動重試一次:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+      return attempt();
+    })
     .finally(() => { mgrCasesInFlight = null; });
   return mgrCasesInFlight;
 }
@@ -1939,9 +1945,14 @@ async function fetchCasesByName(name, status, page) {
   const key = name+'_'+status+'_'+page;
   if (queryByNameInFlight && queryByNameInFlightKey === key) return queryByNameInFlight;
   const url = API_URL+'?action=searchCasesByName&name='+encodeURIComponent(name)+'&status='+encodeURIComponent(status)+'&page='+page+'&pageSize='+PAGE_SIZE;
+  const attempt = () => fetchWithTimeout(url, {}, 25000).then(r => parseGetResponse_(r));
   queryByNameInFlightKey = key;
-  queryByNameInFlight = fetchWithTimeout(url, {}, 15000)
-    .then(r => parseGetResponse_(r))
+  queryByNameInFlight = attempt()
+    .catch(async (e) => {
+      console.warn('fetchCasesByName 第一次失敗，1.5秒後自動重試一次:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+      return attempt();
+    })
     .finally(() => { queryByNameInFlight = null; });
   return queryByNameInFlight;
 }
@@ -1989,9 +2000,15 @@ async function fetchGmCases() {
     pageSize: PAGE_SIZE
   });
   if (currentQueryAreaScope) params.set('areaScope', currentQueryAreaScope.join(','));
+  const url = API_URL+'?'+params.toString();
+  const attempt = () => fetchWithTimeout(url, {}, 25000).then(r => parseGetResponse_(r));
   gmCasesInFlightKey = key;
-  gmCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
-    .then(r => parseGetResponse_(r))
+  gmCasesInFlight = attempt()
+    .catch(async (e) => {
+      console.warn('fetchGmCases 第一次失敗，1.5秒後自動重試一次:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+      return attempt();
+    })
     .finally(() => { gmCasesInFlight = null; });
   return gmCasesInFlight;
 }
