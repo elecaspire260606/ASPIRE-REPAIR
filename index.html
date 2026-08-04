@@ -756,6 +756,7 @@ async function parseGetResponse_(response) {
 }
 // 密碼驗證已移至後端
 const PAGE_SIZE = 20;
+const MGR_PAGE_SIZE = 10; // 修繕管理頁預設顯示筆數調降，減少單次要處理/渲染的案件量(查詢頁、GM模式維持20不變)
 
 let allCases = [];
 // 姓名查詢與GM全覽模式各自獨立的資料，不再共用allCases，彼此不會互相覆蓋，
@@ -1256,7 +1257,7 @@ async function fetchManagerCases(keyword) {
     area: currentMgrArea,
     keyword: keyword || '',
     page: mgrPage,
-    pageSize: PAGE_SIZE
+    pageSize: MGR_PAGE_SIZE
   });
   mgrCasesInFlightKey = key;
   mgrCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
@@ -1302,7 +1303,7 @@ function refreshManagerCases() {
 function renderManagerCaseList() {
   const list = document.getElementById('caseList');
   if (!managerCases.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
-  const totalPages = Math.max(1, Math.ceil(managerCasesTotal/PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(managerCasesTotal/MGR_PAGE_SIZE));
   if (mgrPage>totalPages) { mgrPage=totalPages; renderCases(); return; }
 
   list.innerHTML = managerCases.map(c => {
@@ -1341,7 +1342,9 @@ function renderManagerCaseList() {
   }).join('');
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
-  prefetchPhotosForCases(managerCases); // 背景自動把這一頁看得到的案件照片抓回來，不用手動點
+  // 實驗性調整：修繕管理頁改回「展開才載入」，不再背景自動預抓整頁照片(prefetchPhotosForCases)。
+  // 目的是讓每次翻頁/篩選只打一次API(案件清單本身)，不會緊接著再打一次照片請求，減少同時間的請求數量。
+  // 查詢頁、GM模式先維持原本的背景預抓不變，只在這裡做實驗，方便之後比較「照片會不會又常常打不開」。
 }
 
 // 建立完整編輯表單的HTML(區域/類型/結案人/標記/照片/更正選項)，只在卡片第一次展開時呼叫一次
