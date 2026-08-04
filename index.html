@@ -908,9 +908,13 @@ function showLock() {
   document.getElementById('pwErr').textContent='';
   setTimeout(()=>document.getElementById('pwInput').focus(),100);
 }
+let checkPasswordInFlight = false; // 防止Enter鍵跟按鈕重複觸發，導致多個驗證流程互相干擾、清空彼此的畫面
+
 async function checkPassword() {
+  if (checkPasswordInFlight) return; // 已經有一個驗證正在跑，忽略這次重複觸發(不管是Enter還是按鈕)
   const pw = document.getElementById('pwInput').value;
   if (!pw) return;
+  checkPasswordInFlight = true;
   const btn = document.querySelector('#page-lock button');
   if (btn) { btn.textContent='驗證中…'; btn.disabled=true; }
 
@@ -950,6 +954,8 @@ async function checkPassword() {
     if (btn) { btn.textContent='確認'; btn.disabled=false; }
     console.error('checkPassword 失敗:', e);
     document.getElementById('pwErr').textContent='系統暫時無法連線，請稍後再試';
+  } finally {
+    checkPasswordInFlight = false; // 不管成功或失敗，一定要釋放鎖，不然使用者會永遠點不動
   }
 }
 function logout() {
