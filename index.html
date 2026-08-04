@@ -528,7 +528,7 @@
 <!-- ══ 後台統計 ══ -->
 <div id="page-dash" class="page">
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-    <button onclick="downloadBackup()" style="padding:8px 16px;background:#2D7A3E;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">💾 下載備份</button>
+    <button onclick="downloadBackup(this)" style="padding:8px 16px;background:#2D7A3E;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">💾 下載備份</button>
     <button onclick="document.getElementById('backupFileInput').click()" style="padding:8px 16px;background:#8B5CF6;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📥 備份匯入</button>
     <input type="file" id="backupFileInput" accept="application/json" style="display:none;" onchange="importBackup(this.files[0])">
     <button onclick="openExportModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">📊 下載報告</button>
@@ -731,6 +731,27 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
     throw e;
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+// 共用：把fetch回來的Response轉成JSON物件，統一檢查HTTP狀態/空內容/JSON解析失敗，
+// 讓getManagerCases/searchCasesByName/getGmCases這幾個唯讀查詢也有跟callApiOnce一樣完整的錯誤檢查，
+// 不然Apps Script偶爾回傳HTML錯誤頁時，只會看到一個模糊的JSON解析錯誤，不容易判斷到底是哪裡出問題
+async function parseGetResponse_(response) {
+  if (!response.ok) {
+    console.error('查詢API HTTP錯誤:', response.status);
+    throw new Error('系統暫時無法連線，請稍後再試');
+  }
+  const text = await response.text();
+  if (!text) {
+    console.error('查詢API回傳空內容');
+    throw new Error('系統暫時忙碌，請稍後再試');
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('查詢API JSON解析失敗:', text);
+    throw new Error('系統暫時忙碌，請稍後再試');
   }
 }
 // 密碼驗證已移至後端
@@ -1239,7 +1260,7 @@ async function fetchManagerCases(keyword) {
   });
   mgrCasesInFlightKey = key;
   mgrCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
-    .then(r => r.json())
+    .then(r => parseGetResponse_(r))
     .finally(() => { mgrCasesInFlight = null; });
   return mgrCasesInFlight;
 }
@@ -1917,7 +1938,7 @@ async function fetchCasesByName(name, status, page) {
   const url = API_URL+'?action=searchCasesByName&name='+encodeURIComponent(name)+'&status='+encodeURIComponent(status)+'&page='+page+'&pageSize='+PAGE_SIZE;
   queryByNameInFlightKey = key;
   queryByNameInFlight = fetchWithTimeout(url, {}, 15000)
-    .then(r => r.json())
+    .then(r => parseGetResponse_(r))
     .finally(() => { queryByNameInFlight = null; });
   return queryByNameInFlight;
 }
@@ -1967,7 +1988,7 @@ async function fetchGmCases() {
   if (currentQueryAreaScope) params.set('areaScope', currentQueryAreaScope.join(','));
   gmCasesInFlightKey = key;
   gmCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
-    .then(r => r.json())
+    .then(r => parseGetResponse_(r))
     .finally(() => { gmCasesInFlight = null; });
   return gmCasesInFlight;
 }
@@ -2271,25 +2292,36 @@ function getDeviceFingerprint() {
 }
 
 // ── 備份下載／匯入 ──
-function downloadBackup() {
-  if (!allCases || !allCases.length) { showToast('沒有可備份的資料'); return; }
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    count: allCases.length,
-    cases: allCases
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const ts = new Date();
-  const stamp = `${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}`;
-  a.href = url;
-  a.download = `渴望園區報修系統_備份_${stamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('✓ 備份已下載');
+async function downloadBackup(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '準備中…'; }
+  try {
+    // 不再依賴前端手上的allCases(可能是舊資料、也可能只進過管理頁完全沒載入過)，
+    // 使用者實際按下這顆按鈕時才向後端要一次完整、含照片網址的資料
+    const res = await fetchWithTimeout(API_URL+'?action=getFullBackup', {}, 60000);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text) throw new Error('回應內容為空');
+    const data = JSON.parse(text);
+    if (!data.success) throw new Error(data.message || '備份資料取得失敗');
+    if (!data.cases || !data.cases.length) { showToast('沒有可備份的資料'); return; }
+    const payload = { exportedAt: data.exportedAt, count: data.count, cases: data.cases };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date();
+    const stamp = `${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}`;
+    a.href = url;
+    a.download = `渴望園區報修系統_備份_${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ 備份已下載');
+  } catch(e) {
+    console.error('downloadBackup 失敗:', e);
+    showToast('❌ 備份下載失敗，請稍後再試');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 下載備份'; }
 }
 
 async function importBackup(file) {
