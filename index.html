@@ -745,10 +745,17 @@ let queryResultsHasMore = false;
 let gmCases = [];
 let gmCasesTotal = 0;
 let gmCasesHasMore = false;
+// 修繕管理專用資料：後端已經篩選+分頁完成，不再是「近期視窗」，也不跟allCases/查詢/GM共用
+let managerCases = [];
+let managerCasesTotal = 0;
+let managerCasesHasMore = false;
+let lastMgrFetchKey = '';
+let lastMgrFetchTime = 0;
 // 依rowIndex找案件物件：管理頁在allCases、姓名查詢在queryResults、GM全覽在gmCases，
 // 共用函式統一查找，避免loadAndShowPhotos等共用邏輯漏掉查詢/GM來源的案件
 function findCaseByRowIndex_(rowIndex) {
-  return allCases.find(x => x.rowIndex === rowIndex)
+  return managerCases.find(x => x.rowIndex === rowIndex)
+    || allCases.find(x => x.rowIndex === rowIndex)
     || queryResults.find(x => x.rowIndex === rowIndex)
     || gmCases.find(x => x.rowIndex === rowIndex);
 }
@@ -807,7 +814,9 @@ function updateStatsBar() {}
 async function refreshStats() {
   const btn = document.getElementById('statsRefreshBtn');
   btn.classList.add('spinning');
-  await loadCases(true);
+  // 依目前所在頁面強制重抓對應的資料來源：修繕管理用專用API，其餘頁面沿用完整歷史資料
+  if (currentPageId === 'mgr') await refreshManagerCases();
+  else await loadCases(true);
   setTimeout(()=>btn.classList.remove('spinning'), 700);
 }
 
@@ -1045,7 +1054,7 @@ function switchPage(id) {
   currentPageId = id;
   // 查詢頁不再進頁就抓資料：姓名查詢/GM模式改成使用者實際輸入姓名或進入GM模式時，才各自呼叫專用API
   if (id === 'dash') loadCases(false, 'all'); // 統計頁仍需要完整歷史資料才能算得準確
-  else if (id === 'mgr') loadCases(); // 修繕管理預設用近期窗口即可(待處理案件本來就一律完整)
+  else if (id === 'mgr') renderCases(); // 修繕管理改成向後端要目前篩選條件的分頁結果，不再抓一份近期視窗回來自己切
 }
 
 // ── 送出報修 ──
@@ -1214,44 +1223,68 @@ function filterCases(status, btn) {
   renderCases(); // 已結案也用近期窗口就好，不用一開啟就強制抓全部歷史，想看更早的用「載入更早案件」按鈕
 }
 
-function renderCases() {
-  const list = document.getElementById('caseList');
-  let filtered = allCases.filter(c=>c.status===currentFilter);
-  if (currentMgrArea!=='all') filtered=filtered.filter(c=>areaMatchesFilter(effArea(c),currentMgrArea));
-  const mgrSearchKeyword = (document.getElementById('mgrSearchInput')?.value || '').trim().toLowerCase();
-  if (mgrSearchKeyword) {
-    filtered = filtered.filter(c => {
-      const haystack = [
-        c.caseId, c.area, effArea(c), c.location, c.normalizedLocation,
-        c.description, c.name, c.unit, c.locationType, c.caseType, c.repairNote
-      ].filter(Boolean).join(' ').toLowerCase();
-      return haystack.includes(mgrSearchKeyword);
-    });
-  }
-  // 統一明確排序：待處理依報修日期新到舊，已結案依結案日期(沒有就用報修日期)新到舊
-  // 不依賴allCases傳進來時剛好是什麼順序，避免後端排序邏輯調整時前端跟著跑掉
-  const toTs = (raw) => {
-    if (!raw) return 0;
-    const s = String(raw).trim();
-    // ISO 格式 (含 T 或 Z) 直接解析，不做斜線替換
-    if (/T.*Z?$|^\d{4}-\d{2}-\d{2}T/.test(s)) {
-      const d = new Date(s);
-      return isNaN(d) ? 0 : d.getTime();
-    }
-    const d = new Date(s.replace(/-/g,'/'));
-    return isNaN(d) ? 0 : d.getTime();
-  };
-  if (currentFilter==='已結案') {
-    filtered = [...filtered].sort((a,b)=> toTs(b.closeDatetime||b.datetime||b.date) - toTs(a.closeDatetime||a.datetime||a.date));
-  } else {
-    filtered = [...filtered].sort((a,b)=> toTs(b.datetime||b.date) - toTs(a.datetime||a.date));
-  }
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; renderLoadMoreBtn('mgrLoadMoreWrap'); return; }
-  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
-  if (mgrPage>totalPages) mgrPage=totalPages;
-  const paged = filtered.slice((mgrPage-1)*PAGE_SIZE, mgrPage*PAGE_SIZE);
+// 相同篩選條件短時間內重複觸發時共用同一個進行中的請求
+let mgrCasesInFlight = null;
+let mgrCasesInFlightKey = '';
+async function fetchManagerCases(keyword) {
+  const key = [currentFilter, currentMgrArea, keyword, mgrPage].join('|');
+  if (mgrCasesInFlight && mgrCasesInFlightKey === key) return mgrCasesInFlight;
+  const params = new URLSearchParams({
+    action: 'getManagerCases',
+    status: currentFilter,
+    area: currentMgrArea,
+    keyword: keyword || '',
+    page: mgrPage,
+    pageSize: PAGE_SIZE
+  });
+  mgrCasesInFlightKey = key;
+  mgrCasesInFlight = fetchWithTimeout(API_URL+'?'+params.toString(), {}, 15000)
+    .then(r => r.json())
+    .finally(() => { mgrCasesInFlight = null; });
+  return mgrCasesInFlight;
+}
 
-  list.innerHTML = paged.map(c => {
+// 修繕管理清單：狀態/區域/關鍵字/分頁全部交給後端做(getManagerCases)，不再從一份「近期視窗」裡用JS篩選切頁。
+// 8秒內同樣篩選條件不重複打後端(跟原本loadCases()的節流概念一致)，避免快速切換分頁/篩選鈕時連續發request。
+async function renderCases() {
+  const list = document.getElementById('caseList');
+  const keyword = (document.getElementById('mgrSearchInput')?.value || '').trim();
+  const key = [currentFilter, currentMgrArea, keyword, mgrPage].join('|');
+  if (key === lastMgrFetchKey && Date.now() - lastMgrFetchTime < 8000 && managerCases.length) {
+    renderManagerCaseList();
+    return;
+  }
+  list.innerHTML = '<div class="empty-state">載入中…</div>';
+  let data;
+  try {
+    data = await fetchManagerCases(keyword);
+  } catch(e) {
+    console.error('renderCases 失敗:', e);
+    list.innerHTML = '<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
+    return;
+  }
+  if (!data || !data.success) { list.innerHTML = '<div class="empty-state">載入失敗，請稍後再試</div>'; return; }
+  managerCases = data.cases;
+  managerCasesTotal = data.total;
+  managerCasesHasMore = data.hasMore;
+  lastMgrFetchKey = key;
+  lastMgrFetchTime = Date.now();
+  renderManagerCaseList();
+}
+
+// 強制略過節流快取、重新向後端要一次目前篩選條件的資料(寫入動作成功後用這個，取代整份loadCases(true))
+function refreshManagerCases() {
+  lastMgrFetchKey = '';
+  return renderCases();
+}
+
+function renderManagerCaseList() {
+  const list = document.getElementById('caseList');
+  if (!managerCases.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; return; }
+  const totalPages = Math.max(1, Math.ceil(managerCasesTotal/PAGE_SIZE));
+  if (mgrPage>totalPages) { mgrPage=totalPages; renderCases(); return; }
+
+  list.innerHTML = managerCases.map(c => {
     const isFlagged = !!c.flagReason;
     const area = effArea(c);
     const areaClass = area.startsWith('會館') ? 'area-館' : area.startsWith('雅舍') ? 'area-雅' : area.startsWith('研究') ? 'area-研' : area.startsWith('智尊') ? 'area-智' : 'area-其';
@@ -1264,12 +1297,11 @@ function renderCases() {
       (c.closePhotoCount||(c.closePhotos&&c.closePhotos.length)) ? `📷結案${c.closePhotoCount||c.closePhotos.length}` : '',
     ].filter(Boolean).join(' ');
     const shortDate = (c.datetime||c.date||'').split(' ')[0].replace(/^\d{4}\//,'');
-    const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
-
-    const reportBtnHtml = (c.status==='已結案' && !isFlagged) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
 
     const stampHtml = isFlagged ? `<div class="flag-stamp">${c.flagReason||'已標記'}</div>` : '';
 
+    // 收合摘要照常整包渲染(這是使用者最常看到的部分)；完整編輯表單改成空殼，
+    // 第一次點開這張卡片時(toggleCardEdit)才真的去建立內容，案件很多時不會一次把所有表單都塞進DOM
     const collapsedView = `
       <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
         ${stampHtml}
@@ -1282,8 +1314,25 @@ function renderCases() {
         ${c.repairNote?`<div class="case-row-note">✅ ${c.repairNote}</div>`:''}
       </div>`;
 
-    const expandedView = `
-      <div class="case-expanded" id="expanded-${c.rowIndex}" style="display:none">
+    const expandedPlaceholder = `<div class="case-expanded" id="expanded-${c.rowIndex}" style="display:none"></div>`;
+
+    return `<div class="${cls}">${collapsedView}${expandedPlaceholder}</div>`;
+  }).join('');
+
+  renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
+  prefetchPhotosForCases(managerCases); // 背景自動把這一頁看得到的案件照片抓回來，不用手動點
+}
+
+// 建立完整編輯表單的HTML(區域/類型/結案人/標記/照片/更正選項)，只在卡片第一次展開時呼叫一次
+function renderExpandedInner(c) {
+  const isFlagged = !!c.flagReason;
+  const locDisplay = c.normalizedLocation || c.location || '—';
+  const titleHtml = `${c.area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
+  const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>`;
+  const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
+  const reportBtnHtml = (c.status==='已結案' && !isFlagged) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
+
+  return `
         <div class="case-expand-header" onclick="toggleCardEdit(${c.rowIndex})">
           <div>
             <div class="case-id">${c.caseId}</div>
@@ -1387,16 +1436,7 @@ function renderCases() {
             ${['寫錯','重複報修','測試'].map(f=>`<button class="flag-btn${c.flagReason===f?' active-flag':''}" onclick="toggleFlag(${c.rowIndex},'${f}',this)">${f}</button>`).join('')}
           </div>
         </div>
-      </div>
       </div>`;
-
-    return `<div class="${cls}">${collapsedView}${expandedView}</div>`;
-  }).join('');
-
-
-  renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
-  renderLoadMoreBtn('mgrLoadMoreWrap');
-  prefetchPhotosForCases(paged); // 背景自動把這一頁看得到的案件照片抓回來，不用手動點
 }
 
 // 共用：在指定容器顯示「載入更早案件」按鈕(僅在後端回報還有更早的已結案案件時顯示)
@@ -1526,6 +1566,13 @@ async function toggleCardEdit(rowIndex) {
   if (!collapsed || !expanded) return;
   const card = collapsed.closest('.case-card');
   if (expanded.style.display === 'none') {
+    if (!expanded.dataset.built) {
+      // 第一次展開這張卡片，才真的把完整編輯表單建出來；收合再展開直接重用，不會重建
+      const c = findCaseByRowIndex_(rowIndex);
+      if (!c) return;
+      expanded.innerHTML = renderExpandedInner(c);
+      expanded.dataset.built = '1';
+    }
     collapsed.style.display = 'none';
     expanded.style.display = 'block';
     if (card) card.classList.add('expanded-card');
@@ -1539,7 +1586,7 @@ async function toggleCardEdit(rowIndex) {
 
 // 照片改成「點開才載入」：清單本身只給張數，真的展開某張案件卡片時才另外打一次輕量請求拿實際網址
 async function ensureCasePhotosLoaded(rowIndex) {
-  const c = allCases.find(x => x.rowIndex === rowIndex);
+  const c = findCaseByRowIndex_(rowIndex);
   if (!c || c.closePhotos !== undefined) return; // undefined代表還沒抓過；已經抓過就不重複打
   try {
     const res = await fetchWithTimeout(API_URL+'?action=getPhotos&rowIndex='+rowIndex, {}, 15000);
@@ -1573,7 +1620,7 @@ function renderCasePhotoSlotsError(rowIndex) {
 }
 
 function retryLoadCasePhotos(rowIndex) {
-  const c = allCases.find(x => x.rowIndex === rowIndex);
+  const c = findCaseByRowIndex_(rowIndex);
   if (c) { c.reportPhotos = undefined; c.closePhotos = undefined; } // 重設成「未載入」狀態，讓ensureCasePhotosLoaded願意重抓
   const slot0 = document.getElementById(`close-slot-${rowIndex}-0`);
   const slot1 = document.getElementById(`close-slot-${rowIndex}-1`);
@@ -1712,7 +1759,7 @@ async function autoCloseAsFlagged(rowIndex, reason) {
     }, 45000);
     if (data.success) {
       showToast(`✓ 已標記「${label}」並結案`);
-      await loadCases(true);
+      await refreshManagerCases();
     } else {
       showToast('操作失敗：'+(data.message||'未知錯誤'));
     }
@@ -1741,7 +1788,7 @@ async function updateCase(rowIndex) {
   if (btn) { btn.disabled=true; btn.textContent='更新中…'; }
   try {
     const data = await callApi({action:'update', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos});
-    if (data && data.success) { showToast('✓ 已更新案件狀況'); loadCases(true); }
+    if (data && data.success) { showToast('✓ 已更新案件狀況'); refreshManagerCases(); }
     else { showToast('❌ 更新失敗，請重試'); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='更新案件狀況'; }
@@ -1761,7 +1808,7 @@ async function closeCase(rowIndex) {
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
     const data = await callApi({action:'close', rowIndex, repairNote:note, normalizedLocation:norm, flagReason:flag, caseType, correctedLocType, correctedArea, closerName, closePhotos, closeFingerprint: getDeviceFingerprint()}, 45000);
-    if (data && data.success) { showToast('✓ 案件已結案'); loadCases(true); }
+    if (data && data.success) { showToast('✓ 案件已結案'); refreshManagerCases(); }
     else { showToast('❌ 結案失敗，請重試'); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='結案'; }
@@ -1771,7 +1818,7 @@ async function reopenCase(rowIndex) {
   if (btn) { btn.disabled=true; btn.textContent='處理中…'; }
   try {
     const data = await callApi({action:'reopen', rowIndex});
-    if (data && data.success) { showToast('✓ 已取消結案'); loadCases(true); }
+    if (data && data.success) { showToast('✓ 已取消結案'); refreshManagerCases(); }
     else { showToast('❌ 操作失敗，請重試'); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
   if (btn) { btn.disabled=false; btn.textContent='取消結案'; }
@@ -2960,7 +3007,7 @@ async function deleteReportPhoto(rowIndex, idx) {
     const data = await callApi({action:'deletePhoto', rowIndex, photoType:'report', index:idx});
     if (data.success) {
       showToast('✓ 照片已刪除');
-      await loadCases(true);
+      await refreshManagerCases();
     } else {
       showToast('刪除失敗：'+(data.message||'未知錯誤'));
     }
