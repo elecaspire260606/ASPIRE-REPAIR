@@ -1075,7 +1075,7 @@ function switchPage(id) {
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   currentPageId = id;
   // 查詢頁不再進頁就抓資料：姓名查詢/GM模式改成使用者實際輸入姓名或進入GM模式時，才各自呼叫專用API
-  if (id === 'dash') loadCases(false, 'all'); // 統計頁仍需要完整歷史資料才能算得準確
+  if (id === 'dash') { refreshDashboardQuickCounts(); loadCases(false, 'all'); } // 頭部數字先秒開(增量計數器)，圖表用的完整資料在背景載入
   else if (id === 'mgr') renderCases(); // 修繕管理改成向後端要目前篩選條件的分頁結果，不再抓一份近期視窗回來自己切
 }
 
@@ -2447,6 +2447,23 @@ function renderLocPage() {
 function locPagerGo(dir) {
   locPagerPage += dir;
   renderLocPage();
+}
+
+// 進統計頁的第一時間先打輕量API拿頭部數字(後端讀增量計數器，不用掃全表)，讓總數/待處理/已結案/結案率能秒開，
+// 不用等完整案件資料(getAll('all')，含封存表合併)載入完才看到；圖表區塊還是要等完整資料才能畫，維持原本流程。
+async function refreshDashboardQuickCounts() {
+  try {
+    const r = await fetchWithTimeout(API_URL+'?action=getDashboardCounts', {}, 10000);
+    const data = await parseGetResponse_(r);
+    if (!data.success) return;
+    const { total, pending, done } = data.counts;
+    document.getElementById('d-total').textContent = total;
+    document.getElementById('d-pending').textContent = pending;
+    document.getElementById('d-done').textContent = done;
+    document.getElementById('d-rate').textContent = total>0 ? Math.round(done/total*100)+'%' : '—';
+  } catch(e) {
+    console.warn('快速統計數字載入失敗，忽略即可，完整資料載入後renderDashboard()仍會正確覆蓋:', e.message);
+  }
 }
 
 function renderDashboard() {
