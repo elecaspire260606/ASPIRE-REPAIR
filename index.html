@@ -1307,7 +1307,11 @@ function renderManagerCaseList() {
       (c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length)) ? `📷報修${c.reportPhotoCount||c.reportPhotos.length}` : '',
       (c.closePhotoCount||(c.closePhotos&&c.closePhotos.length)) ? `📷結案${c.closePhotoCount||c.closePhotos.length}` : '',
     ].filter(Boolean).join(' ');
-    const shortDate = (c.datetime||c.date||'').split(' ')[0].replace(/^\d{4}\//,'');
+    // 已結案分頁改顯示「結案時間」(含時分)而不是報修日期，不然卡片上看到的日期跟排序依據(結案時間)對不起來，容易誤會排序跑掉
+    const shortDate = currentFilter==='已結案'
+      ? (c.closeDatetime||'').replace(/^\d{4}\//,'').replace(/(\d{1,2}:\d{2}):\d{2}$/,'$1') // 去掉年份跟秒數，「2026/08/06 15:45:32」→「08/06 15:45」；舊資料沒有秒數的話原樣保留，不會誤砍掉分鐘
+      : (c.datetime||c.date||'').split(' ')[0].replace(/^\d{4}\//,'');
+    const dateLabelPrefix = currentFilter==='已結案' ? '✅結案 ' : '';
 
     const stampHtml = isFlagged ? `<div class="flag-stamp">${c.flagReason||'已標記'}</div>` : '';
 
@@ -1320,7 +1324,7 @@ function renderManagerCaseList() {
           <div class="case-row-title">${titleHtml}</div>
           ${badgeHtml}
         </div>
-        <div class="case-row-meta">${shortDate} · ${c.unit} · ${c.name}${photoTag?` · <span class="photo-tag">${photoTag}</span>`:''}</div>
+        <div class="case-row-meta">${dateLabelPrefix}${shortDate} · ${c.unit} · ${c.name}${photoTag?` · <span class="photo-tag">${photoTag}</span>`:''}</div>
         <div class="case-row-desc">${c.description}</div>
         ${c.repairNote?`<div class="case-row-note">✅ ${c.repairNote}</div>`:''}
       </div>`;
