@@ -1161,7 +1161,9 @@ async function loadCases(force, closedLimitOverride) {
     return;
   }
   const mySeq = ++loadCasesRequestSeq; // 這次請求的序號，稍後回來時要跟最新序號比對
-  const attemptLoad = () => fetchWithTimeout(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit, {}, 15000).then(r=>r.json());
+  // 統計頁的「全量模式」要讀完整主表+封存表再合併，比一般清單重很多，給更長的逾時時間，不跟一般清單共用15秒
+  const timeoutMs = (targetClosedLimit === 'all') ? 45000 : 15000;
+  const attemptLoad = () => fetchWithTimeout(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit, {}, timeoutMs).then(r=>r.json());
   try {
     let data;
     try {
@@ -1178,11 +1180,18 @@ async function loadCases(force, closedLimitOverride) {
       lastLoadedDays = targetClosedLimit;
       lastCasesLoadTime = Date.now();
       renderCurrentPage(); // 只渲染目前所在的分頁，不會四個分頁一起重畫
+    } else if (currentPageId === 'dash') {
+      showToast('❌ 統計資料載入失敗，請稍後再試');
     }
   } catch(e) {
     if (mySeq !== loadCasesRequestSeq) return; // 同樣道理：舊的失敗不該蓋掉後來已經成功顯示的畫面
     console.error('loadCases 失敗:', e);
-    document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
+    // 修繕管理頁有清單區塊可以顯示錯誤訊息；統計頁沒有對應區塊，用toast提示，不然逾時失敗會完全沒有畫面回饋，看起來像資料憑空消失
+    if (currentPageId === 'dash') {
+      showToast('❌ 統計資料載入失敗，請點右上角重新整理再試一次');
+    } else {
+      document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
+    }
   }
 }
 
