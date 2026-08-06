@@ -1175,7 +1175,9 @@ async function loadCases(force, closedLimitOverride) {
     }
     if (mySeq !== loadCasesRequestSeq) return; // 已經有更新的請求了，這筆結果太舊，不要蓋掉畫面
     if (data.success) {
-      allCases = data.cases.reverse();
+      // 後端(getAll)已經依報修/結案時間新到舊排好了，這裡不用再反轉；之前的.reverse()是舊版後端排序邏輯還不一樣時期留下的，
+      // 現在反而會把順序弄反，導致「最近案件」和統計圖表點擊明細裡舊案件排在新案件前面
+      allCases = data.cases;
       casesHasMore = !!data.hasMore;
       lastLoadedDays = targetClosedLimit;
       lastCasesLoadTime = Date.now();
