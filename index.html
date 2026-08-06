@@ -121,7 +121,9 @@
   #caseList .case-card { margin-bottom:0; }
   #caseList .case-card.expanded-card { grid-column: 1 / -1; }
   @media (max-width:700px) { #caseList { grid-template-columns:1fr; } }
-  .case-card.is-closed { background:#EFF7F1; } /* 淺綠色，跟頁面底色(#FBF8F4)明顯區隔開，呼應其他地方「已完成」用的綠色系 */
+  /* 已結案不再用背景色蓋掉區域色：區域色應該不管待處理/已結案都要看得到，
+     結案狀態已經有右上角「已結案」標籤和綠色勾勾筆記可以辨識，不需要背景色重複表達，
+     也避免跟.area-*規則搶優先權(同樣是兩個class疊加，寫在後面的會贏，導致區域色被蓋掉) */
   .case-card.is-flagged { background:#f5f5f5; opacity:0.72; }
   .case-card.is-flagged .case-title,
   .case-card.is-flagged .case-desc { text-decoration:line-through; color:#bbb; }
