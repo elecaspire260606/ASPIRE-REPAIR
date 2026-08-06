@@ -965,7 +965,7 @@ function showLock() {
 let checkPasswordInFlight = false; // 防止Enter鍵跟按鈕重複觸發，導致多個驗證流程互相干擾、清空彼此的畫面
 
 // ── 登入狀態管理(改用localStorage,關閉分頁/瀏覽器/重開PWA後不用重新輸入密碼) ──
-// 取得目前有效的登入token；不存在或已過期就清掉、回傳空字串
+// 登入token有效期1個月(後端PropertiesService存的到期時間戳)，過期前都不用重新登入。
 function getStoredAuthToken() {
   const token = localStorage.getItem('adminToken');
   const expiresAt = Number(localStorage.getItem('adminTokenExpiresAt') || 0);
@@ -1016,7 +1016,7 @@ async function checkPassword() {
     if (btn) { btn.textContent='確認'; btn.disabled=false; }
     if (data.success) {
       localStorage.setItem('adminToken', data.token);
-      localStorage.setItem('adminTokenExpiresAt', String(data.expiresAt || (Date.now() + 21600*1000)));
+      localStorage.setItem('adminTokenExpiresAt', String(data.expiresAt || (Date.now() + 30*24*60*60*1000)));
       localStorage.setItem('adminRole', data.role || 'admin');
       document.getElementById('page-lock').style.display='none';
       document.getElementById('logoutBtn').style.display='flex';
