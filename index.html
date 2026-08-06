@@ -337,6 +337,7 @@
 </nav>
 
 <div class="stats-bar">
+  <div id="syncStatus" style="font-size:12px;color:#999;"></div>
   <div class="stats-refresh" id="statsRefreshBtn" onclick="refreshStats()" title="重新整理">↻</div>
 </div>
 
@@ -758,6 +759,55 @@ const PAGE_SIZE = 20;
 const MGR_PAGE_SIZE = 10; // 修繕管理頁預設顯示筆數調降，減少單次要處理/渲染的案件量(查詢頁、GM模式維持20不變)
 
 let allCases = [];
+// 本機案件快取：只是「先給使用者看」的暫存，正式資料一律以Google Sheets/Apps Script為準。
+// 用途是進頁的當下先顯示上次看到的案件，不用整頁空等後端回應，背景再去跟後端同步最新資料。
+// 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
+// 不然修繕管理可能會不小心吃到統計頁抓回來、含封存舊案件的那份資料。
+const CASES_CACHE_KEY = 'aspire_cases_cache_v1';
+const DASHBOARD_CACHE_KEY = 'aspire_dashboard_cache_v1';
+function loadCacheByKey_(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.cases)) return null;
+    return parsed; // { version, savedAt, cases }
+  } catch(e) {
+    // JSON壞掉或localStorage不可用，安靜清掉損壞的快取，不讓頁面報錯
+    try { localStorage.removeItem(key); } catch(e2) {}
+    return null;
+  }
+}
+function saveCacheByKey_(key, cases) {
+  try {
+    // 只存清單畫面實際會用到的輕量欄位，不存照片網址本身、不存密碼/token類資料
+    localStorage.setItem(key, JSON.stringify({ version: 1, savedAt: Date.now(), cases }));
+  } catch(e) {
+    // 容量不足或無痕模式擋掉localStorage時，安靜失敗即可，不影響核心功能(資料仍以Sheets為準)
+  }
+}
+function clearCacheByKey_(key) {
+  try { localStorage.removeItem(key); } catch(e) {}
+}
+function loadCasesCache() { return loadCacheByKey_(CASES_CACHE_KEY); }
+function saveCasesCache(cases) { return saveCacheByKey_(CASES_CACHE_KEY, cases); }
+function clearCasesCache() { return clearCacheByKey_(CASES_CACHE_KEY); }
+function loadDashboardCache() { return loadCacheByKey_(DASHBOARD_CACHE_KEY); }
+function saveDashboardCache(cases) { return saveCacheByKey_(DASHBOARD_CACHE_KEY, cases); }
+function clearDashboardCache() { return clearCacheByKey_(DASHBOARD_CACHE_KEY); }
+
+// 同步狀態小提示，顯示在頂部列左側，不擋住操作、不是大型遮罩
+function renderSyncStatus(text, opts) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = (opts && opts.warn) ? '#C0392B' : '#999';
+  if (opts && opts.autoClear) {
+    clearTimeout(renderSyncStatus._t);
+    renderSyncStatus._t = setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 1800);
+  }
+}
+
 // 修繕管理清單這一頁要顯示的案件，是allCases篩選+排序+切頁後的結果(見renderCases())
 let managerCases = [];
 let managerCasesTotal = 0;
@@ -766,6 +816,7 @@ function findCaseByRowIndex_(rowIndex) {
   return allCases.find(x => x.rowIndex === rowIndex);
 }
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
+const CASES_AUTO_REFRESH_INTERVAL = 3 * 60 * 1000; // 3分鐘內切換修繕管理/姓名查詢/GM模式，不重新呼叫後端
 let casesClosedLimit = 50; // 目前已結案案件的筆數上限(封存機制上線後主表本身就不大，預設值調高，減少「按載入更早案件」的頻率)
 let casesPendingLimit = 50; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長)
 let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
@@ -808,9 +859,20 @@ window.onload = () => {
   if (getStoredAuthToken()) {
     document.getElementById('logoutBtn').style.display='flex';
   }
-  // 不在這裡打loadCases()了：報修表單本身不需要任何案件資料，純填表送出
+  // // 不在這裡打loadCases()了：報修表單本身不需要任何案件資料，純填表送出
   // 切到查詢/修繕管理/後台統計時，switchPage()才會真正去抓資料
 };
+
+// PWA被加到手機桌面、切去別的App幾小時後才回來的情境：
+// 分頁重新變成可見時，如果案件資料已經不新鮮(超過CASES_AUTO_REFRESH_INTERVAL)，背景同步一次，
+// 不整頁重新整理、不跳回登入頁、不清空目前畫面(loadCases本身已經是「有資料就先顯示，同步失敗也不清空」的設計)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!['mgr','query','dash'].includes(currentPageId)) return;
+  if (Date.now() - lastCasesLoadTime < CASES_AUTO_REFRESH_INTERVAL) return; // 資料還新鮮，不用同步
+  if (currentPageId === 'dash') loadCases(false, 'all');
+  else loadCases();
+});
 
 // ── 上方統計列 ──
 // 頂部「今日報修/最後報修」文字已移除(避免報修頁面載入時打不必要的API)，此函式保留但不做事，
@@ -1151,17 +1213,36 @@ let loadCasesRequestSeq = 0; // 請求序號:避免比較舊、比較慢的請�
 async function loadCases(force, closedLimitOverride) {
   const targetClosedLimit = closedLimitOverride || casesClosedLimit;
   const targetPendingLimit = targetClosedLimit === 'all' ? 'all' : casesPendingLimit;
-  // 判斷目前手上的資料夠不夠用：已經是全量的話什麼都夠；不是全量的話，範圍要大於等於本次需要的才算夠
-  const alreadyHaveEnough = lastLoadedDays === 'all' || (lastLoadedDays !== null && targetClosedLimit !== 'all' && lastLoadedDays >= targetClosedLimit);
-  // 節流：8秒內剛讀取過「足夠的資料」就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
+  const isAllMode = targetClosedLimit === 'all';
+
+  // 冷啟動：這個瀏覽器分頁還沒有任何案件資料時，先讀本機快取立即顯示，不用整頁空等後端回應。
+  // 一般清單跟統計頁的全量模式用不同的快取key(見上方CASES_CACHE_KEY/DASHBOARD_CACHE_KEY)，不會互相污染。
+  // 這個快取只是「先給使用者看」，資料仍然一律以後面真正打Apps Script拿回來的結果為準。
+  if (!allCases.length) {
+    const cached = isAllMode ? loadDashboardCache() : loadCasesCache();
+    if (cached && cached.cases.length) {
+      allCases = cached.cases;
+      lastLoadedDays = null; // 明確標記「這是快取資料，不是剛從後端確認過的」，讓下面的節流判斷不會誤判成已經是最新
+      const savedAgo = Math.round((Date.now() - cached.savedAt) / 60000);
+      renderSyncStatus(savedAgo < 1 ? '顯示上次資料，正在同步最新案件…' : `顯示${savedAgo}分鐘前的資料，正在同步最新案件…`);
+      renderCurrentPage();
+    }
+  }
+
+  // 判斷目前手上的資料夠不夠用。刻意分開判斷全量模式跟一般模式，不能讓「手上剛好是全量資料(含封存)」
+  // 被誤判成「一般清單也夠用了」，不然修繕管理/姓名查詢/GM模式可能會不小心沿用到統計頁含封存的資料
+  const alreadyHaveEnough = isAllMode
+    ? lastLoadedDays === 'all'
+    : (lastLoadedDays !== null && lastLoadedDays !== 'all' && lastLoadedDays >= targetClosedLimit);
+  // 節流：3分鐘內剛讀取過「足夠的資料」就不重複打後端，避免頻繁切換分頁時對Google Apps Script連續發出重複請求
   // (Apps Script在短時間內收到大量重複請求容易變慢或逾時，會被誤以為是網路斷線)
-  if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < 8000 && allCases.length) {
+  if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < CASES_AUTO_REFRESH_INTERVAL && allCases.length) {
     renderCurrentPage(); // 資料還新鮮，直接用手上的資料渲染目前分頁，不用重打API，也不會讓切換分頁後畫面空白
     return;
   }
   const mySeq = ++loadCasesRequestSeq; // 這次請求的序號，稍後回來時要跟最新序號比對
   // 統計頁的「全量模式」要讀完整主表+封存表再合併，比一般清單重很多，給更長的逾時時間，不跟一般清單共用15秒
-  const timeoutMs = (targetClosedLimit === 'all') ? 45000 : 15000;
+  const timeoutMs = isAllMode ? 45000 : 15000;
   const attemptLoad = () => fetchWithTimeout(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit, {}, timeoutMs).then(r=>r.json());
   try {
     let data;
@@ -1176,19 +1257,24 @@ async function loadCases(force, closedLimitOverride) {
     if (data.success) {
       // 後端(getAll)已經依報修/結案時間新到舊排好了，這裡不用再反轉；之前的.reverse()是舊版後端排序邏輯還不一樣時期留下的，
       // 現在反而會把順序弄反，導致「最近案件」和統計圖表點擊明細裡舊案件排在新案件前面
+      const changed = JSON.stringify(allCases) !== JSON.stringify(data.cases); // 案件量小，直接整包比對即可，不用另外設計版本號機制
       allCases = data.cases;
       casesHasMore = !!data.hasMore;
       lastLoadedDays = targetClosedLimit;
       lastCasesLoadTime = Date.now();
-      renderCurrentPage(); // 只渲染目前所在的分頁，不會四個分頁一起重畫
+      if (isAllMode) saveDashboardCache(data.cases); else saveCasesCache(data.cases); // 兩份快取分開存，不共用
+      if (changed) renderCurrentPage(); // 只渲染目前所在的分頁，不會四個分頁一起重畫；資料沒變就不用重畫，避免畫面閃一下、捲動位置跳掉
+      renderSyncStatus('✓ 案件已更新', {autoClear:true});
     } else if (currentPageId === 'dash') {
       showToast('❌ 統計資料載入失敗，請稍後再試');
     }
   } catch(e) {
     if (mySeq !== loadCasesRequestSeq) return; // 同樣道理：舊的失敗不該蓋掉後來已經成功顯示的畫面
     console.error('loadCases 失敗:', e);
-    // 修繕管理頁有清單區塊可以顯示錯誤訊息；統計頁沒有對應區塊，用toast提示，不然逾時失敗會完全沒有畫面回饋，看起來像資料憑空消失
-    if (currentPageId === 'dash') {
+    if (allCases.length) {
+      // 手上還有資料(不管是快取來的還是之前讀過的)，同步失敗不清空畫面，只用小提示告知，使用者仍可繼續查看/操作既有資料
+      renderSyncStatus('⚠ 同步失敗，目前顯示上次資料', {warn:true});
+    } else if (currentPageId === 'dash') {
       showToast('❌ 統計資料載入失敗，請點右上角重新整理再試一次');
     } else {
       document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
