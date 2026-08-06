@@ -767,8 +767,8 @@ function findCaseByRowIndex_(rowIndex) {
   return allCases.find(x => x.rowIndex === rowIndex);
 }
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
-let casesClosedLimit = 10; // 目前已結案案件的筆數上限
-let casesPendingLimit = 10; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長，避免案件量大時單次回應過大)
+let casesClosedLimit = 50; // 目前已結案案件的筆數上限(封存機制上線後主表本身就不大，預設值調高，減少「按載入更早案件」的頻率)
+let casesPendingLimit = 50; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長)
 let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
 let lastLoadedDays = null; // 記錄上次實際抓到的資料範圍(數字或'all')，避免用windowed資料誤當成full資料
 let currentFilter = '待處理';
@@ -1267,7 +1267,15 @@ function renderCases() {
   const totalPages = Math.max(1, Math.ceil(managerCasesTotal/MGR_PAGE_SIZE));
   if (mgrPage>totalPages) mgrPage=totalPages;
   managerCases = filtered.slice((mgrPage-1)*MGR_PAGE_SIZE, mgrPage*MGR_PAGE_SIZE);
-  if (!managerCases.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('mgrPagination').innerHTML=''; renderLoadMoreBtn('mgrLoadMoreWrap'); return; }
+  if (!managerCases.length) {
+    // 已結案分頁顯示「沒有案件」時，容易誤會成「這個篩選條件從來沒有案件」，
+    // 但實際上可能只是7天內剛好沒有，更早的已經被封存機制搬走了，加個提示避免誤解
+    const hint = currentFilter==='已結案'
+      ? '查無符合條件的近期已結案案件<br><span style="font-size:12px;color:#bbb;">結案超過7天的案件會自動搬到封存，如需查詢較久以前的紀錄，請至「後台統計」或下載備份查詢</span>'
+      : '目前沒有案件';
+    list.innerHTML=`<div class="empty-state">${hint}</div>`;
+    document.getElementById('mgrPagination').innerHTML=''; renderLoadMoreBtn('mgrLoadMoreWrap'); return;
+  }
   renderManagerCaseList();
   renderLoadMoreBtn('mgrLoadMoreWrap'); // 篩選出來的案件可能超過目前allCases載入的近期視窗，保留「載入更早案件」按鈕擴大範圍
 }
@@ -1944,7 +1952,14 @@ function renderQueryByName(name) {
   const list = document.getElementById('queryList');
   let filtered = allCases.filter(c => c.name && String(c.name).trim() === name);
   if (currentQueryStatusFilter !== 'all') filtered = filtered.filter(c => c.status === currentQueryStatusFilter);
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">查無符合條件的記錄</div>'; document.getElementById('queryPagination').innerHTML=''; return; }
+  if (!filtered.length) {
+    // 待處理案件不會被封存，所以只有查詢範圍包含已結案時，才需要提醒「查不到」可能是因為結案太久被搬去封存了
+    const hint = currentQueryStatusFilter!=='待處理'
+      ? '查無符合條件的記錄<br><span style="font-size:12px;color:#bbb;">結案超過7天的案件會自動搬到封存，如需查詢較久以前的紀錄，請至「後台統計」或下載備份查詢</span>'
+      : '查無符合條件的記錄';
+    list.innerHTML=`<div class="empty-state">${hint}</div>`;
+    document.getElementById('queryPagination').innerHTML=''; return;
+  }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (queryPage>totalPages) queryPage=totalPages;
   const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
@@ -2012,7 +2027,13 @@ function renderQueryGm() {
       return haystack.includes(kw);
     });
   }
-  if (!filtered.length) { list.innerHTML='<div class="empty-state">目前沒有案件</div>'; document.getElementById('queryPaginationGm').innerHTML=''; renderLoadMoreBtn('queryLoadMoreWrap'); return; }
+  if (!filtered.length) {
+    const hint = currentQueryFilter==='已結案'
+      ? '查無符合條件的近期已結案案件<br><span style="font-size:12px;color:#bbb;">結案超過7天的案件會自動搬到封存，如需查詢較久以前的紀錄，請至「後台統計」或下載備份查詢</span>'
+      : '目前沒有案件';
+    list.innerHTML=`<div class="empty-state">${hint}</div>`;
+    document.getElementById('queryPaginationGm').innerHTML=''; renderLoadMoreBtn('queryLoadMoreWrap'); return;
+  }
   const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
   if (queryPage>totalPages) queryPage=totalPages;
   const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
