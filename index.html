@@ -1274,7 +1274,9 @@ async function fetchManagerCases(keyword) {
 
 // 修繕管理清單：狀態/區域/關鍵字/分頁全部交給後端做(getManagerCases)，不再從一份「近期視窗」裡用JS篩選切頁。
 // 8秒內同樣篩選條件不重複打後端(跟原本loadCases()的節流概念一致)，避免快速切換分頁/篩選鈕時連續發request。
+let mgrRenderSeq = 0; // 序號保護：反覆快速切換區域/篩選時，舊的請求後回來也不能蓋掉新的結果或卡住載入畫面
 async function renderCases() {
+  const mySeq = ++mgrRenderSeq;
   const list = document.getElementById('caseList');
   const keyword = (document.getElementById('mgrSearchInput')?.value || '').trim();
   const key = [currentFilter, currentMgrArea, keyword, mgrPage].join('|');
@@ -1287,10 +1289,12 @@ async function renderCases() {
   try {
     data = await fetchManagerCases(keyword);
   } catch(e) {
+    if (mySeq !== mgrRenderSeq) return; // 這期間又有更新的請求發出去了，這次失敗的結果已經過期，不用顯示錯誤蓋掉新畫面
     console.error('renderCases 失敗:', e);
     list.innerHTML = '<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
     return;
   }
+  if (mySeq !== mgrRenderSeq) return; // 這段等待期間使用者又切換了篩選條件，這批結果已經過期，直接丟棄不渲染
   if (!data || !data.success) { list.innerHTML = '<div class="empty-state">載入失敗，請稍後再試</div>'; return; }
   managerCases = data.cases;
   managerCasesTotal = data.total;
