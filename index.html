@@ -60,6 +60,7 @@
   /* ── Location type buttons ── */
   .loc-type-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
   .loc-type-btn { flex: 1; min-width: 70px; padding: 9px 6px; border: 1.5px solid #e8e8e8; border-radius: 10px; background: white; font-size: 13px; cursor: pointer; color: #666; transition: all 0.15s; text-align: center; font-family: inherit; font-weight: 500; }
+  .loc-type-btn.unit-electrical { background:#EAF2FB; border-color:#3B7DD8; color:#2C5AA0; } /* 機電補單標示成藍色，跟其他單位按鈕區隔開，方便快速點選 */
   .loc-type-btn.active { background: #E8761A; color: white; border-color: #E8761A; }
   .loc-type-btn:hover:not(.active) { border-color: #E8761A; color: #E8761A; }
 
@@ -373,6 +374,7 @@
           <button class="loc-type-btn" onclick="setUnit(&#39;餐飲事業&#39;,this)">餐飲事業</button>
           <button class="loc-type-btn" onclick="setUnit(&#39;行政支援&#39;,this)">行政支援</button>
           <button class="loc-type-btn" onclick="setUnit(&#39;園區營繕&#39;,this)">園區營繕</button>
+          <button class="loc-type-btn unit-electrical" onclick="setUnit(&#39;機電補單&#39;,this)">機電補單</button>
           <button class="loc-type-btn" onclick="setUnit(&#39;雅舍櫃台&#39;,this)">雅舍櫃台</button>
           <button class="loc-type-btn" onclick="setUnit(&#39;研究園櫃台&#39;,this)">研究園櫃台</button>
           <button class="loc-type-btn" onclick="setUnit(&#39;智尊櫃台&#39;,this)">智尊櫃台</button>
