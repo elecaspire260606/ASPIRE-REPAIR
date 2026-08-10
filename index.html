@@ -2037,7 +2037,8 @@ function enterGmMode(areaScope) {
     });
   }
   document.getElementById('queryKeywordInput').value = '';
-  renderQueryGm();
+  renderQueryGm(); // 先用手上現有的資料立即顯示，不用空等
+  loadCases(false, 'all'); // GM模式(含營運快捷字)要看得到連封存表都搬走的舊案件，額外抓一次跟統計頁一樣的全量資料，回來後會自動重新渲染
 }
 
 function exitGmMode() {
