@@ -1693,6 +1693,14 @@ async function toggleCardEdit(rowIndex) {
 async function ensureCasePhotosLoaded(rowIndex) {
   const c = findCaseByRowIndex_(rowIndex);
   if (!c || c.closePhotos !== undefined) return; // undefined代表還沒抓過；已經抓過就不重複打
+  // 案件本身沒有照片時(報修+結案張數都是0)，根本不用打API去問——本來的清單資料就已經告訴我們答案了，
+  // 之前這裡沒做這個判斷，導致「完全沒照片的案件」每次點開都會多一次白白等待的網路來回，這才是主要的延遲來源
+  if (!c.reportPhotoCount && !c.closePhotoCount) {
+    c.reportPhotos = [];
+    c.closePhotos = [];
+    renderCasePhotoSlots(c);
+    return;
+  }
   try {
     const res = await fetchWithTimeout(API_URL+'?action=getPhotos&rowIndex='+rowIndex, {}, 15000);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
