@@ -820,7 +820,9 @@ function findCaseByRowIndex_(rowIndex) {
   return allCases.find(x => x.rowIndex === rowIndex);
 }
 let lastCasesLoadTime = 0; // 節流用：避免頻繁切換分頁時對後端連續發出重複請求
-const CASES_AUTO_REFRESH_INTERVAL = 3 * 60 * 1000; // 3分鐘內切換修繕管理/姓名查詢/GM模式，不重新呼叫後端
+const CASES_AUTO_REFRESH_INTERVAL = 30 * 1000; // 30秒內重複進同一種模式不重新呼叫後端；縮短是因為後端快取現在很有效率(同樣查詢會秒回)，
+// 前端節流的主要目的已經不是省後端負擔，而是避免手滑連續點擊/快速切頁造成的無意義重複請求，30秒對這個目的已經足夠，
+// 拖到3分鐘反而會讓「剛新增的案件、後端明明已經準備好了」卻要多等快3分鐘才在修繕管理頁看得到，體感上得不償失
 let casesClosedLimit = 50; // 目前已結案案件的筆數上限(封存機制上線後主表本身就不大，預設值調高，減少「按載入更早案件」的頻率)
 let casesPendingLimit = 50; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長)
 let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
@@ -1246,7 +1248,9 @@ async function loadCases(force, closedLimitOverride) {
   }
   const mySeq = ++loadCasesRequestSeq; // 這次請求的序號，稍後回來時要跟最新序號比對
   // 統計頁的「全量模式」要讀完整主表+封存表再合併，比一般清單重很多，給更長的逾時時間，不跟一般清單共用15秒
-  const timeoutMs = isAllMode ? 45000 : 15000;
+  // 一般清單讀取原本只給15秒，比登入(20-25秒)還短，Apps Script當下如果剛好處理較慢(例如多人同時使用排隊)，
+  // 反而比全量模式(45秒)更容易被提早判定逾時失敗，兩者受congestion影響程度其實差不多，只是忍耐時間給得不公平，拉長到25秒
+  const timeoutMs = isAllMode ? 45000 : 25000;
   const attemptLoad = () => fetchWithTimeout(API_URL+'?action=getAll&closedLimit='+targetClosedLimit+'&pendingLimit='+targetPendingLimit, {}, timeoutMs).then(r=>r.json());
   try {
     let data;
