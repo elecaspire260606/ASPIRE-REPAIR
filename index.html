@@ -567,9 +567,9 @@
     <button class="time-btn" onclick="setAreaDashFilter(&#39;其他&#39;,this)">其他</button>
   </div>
   <div id="customRangeWrap" class="custom-range" style="display:none;">
-    <input type="date" id="dateFrom" onchange="renderDashboard()">
+    <input type="date" id="dateFrom" onchange="loadDashboardSnapshot(true)">
     <span>至</span>
-    <input type="date" id="dateTo" onchange="renderDashboard()">
+    <input type="date" id="dateTo" onchange="loadDashboardSnapshot(true)">
   </div>
   <div class="stats-grid">
     <div class="stat-card tint-navy"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
@@ -768,7 +768,8 @@ let allCases = [];
 // 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
 // 不然修繕管理可能會不小心吃到統計頁抓回來、含封存舊案件的那份資料。
 const CASES_CACHE_KEY = 'aspire_cases_cache_v1';
-const DASHBOARD_CACHE_KEY = 'aspire_dashboard_cache_v1';
+const DASHBOARD_CACHE_KEY = 'aspire_dashboard_cache_v1'; // 給loadCases(false,'all')的完整案件陣列快取(GM模式/Excel匯出會用到)
+const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_snapshot_v1'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
 function loadCacheByKey_(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -796,6 +797,23 @@ function clearCacheByKey_(key) {
 function loadCasesCache() { return loadCacheByKey_(CASES_CACHE_KEY); }
 function saveCasesCache(cases) { return saveCacheByKey_(CASES_CACHE_KEY, cases); }
 function clearCasesCache() { return clearCacheByKey_(CASES_CACHE_KEY); }
+
+// 統計頁快照快取(形狀跟一般案件快取不一樣，存的是算好的統計數字，不是案件陣列，所以另外寫一對函式、也用獨立的key)
+function loadSnapshotCache() {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_SNAPSHOT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.snapshot) return null;
+    return parsed;
+  } catch(e) {
+    try { localStorage.removeItem(DASHBOARD_SNAPSHOT_CACHE_KEY); } catch(e2) {}
+    return null;
+  }
+}
+function saveSnapshotCache(snapshot) {
+  try { localStorage.setItem(DASHBOARD_SNAPSHOT_CACHE_KEY, JSON.stringify({ version:1, savedAt: Date.now(), snapshot })); } catch(e) {}
+}
 function loadDashboardCache() { return loadCacheByKey_(DASHBOARD_CACHE_KEY); }
 function saveDashboardCache(cases) { return saveCacheByKey_(DASHBOARD_CACHE_KEY, cases); }
 function clearDashboardCache() { return clearCacheByKey_(DASHBOARD_CACHE_KEY); }
@@ -875,9 +893,9 @@ window.onload = () => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   if (!['mgr','query','dash'].includes(currentPageId)) return;
+  if (currentPageId === 'dash') { loadDashboardSnapshot(); return; } // 統計頁走自己的快照流程，不用lastCasesLoadTime判斷
   if (Date.now() - lastCasesLoadTime < CASES_AUTO_REFRESH_INTERVAL) return; // 資料還新鮮，不用同步
-  if (currentPageId === 'dash') loadCases(false, 'all');
-  else loadCases();
+  loadCases();
 });
 
 // ── 上方統計列 ──
@@ -1126,7 +1144,7 @@ function switchPage(id) {
   const idx = ['form','query','mgr','dash'].indexOf(id);
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   currentPageId = id;
-  if (id === 'dash') { refreshDashboardQuickCounts(); loadCases(false, 'all'); } // 頭部數字先秒開(增量計數器)，圖表用的完整資料在背景載入
+  if (id === 'dash') { refreshDashboardQuickCounts(); loadDashboardSnapshot(); } // 頭部數字先秒開(增量計數器)，圖表用的統計快照(getDashboardSnapshot)在背景載入
   else if (id === 'mgr' || id === 'query') loadCases(); // 主表本身已經因為封存機制維持精簡，直接整包讀進來，篩選/搜尋都在瀏覽器裡做
 }
 
@@ -2219,7 +2237,7 @@ function setAreaDashFilter(area, btn) {
   currentAreaDashFilter = area;
   document.querySelectorAll('.dash-area-row .time-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  renderDashboard();
+  loadDashboardSnapshot(true); // 篩選條件變了，向後端要新的統計結果，不再是前端重新篩選同一份完整資料
 }
 
 function setTimeFilter(type, btn) {
@@ -2227,7 +2245,7 @@ function setTimeFilter(type, btn) {
   document.querySelectorAll('#month-filter-row .time-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('customRangeWrap').style.display = type==='custom'?'flex':'none';
-  renderDashboard();
+  loadDashboardSnapshot(true);
 }
 
 function initTimeFilterBtn() {
@@ -2248,7 +2266,7 @@ function initTimeFilterBtn() {
 
 function onYearChange() {
   currentYear = parseInt(document.getElementById('yearSelector').value);
-  renderDashboard();
+  loadDashboardSnapshot(true);
 }
 
 function formatDatetime(raw) {
@@ -2286,30 +2304,7 @@ function parseDate(raw) {
   return isNaN(d) ? null : d;
 }
 
-function getFilteredCases() {
-  const now = new Date();
-  let valid = allCases.filter(c=>!c.flagReason);
-  if (currentAreaDashFilter!=='all') valid = valid.filter(c=>areaMatchesFilter(effArea(c),currentAreaDashFilter));
-  if (currentTimeFilter==='all') return valid;
-  return valid.filter(c=>{
-    const raw = c.datetime||c.date||'';
-    const d = parseDate(raw);
-    if (!d) return true;
-    const mMatch = currentTimeFilter.match(/^m(\d+)$/);
-    if (mMatch) {
-      const m = parseInt(mMatch[1]);
-      return d.getFullYear()===currentYear && d.getMonth()+1===m;
-    }
-    if (currentTimeFilter==='custom') {
-      const from=document.getElementById('dateFrom').value;
-      const to=document.getElementById('dateTo').value;
-      if (from&&d<new Date(from)) return false;
-      if (to&&d>new Date(to+'T23:59:59')) return false;
-      return true;
-    }
-    return true;
-  });
-}
+// getFilteredCases()已經不再使用(統計頁改用後端算好的getDashboardSnapshot)，移除避免誤用
 
 // ── 圓餅圖 ──
 function renderPieChart(containerId, counts, colors, total, clickHandler) {
@@ -2430,27 +2425,70 @@ async function importBackup(file) {
 }
 
 // ── 後台統計 ──
-let dashboardCases = [];
+let dashboardSnapshot = null; // 後端算好的統計數字(getDashboardSnapshot)，不再是完整案件陣列
+let dashboardSnapshotSeq = 0; // 序號保護：反覆快速切換篩選條件時，舊的回應不能蓋掉新的結果
 const LOC_PAGE_SIZE = 15;
 let locPagerEntries = [];
 let locPagerPage = 0;
 let locPagerMultiArea = false;
 let locPagerMaxL = 1;
 
+// 目前統計頁篩選條件組成的查詢參數，跟後端getDashboardSnapshot/getDashboardDetails的參數格式一致
+function dashboardQueryParams() {
+  return {
+    year: currentYear,
+    month: currentTimeFilter, // 'all' | 'm<N>' | 'custom'
+    dateFrom: currentTimeFilter==='custom' ? (document.getElementById('dateFrom')?.value||'') : '',
+    dateTo: currentTimeFilter==='custom' ? (document.getElementById('dateTo')?.value||'') : '',
+    area: currentAreaDashFilter
+  };
+}
+
+// 統計頁資料載入：先讀本機快取立即顯示上次的統計結果，背景向後端要最新的(getDashboardSnapshot)。
+// 全部時間+全部區域(最常見的預設檢視)後端會走快速路徑(主表即時算+封存表預先算好的快照)，其餘情況即時掃描。
+async function loadDashboardSnapshot(force) {
+  const mySeq = ++dashboardSnapshotSeq;
+  const params = dashboardQueryParams();
+
+  if (!dashboardSnapshot) {
+    const cached = loadSnapshotCache();
+    if (cached) {
+      dashboardSnapshot = cached.snapshot;
+      const savedAgo = Math.round((Date.now() - cached.savedAt) / 60000);
+      renderSyncStatus(savedAgo < 1 ? '顯示上次統計資料，正在同步最新結果…' : `顯示${savedAgo}分鐘前的統計資料，正在同步最新結果…`);
+      renderDashboard();
+    }
+  }
+
+  try {
+    const qs = new URLSearchParams({
+      action: 'getDashboardSnapshot', year: params.year, month: params.month,
+      dateFrom: params.dateFrom, dateTo: params.dateTo, area: params.area
+    });
+    const res = await fetchWithTimeout(API_URL+'?'+qs.toString(), {}, 45000);
+    const data = await parseGetResponse_(res);
+    if (mySeq !== dashboardSnapshotSeq) return; // 篩選條件又變了，這筆結果已經過期
+    if (!data.success) throw new Error(data.message || '統計資料載入失敗');
+    dashboardSnapshot = data.snapshot;
+    saveSnapshotCache(data.snapshot);
+    renderDashboard();
+    renderSyncStatus('✓ 統計資料已更新', {autoClear:true});
+  } catch(e) {
+    if (mySeq !== dashboardSnapshotSeq) return;
+    console.error('loadDashboardSnapshot 失敗:', e);
+    if (dashboardSnapshot) {
+      renderSyncStatus('⚠ 同步失敗，目前顯示上次統計資料', {warn:true});
+    } else {
+      showToast('❌ 統計資料載入失敗，請點右上角重新整理再試一次');
+    }
+  }
+}
+
 function renderLocEntries(entries, idOffset, multiArea, maxL) {
   return entries.map((e,i)=>{
     const entryId='loc-detail-'+(i+idOffset);
-    const caseRows=e.cases.map((c,ci)=>`
-      <div class="drill-row-clickable" onclick="openCasePanel(locEntryCasesFlat['${entryId}'][${ci}])" style="padding:8px 10px;border-bottom:1px solid #f5f0eb;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-          <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
-          <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
-        </div>
-        <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
-        ${c.repairNote?`<div style="font-size:12px;color:#888;font-style:italic;">📋 ${c.status==='已結案'?'結案紀錄':'處理進度'}：${c.repairNote}</div>`:`<div style="font-size:12px;color:#ccc;font-style:italic;">${c.status==='待處理'?'處理進度：（尚未填寫）':''}</div>`}
-      </div>`).join('');
-    if (!window.locEntryCasesFlat) window.locEntryCasesFlat = {};
-    window.locEntryCasesFlat[entryId] = e.cases;
+    if (!window.locEntryMeta) window.locEntryMeta = {};
+    window.locEntryMeta[entryId] = { area: e.area, loc: e.loc }; // 展開時才用這個去後端查實際案件清單，不預先帶完整案件資料
     return `
     <div class="loc-entry">
       <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
@@ -2464,9 +2502,7 @@ function renderLocEntries(entries, idOffset, multiArea, maxL) {
         <div style="flex:1;background:#f2ede8;border-radius:5px;height:10px;overflow:hidden;"><div style="height:100%;border-radius:5px;background:${AREA_COLORS[e.area]||'#aaa'};width:${Math.round(e.total/maxL*100)}%;"></div></div>
         <span style="font-size:12px;font-weight:600;color:#444;min-width:30px;text-align:right;">${e.total} 次</span>
       </div>
-      <div id="${entryId}" style="display:none;margin-top:10px;background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">
-        ${caseRows}
-      </div>
+      <div id="${entryId}" style="display:none;margin-top:10px;background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;"></div>
     </div>`;
   }).join('');
 }
@@ -2522,71 +2558,29 @@ async function refreshDashboardQuickCounts() {
 }
 
 function renderDashboard() {
-  const cases = getFilteredCases();
-  dashboardCases = cases;
-  const areaF = currentAreaDashFilter;
+  const snap = dashboardSnapshot;
+  if (!snap) return; // 還沒有任何資料可以畫，loadDashboardSnapshot()拿到資料後會再呼叫這裡
   const showCloserChart = localStorage.getItem('adminRole') === 'super';
 
-  // 單一主要迴圈：一次遍歷計算全部統計數字(總數/待處理/已結案/各區域/位置類型/案件類型/結案人/位置病歷)
-  // 取代原本對同一份cases分開跑好幾次filter/forEach的寫法
-  let total = 0, pending = 0, done = 0, closedTotal = 0, closedWithCloserTotal = 0;
-  const areaCounts = {};
-  const locTypeCounts = {};
-  const typeCounts = {};   // 只計已結案
-  const closerCounts = {}; // 只計已結案且有結案人(僅密碼py5678需要，其他情況不浪費時間累計)
-  const locMap = {};       // 位置病歷統計，依目前區域篩選(areaF)決定要不要納入
+  document.getElementById('d-total').textContent = snap.total;
+  document.getElementById('d-pending').textContent = snap.pending;
+  document.getElementById('d-done').textContent = snap.done;
+  document.getElementById('d-rate').textContent = snap.total>0 ? Math.round(snap.done/snap.total*100)+'%' : '—';
 
-  cases.forEach(c => {
-    total++;
-    const isDone = c.status === '已結案';
-    if (isDone) done++; else pending++;
+  renderPieChart('areaChart', snap.areaCounts, AREA_COLORS, snap.total, 'drillByArea');
 
-    const area = effArea(c);
-    areaCounts[area] = (areaCounts[area]||0) + 1;
-
-    const lt = c.correctedLocType || c.locationType || '';
-    if (lt) locTypeCounts[lt] = (locTypeCounts[lt]||0) + 1;
-
-    if (isDone) {
-      closedTotal++;
-      const ct = normalizeCaseType(c.caseType);
-      if (ct) typeCounts[ct] = (typeCounts[ct]||0) + 1;
-      if (showCloserChart && c.closerName) {
-        closedWithCloserTotal++;
-        closerCounts[c.closerName] = (closerCounts[c.closerName]||0) + 1;
-      }
-    }
-
-    // 位置病歷統計：只算目前區域篩選範圍內的案件(對應原本locCases那個子集合)
-    if (areaF === 'all' || areaMatchesFilter(area, areaF)) {
-      const loc = c.normalizedLocation || normalizeLocation(c.location) || '（未填位置）';
-      const key = area + '|' + loc;
-      if (!locMap[key]) locMap[key] = { area, loc, total:0, pending:0, done:0, cases:[] };
-      locMap[key].total++;
-      if (isDone) locMap[key].done++; else locMap[key].pending++;
-      locMap[key].cases.push(c);
-    }
-  });
-
-  document.getElementById('d-total').textContent=total;
-  document.getElementById('d-pending').textContent=pending;
-  document.getElementById('d-done').textContent=done;
-  document.getElementById('d-rate').textContent=total>0?Math.round(done/total*100)+'%':'—';
-
-  renderPieChart('areaChart', areaCounts, AREA_COLORS, total, 'drillByArea');
-
-  const locEntries=Object.values(locMap).sort((a,b)=>b.total-a.total);
+  const locEntries = (snap.locEntries||[]).slice().sort((a,b)=>b.total-a.total);
   locPagerMultiArea = new Set(locEntries.map(e=>e.area)).size > 1;
-  locPagerMaxL=Math.max(...locEntries.map(e=>e.total),1);
+  locPagerMaxL = Math.max(...locEntries.map(e=>e.total),1);
   locPagerEntries = locEntries;
   locPagerPage = 0;
   renderLocPage();
 
   const locTypeColors = {'客房':'#E8761A','辦公室':'#E8761A','餐廳':'#3B82F6','設施':'#8B5CF6','公共區域／其他':'#aaa'};
-  renderPieChart('locTypeChart', locTypeCounts, locTypeColors, total, 'drillByLocType');
+  renderPieChart('locTypeChart', snap.locTypeCounts, locTypeColors, snap.total, 'drillByLocType');
 
   const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物':'#10B981','木工':'#A0522D','鐵工':'#6B7280','照明':'#F97316','衛浴':'#14B8A6','庶務':'#A78BFA','其他':'#aaa'};
-  renderPieChart('caseTypeChart', typeCounts, typeColors, closedTotal, 'drillByCaseType');
+  renderPieChart('caseTypeChart', snap.typeCounts, typeColors, snap.closedTotal, 'drillByCaseType');
 
   // 結案人比例圖（限定密碼 py5678 才顯示）
   const closerChartWrap = document.getElementById('closerChartWrap');
@@ -2594,13 +2588,13 @@ function renderDashboard() {
     closerChartWrap.style.display = '';
     const closerColors = {};
     const palette = ['#E8761A','#1a3a5c','#2D7A3E','#8B5CF6','#EC4899','#06B6D4','#F59E0B','#14B8A6'];
-    Object.keys(closerCounts).forEach((name,i)=>{ closerColors[name]=palette[i%palette.length]; });
-    renderPieChart('closerChart', closerCounts, closerColors, closedWithCloserTotal, 'drillByCloser');
+    Object.keys(snap.closerCounts).forEach((name,i)=>{ closerColors[name]=palette[i%palette.length]; });
+    renderPieChart('closerChart', snap.closerCounts, closerColors, snap.closedWithCloserTotal, 'drillByCloser');
   } else {
     closerChartWrap.style.display = 'none';
   }
 
-  document.getElementById('recentList').innerHTML=cases.slice(0,8).map(c=>`
+  document.getElementById('recentList').innerHTML=(snap.recentCases||[]).map(c=>`
     <div class="recent-item">
       <div>
         <div style="font-weight:600;color:#1a1a1a;">${effArea(c)} · ${c.normalizedLocation||normalizeLocation(c.location)||'—'}</div>
@@ -2610,10 +2604,14 @@ function renderDashboard() {
     </div>`).join('')||'<div class="empty-state">暫無資料</div>';
 }
 
-// ── 鑽取詳情 modal ──
-function renderDrillCaseRows(cases) {
+// 共用：把案件陣列畫成可點擊的明細列表(鑽取彈窗、位置病歷展開都共用這個)。
+// sourceKey是暫存這批案件的全域查找鍵，onclick用索引回頭找到完整案件物件開詳情面板，不用把整包資料塞進onclick屬性裡
+window.caseListSources = window.caseListSources || {};
+function renderCaseRows(cases, sourceKey) {
+  window.caseListSources[sourceKey] = cases;
+  if (!cases.length) return '<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
   return cases.map((c,i)=>`
-    <div class="drill-row-clickable" onclick="openCasePanel(drillModalCases[${i}])" style="padding:10px 10px;border-bottom:1px solid #f5f0eb;">
+    <div class="drill-row-clickable" onclick="openCasePanel(window.caseListSources['${sourceKey}'][${i}])" style="padding:10px 10px;border-bottom:1px solid #f5f0eb;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
         <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
         <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
@@ -2718,7 +2716,7 @@ function renderDrillBody(showAll) {
   const cases = drillModalCases;
   if (!cases.length) return '<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
   const shown = showAll ? cases : cases.slice(0, DRILL_LIMIT);
-  let html = `<div style="background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">${renderDrillCaseRows(shown)}</div>`;
+  let html = `<div style="background:#faf8f5;border-radius:8px;overflow:hidden;border:1px solid #f0ebe4;">${renderCaseRows(shown, 'drillModal')}</div>`;
   if (!showAll && cases.length > DRILL_LIMIT) {
     html += `<div style="text-align:center;margin-top:10px;">
       <button onclick="document.getElementById('drillBody').innerHTML=renderDrillBody(true)" style="padding:8px 16px;background:#f0f0f0;color:#666;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">顯示全部 ${cases.length} 件</button>
@@ -2734,36 +2732,68 @@ function openDrillModal(title, cases) {
   document.getElementById('drillModal').style.display = 'flex';
 }
 
+function openDrillModalLoading(title) {
+  document.getElementById('drillTitle').textContent = `${title}（載入中…）`;
+  drillModalCases = [];
+  document.getElementById('drillBody').innerHTML = '<div class="empty-state" style="padding:20px 0;">載入中…</div>';
+  document.getElementById('drillModal').style.display = 'flex';
+}
+
 function closeDrillModal() {
   document.getElementById('drillModal').style.display = 'none';
 }
 
-function drillByArea(label) {
-  const matched = dashboardCases.filter(c=>effArea(c)===label);
-  openDrillModal(`📍 ${label}`, matched);
+// 統計圖表點擊鑽取明細：只有使用者真的點了切片才向後端要符合條件的完整案件清單(getDashboardDetails)，
+// 不是一進統計頁就把全部案件都載進來，跟位置病歷展開用同一套「先顯示載入中，回來再補上」的模式
+async function drillByFilter(filterType, label, title) {
+  openDrillModalLoading(title);
+  try {
+    const p = dashboardQueryParams();
+    const qs = new URLSearchParams({ action:'getDashboardDetails', filterType, filterValue: label, year:p.year, month:p.month, dateFrom:p.dateFrom, dateTo:p.dateTo, area:p.area });
+    const res = await fetchWithTimeout(API_URL+'?'+qs.toString(), {}, 25000);
+    const data = await parseGetResponse_(res);
+    if (!data.success) throw new Error(data.message||'載入失敗');
+    openDrillModal(title, data.cases);
+  } catch(e) {
+    console.error('drillByFilter 失敗:', e);
+    document.getElementById('drillTitle').textContent = `${title}（載入失敗）`;
+    document.getElementById('drillBody').innerHTML = '<div class="empty-state" style="padding:20px 0;">載入失敗，請關閉重試</div>';
+  }
 }
 
-function drillByLocType(label) {
-  const matched = dashboardCases.filter(c=>(c.correctedLocType||c.locationType||'')===label);
-  openDrillModal(`🏷️ ${label}`, matched);
-}
+function drillByArea(label) { drillByFilter('area', label, `📍 ${label}`); }
+function drillByLocType(label) { drillByFilter('locType', label, `🏷️ ${label}`); }
+function drillByCaseType(label) { drillByFilter('caseType', label, `🔧 ${label}`); }
+function drillByCloser(label) { drillByFilter('closer', label, `👤 ${label}`); }
 
-function drillByCaseType(label) {
-  const matched = dashboardCases.filter(c=>c.status==='已結案' && normalizeCaseType(c.caseType)===label);
-  openDrillModal(`🔧 ${label}`, matched);
-}
-
-function drillByCloser(label) {
-  const matched = dashboardCases.filter(c=>c.closerName===label);
-  openDrillModal(`👤 ${label}`, matched);
-}
-
-function toggleLocDetail(id) {
+// 位置病歷表展開：第一次展開才向後端要這個地點的完整案件清單，收合再展開不會重抓
+async function toggleLocDetail(id) {
   const el = document.getElementById(id);
   const arrow = document.getElementById('arrow-'+id);
   const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : 'block';
-  arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+  if (isOpen) {
+    el.style.display = 'none';
+    arrow.style.transform = '';
+    return;
+  }
+  el.style.display = 'block';
+  arrow.style.transform = 'rotate(180deg)';
+  if (el.dataset.loaded) return; // 已經抓過這個地點的案件清單了，不重抓
+  el.innerHTML = '<div class="empty-state" style="padding:12px 0;font-size:12px;">載入中…</div>';
+  const meta = window.locEntryMeta && window.locEntryMeta[id];
+  if (!meta) return;
+  try {
+    const p = dashboardQueryParams();
+    const qs = new URLSearchParams({ action:'getDashboardDetails', filterType:'location', filterValue: meta.area+'|'+meta.loc, year:p.year, month:p.month, dateFrom:p.dateFrom, dateTo:p.dateTo, area:p.area });
+    const res = await fetchWithTimeout(API_URL+'?'+qs.toString(), {}, 25000);
+    const data = await parseGetResponse_(res);
+    if (!data.success) throw new Error(data.message||'載入失敗');
+    el.innerHTML = renderCaseRows(data.cases, id);
+    el.dataset.loaded = '1';
+  } catch(e) {
+    console.error('toggleLocDetail 載入失敗:', e);
+    el.innerHTML = '<div class="empty-state" style="padding:12px 0;font-size:12px;">載入失敗，收合後重新展開再試一次</div>';
+  }
 }
 
 // ── 匯出報告 ──
@@ -2972,6 +3002,13 @@ function parseExportDate(raw) {
 async function exportExcel() {
   const btn = document.getElementById('exportBtn');
   btn.textContent = '產生中…'; btn.disabled = true;
+
+  // 確保allCases含完整歷史(含封存)資料再匯出，不然「近三個月」「全部」這種範圍可能悄悄漏掉封存的舊案件。
+  // 統計頁現在改用獨立的統計快照(getDashboardSnapshot)，不再自動把完整資料塞進allCases，這裡要自己確保一次。
+  if (lastLoadedDays !== 'all') {
+    btn.textContent = '載入歷史案件中…';
+    await loadCases(false, 'all');
+  }
 
   const cases = getExportCases();
   const includeDetail = document.getElementById('exportIncludeDetail').checked;
