@@ -699,9 +699,17 @@
     background:linear-gradient(90deg,transparent,rgba(232,118,26,.26),transparent); pointer-events:none;
   }
   #caseList .case-card { transition:box-shadow .18s ease,transform .16s var(--v35-ease),border-color .18s ease; }
-  #caseList .case-card.case-enter,#queryList .case-card.case-enter,#queryListGm .case-card.case-enter {
-    animation:v397CaseEnter .3s var(--v35-ease) both;
-    animation-delay:var(--case-enter-delay,0ms);
+  /* V3.9.9：清單不再整批依序淡入；只有真正新增／變更的卡片播放一次1秒提示。 */
+  #caseList .case-card.case-new-sweep,#queryList .case-card.case-new-sweep,#queryListGm .case-card.case-new-sweep,
+  #caseList .case-card.case-updated-glow,#queryList .case-card.case-updated-glow,#queryListGm .case-card.case-updated-glow { overflow:hidden; }
+  #caseList .case-card.case-new-sweep::after,#queryList .case-card.case-new-sweep::after,#queryListGm .case-card.case-new-sweep::after {
+    content:''; position:absolute; inset:0; z-index:4; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(108deg,transparent 0 36%,rgba(255,151,55,.08) 43%,rgba(255,151,55,.30) 50%,rgba(255,151,55,.08) 57%,transparent 64% 100%);
+    transform:translateX(-120%); animation:v399NewCaseSweep 1s var(--v35-ease) both;
+  }
+  #caseList .case-card.case-updated-glow::before,#queryList .case-card.case-updated-glow::before,#queryListGm .case-card.case-updated-glow::before {
+    content:''; position:absolute; inset:1px; z-index:4; pointer-events:none; border:2px solid rgba(68,145,202,.82); border-radius:inherit;
+    opacity:0; animation:v399UpdatedOutline 1s ease-out both;
   }
   .case-collapsed { transition:background .15s ease,transform .12s ease; }
   .case-collapsed:active { transform:scale(.995); }
@@ -789,7 +797,8 @@
   }
 
   @keyframes v35PageIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
-  @keyframes v397CaseEnter { from{opacity:0;transform:translateY(9px) scale(.993)} to{opacity:1;transform:none} }
+  @keyframes v399NewCaseSweep { from{transform:translateX(-120%)} to{transform:translateX(120%)} }
+  @keyframes v399UpdatedOutline { 0%{opacity:0} 18%,48%{opacity:1} 100%{opacity:0} }
   @keyframes v35ExpandIn { from{opacity:0;transform:translateY(-5px) scale(.995)} to{opacity:1;transform:none} }
   @keyframes v35CollapseIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:none} }
   @keyframes v35TrayIn { from{opacity:0;transform:translateY(10px) scale(.98)} to{opacity:1;transform:none} }
@@ -1964,6 +1973,30 @@ const MGR_PAGE_SIZE = 10; // 修繕管理頁預設顯示筆數調降，減少單
 
 let allCases = [];
 let lastCasesServerVersion = null; // 後端極簡案件版本；相同時只回 changed:false，不傳案件陣列
+const caseVisualEffects_ = new Map(); // 僅保存本次資料異動；畫面渲染後立即清空，換頁/搜尋不重播
+function caseVisualKey_(c) { return String(c?.caseId || c?.rowIndex || ''); }
+function caseVisualSignature_(c) {
+  const text=v=>v===null||v===undefined?'':String(v);
+  return JSON.stringify([
+    text(c?.status),text(c?.area),text(c?.normalizedLocation),text(c?.location),text(c?.locationType),text(c?.description),text(c?.unit),text(c?.name),
+    text(c?.repairNote),text(c?.caseType),text(c?.closer),text(c?.closeDatetime),text(c?.flagReason),c?.todayPriority?1:0,text(c?.priorityReason),
+    Number(c?.reportPhotoCount||(c?.reportPhotos?.length)||0),Number(c?.closePhotoCount||(c?.closePhotos?.length)||0),text(c?.closeSyncState)
+  ]);
+}
+function queueCaseVisualChanges_(nextCases) {
+  caseVisualEffects_.clear();
+  if(!allCases.length||!Array.isArray(nextCases))return; // 首次載入不把全部舊案件誤判成新案件
+  const previous=new Map(allCases.map(c=>[caseVisualKey_(c),caseVisualSignature_(c)]));
+  nextCases.forEach(c=>{
+    const key=caseVisualKey_(c); if(!key)return;
+    if(!previous.has(key))caseVisualEffects_.set(key,'new');
+    else if(previous.get(key)!==caseVisualSignature_(c))caseVisualEffects_.set(key,'updated');
+  });
+}
+function caseVisualClass_(c) {
+  const effect=caseVisualEffects_.get(caseVisualKey_(c));
+  return effect==='new'?' case-new-sweep':effect==='updated'?' case-updated-glow':'';
+}
 // 本機案件快取：只是「先給使用者看」的暫存，正式資料一律以Google Sheets/Apps Script為準。
 // 用途是進頁的當下先顯示上次看到的案件，不用整頁空等後端回應，背景再去跟後端同步最新資料。
 // 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
@@ -2463,6 +2496,7 @@ function renderCurrentPage() {
   else if (currentPageId === 'query') renderQuery();
   else if (currentPageId === 'dash') renderDashboard();
   updateStatsBar(); // 目前是空函式(頂部統計文字已移除)，保留呼叫點以便未來需要時擴充
+  caseVisualEffects_.clear(); // 特效只屬於這次資料異動，不因搜尋、篩選或換頁再次播放
 }
 
 function switchPage(id) {
@@ -2706,8 +2740,10 @@ async function _loadCasesImpl(force, closedLimitOverride) {
       return;
     }
 
-    // 走到完整回應代表版本不同、force 或載入範圍擴大；不再整包 JSON.stringify 比對一次，直接替換並重畫即可。
-    allCases = data.cases || [];
+    // 走到完整回應代表版本不同、force 或載入範圍擴大；只比對案件識別與可見內容，標記真正新增／變更的卡片一次。
+    const nextCases = data.cases || [];
+    queueCaseVisualChanges_(nextCases);
+    allCases = nextCases;
     applyPendingCloseOverlays_();
     lastCasesServerVersion = data.version || lastCasesServerVersion;
     casesHasMore = !!data.hasMore;
@@ -2792,6 +2828,7 @@ function applyServerCasePatch_(serverCase, serverVersion, opts = {}) {
   // V3.1：主表案件與寫入回應都直接帶照片網址，不再維護 lazy-load 照片狀態。
   // 封存/歷史鑽取案件仍可能只有張數，該低頻情境才保留獨立照片查詢。
 
+  if(caseVisualSignature_(old)!==caseVisualSignature_(patched))caseVisualEffects_.set(caseVisualKey_(patched),'updated');
   allCases[idx] = patched;
 
   // 重要：serverVersion 是『這次局部寫入完成後的整體版本』，但前端只 patch 一筆案件，
@@ -2895,7 +2932,7 @@ function renderManagerCaseList() {
     const isFlagged = !!c.flagReason;
     const area = effArea(c);
     const areaClass = area.startsWith('會館') ? 'area-館' : area.startsWith('雅舍') ? 'area-雅' : area.startsWith('研究') ? 'area-研' : area.startsWith('智尊') ? 'area-智' : 'area-其';
-    const cls = (isFlagged ? 'case-card is-flagged' : currentFilter==='已結案' ? 'case-card is-closed' : 'case-card') + ' ' + areaClass;
+    const cls = (isFlagged ? 'case-card is-flagged' : currentFilter==='已結案' ? 'case-card is-closed' : 'case-card') + ' ' + areaClass + caseVisualClass_(c);
     const locDisplay = c.normalizedLocation || c.location || '—';
     const titleHtml = `${area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
     const syncLabel = c.closeSyncState==='failed' ? '⚠ 未同步' : c.closeSyncState ? '↻ 同步中' : '';
@@ -2936,23 +2973,7 @@ function renderManagerCaseList() {
   }).join('');
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
-  animateCaseCards_('caseList');
   // 效能/穩定性：清單不再背景預抓整頁照片；只有展開案件或點照片時才讀取。
-}
-
-// V3.9.7：清單只替前10張卡片做一次短促進場；不讀資料、不建立持續動畫。
-function animateCaseCards_(containerId) {
-  if(document.hidden||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
-  const box=document.getElementById(containerId); if(!box)return;
-  const cards=Array.from(box.children).filter(el=>el.classList?.contains('case-card')).slice(0,10);
-  cards.forEach((card,index)=>{
-    card.style.setProperty('--case-enter-delay',`${index*34}ms`);
-    card.classList.add('case-enter');
-  });
-  if(cards.length)setTimeout(()=>cards.forEach(card=>{
-    card.classList.remove('case-enter');
-    card.style.removeProperty('--case-enter-delay');
-  }),680);
 }
 
 // 建立完整編輯表單的HTML(區域/類型/結案人/標記/照片/更正選項)，只在卡片第一次展開時呼叫一次
@@ -3965,7 +3986,6 @@ function renderQueryByName(name) {
   const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
   list.innerHTML = paged.map(c => renderPubCard(c)).join('');
   renderPagination('queryPagination', queryPage, totalPages, p=>{queryPage=p;renderQueryByName(name);});
-  animateCaseCards_('queryList');
   // 清單照片改為真正 lazy-load，不在翻頁/重繪時背景打 API。
 }
 
@@ -4040,13 +4060,16 @@ function renderQueryGm() {
   const paged = filtered.slice((queryPage-1)*PAGE_SIZE, queryPage*PAGE_SIZE);
   list.innerHTML = paged.map(c => renderPubCard(c)).join('');
   renderPagination('queryPaginationGm', queryPage, totalPages, p=>{queryPage=p;renderQueryGm();});
-  animateCaseCards_('queryListGm');
   renderLoadMoreBtn('queryLoadMoreWrap');
   // 清單照片改為真正 lazy-load，不在翻頁/重繪時背景打 API。
 }
 
 function renderQuery() {
   if (gmMode) renderQueryGm();
+  else {
+    const name=(document.getElementById('query-name-input')?.value||'').trim();
+    if(name)renderQueryByName(name);
+  }
 }
 
 function renderPubCard(c) {
@@ -4055,7 +4078,7 @@ function renderPubCard(c) {
   const flagLabel = isFlagged ? (c.flagReason||'已標記') : '';
   const area = effArea(c);
   const areaClass = area.startsWith('會館') ? 'area-館' : area.startsWith('雅舍') ? 'area-雅' : area.startsWith('研究') ? 'area-研' : area.startsWith('智尊') ? 'area-智' : 'area-其';
-  return `<div class="case-card ${areaClass}${isFlagged?' is-flagged':''}">
+  return `<div class="case-card ${areaClass}${isFlagged?' is-flagged':''}${caseVisualClass_(c)}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
         <div class="case-id">${c.caseId} · ${formatDatetime(c.datetime||c.date)}</div>
@@ -5575,7 +5598,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=19', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=20', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
