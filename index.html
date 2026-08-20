@@ -736,6 +736,18 @@
   .badge { display:inline-flex; align-items:center; gap:5px; }
   .badge::before { content:''; width:6px; height:6px; border-radius:50%; flex:0 0 auto; background:#AAA39C; }
   .badge.pending::before { background:#E8761A; box-shadow:0 0 0 3px rgba(232,118,26,.11); }
+  /* V3.9.8 待處理呼吸燈：只動畫 transform／opacity，不讓整張卡片閃爍。 */
+  .badge.pending::before {
+    transform-origin:center;
+    animation:v398PendingDot 1.8s ease-in-out infinite;
+  }
+  #mgr-status-row .filter-btn.active[data-status="待處理"],
+  #query-gm-mode .filter-btn.active[data-status="待處理"] { position:relative; isolation:isolate; }
+  #mgr-status-row .filter-btn.active[data-status="待處理"]::after,
+  #query-gm-mode .filter-btn.active[data-status="待處理"]::after {
+    content:''; position:absolute; inset:-4px; border:2px solid rgba(255,174,88,.72); border-radius:inherit;
+    pointer-events:none; transform-origin:center; animation:v398PendingHalo 2.15s ease-in-out infinite;
+  }
   .badge.done::before { background:#2D7A3E; box-shadow:0 0 0 3px rgba(45,122,62,.10); }
   .badge.flagged::before { background:#999; }
   .sync-badge::before { background:#3B82F6; box-shadow:0 0 0 3px rgba(59,130,246,.11); animation:v35StatusPulse 1.45s ease-in-out infinite; }
@@ -788,6 +800,8 @@
   @keyframes v35StatPop { 0%{transform:scale(.94);opacity:.55} 68%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
   @keyframes v35CheckPop { 0%{transform:scale(.35) rotate(-18deg);opacity:0} 72%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
   @keyframes v35StatusPulse { 0%,100%{transform:scale(.82);opacity:.58} 50%{transform:scale(1.12);opacity:1} }
+  @keyframes v398PendingDot { 0%,100%{transform:scale(.78);opacity:.48} 50%{transform:scale(1.24);opacity:1} }
+  @keyframes v398PendingHalo { 0%,100%{transform:scale(.992);opacity:.16} 50%{transform:scale(1.014);opacity:.76} }
 
   /* ══════════════ V3.6 園區營運控制台主視覺 ══════════════ */
   :root {
@@ -1606,8 +1620,8 @@
   <div class="mgr-toolbar" id="mgrToolbar">
     <div class="mgr-main-filter-row">
       <div class="filter-row" id="mgr-status-row">
-        <button class="filter-btn active" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
-        <button class="filter-btn" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
+        <button class="filter-btn active" data-status="待處理" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
+        <button class="filter-btn" data-status="已結案" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
       </div>
       <div class="mgr-priority-row">
         <button type="button" id="mgrPriorityOnlyBtn" class="priority-filter-btn" onclick="toggleMgrPriorityOnly(this)">⚡ 今日優先</button>
@@ -5561,7 +5575,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=18', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=19', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
