@@ -1389,6 +1389,138 @@
     .repair-game-canvas { width:min(100%,310px); }
   }
 
+  /* ══════════════ V3.10.0 白色精密面板卡片 ══════════════ */
+  :root {
+    --case-panel-line:#D6E1E9;
+    --case-panel-line-active:#AFC5D4;
+    --case-panel-shadow:0 7px 20px rgba(16,45,73,.055),inset 0 1px 0 rgba(255,255,255,.98);
+    --case-panel-shadow-hover:0 11px 27px rgba(16,45,73,.085),inset 0 1px 0 rgba(255,255,255,1);
+  }
+
+  /* 卡片停著時保持乾淨：白色細漸層、窄區域識別軌、一道內側高光。 */
+  #caseList .case-card,
+  #queryList .case-card,
+  #queryListGm .case-card {
+    background:linear-gradient(180deg,#FFFFFF 0%,#FCFDFE 100%)!important;
+    border-color:var(--case-panel-line);
+    border-left-width:5px;
+    border-radius:6px 16px 16px 6px;
+    box-shadow:var(--case-panel-shadow);
+    transition:transform .16s var(--v35-ease),box-shadow .18s ease,border-color .18s ease;
+  }
+  #queryList .case-card,
+  #queryListGm .case-card { margin-bottom:12px; padding:15px 14px; border-style:solid; }
+  #queryList .case-card.area-館,#queryListGm .case-card.area-館 { border-left-color:#E8761A; }
+  #queryList .case-card.area-雅,#queryListGm .case-card.area-雅 { border-left-color:#315E8A; }
+  #queryList .case-card.area-研,#queryListGm .case-card.area-研 { border-left-color:#2D7A3E; }
+  #queryList .case-card.area-智,#queryListGm .case-card.area-智 { border-left-color:#8B5CF6; }
+  #queryList .case-card.area-其,#queryListGm .case-card.area-其 { border-left-color:#9AA8B2; }
+
+  /* 已標記案件仍維持既有淡化語意，不被新面板底色蓋掉。 */
+  #caseList .case-card.is-flagged,
+  #queryList .case-card.is-flagged,
+  #queryListGm .case-card.is-flagged { background:#F4F6F7!important; opacity:.72; }
+
+  /* 標題、識別碼、描述拉開層級；案件編號採儀表讀值感的等寬字。 */
+  #caseList .case-row-title,
+  #queryList .pub-title,
+  #queryListGm .pub-title {
+    color:#132B3E; font-size:15px; font-weight:800; line-height:1.4; letter-spacing:.002em;
+  }
+  #caseList .case-row-meta,
+  #queryList .case-id,#queryList .pub-meta,
+  #queryListGm .case-id,#queryListGm .pub-meta {
+    color:#7D8C98; font-size:11px; font-weight:650; line-height:1.45;
+  }
+  #caseList .meta-caseid,
+  #queryList .case-id,
+  #queryListGm .case-id {
+    color:#8A98A3; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:10.5px; font-weight:650; letter-spacing:.012em;
+  }
+  #caseList .case-row-desc,
+  #queryList .pub-desc,
+  #queryListGm .pub-desc {
+    color:#344A5B; font-size:13.5px; font-weight:600; line-height:1.52;
+  }
+  #queryList .pub-desc,#queryListGm .pub-desc {
+    margin-top:10px; padding:9px 11px; border:1px solid #E5EDF2; border-left:3px solid #AFC1CD;
+    border-radius:9px; background:#F5F8FA;
+  }
+
+  /* 處理紀錄像內嵌狀態槽，不用大片綠底搶走故障描述。 */
+  #caseList .case-row-note,
+  #queryList .pub-note,
+  #queryListGm .pub-note {
+    color:#2D6540; background:linear-gradient(180deg,#F4FAF6 0%,#F0F7F3 100%);
+    border:1px solid #D5E8DB; border-left:3px solid #6FAB7F; border-radius:9px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  #caseList .case-row-note { margin-top:8px; padding:7px 10px; }
+  #caseList .case-row-note::before { color:#6C8C76; font-weight:650; }
+  #queryList .pub-note,#queryListGm .pub-note { margin-top:10px; padding:9px 11px; }
+  #queryList .pub-note-label,#queryListGm .pub-note-label { color:#4F7E5D; }
+
+  /* 今日優先保留原判斷與文字，只改成薄型警示軌。 */
+  #caseList .priority-strip {
+    min-height:29px; display:flex; align-items:center; padding:4px 9px; margin-bottom:8px;
+    border:1px solid #F1CB95; border-left:3px solid #E8761A; border-radius:8px;
+    background:linear-gradient(90deg,#FFF5E6 0%,#FFFAF3 100%); color:#A65300;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.8); font-size:11px;
+  }
+  #caseList .priority-strip.overdue {
+    border-color:#EFA98B; border-left-color:#D94F23;
+    background:linear-gradient(90deg,#FFF0E9 0%,#FFF8F4 100%); color:#AE3D19;
+  }
+
+  /* 狀態章與主要動作同樣採細邊框，保留原有待處理呼吸點。 */
+  #caseList .badge,#queryList .badge,#queryListGm .badge { border:1px solid #DCE5EA; box-shadow:inset 0 1px 0 rgba(255,255,255,.78); }
+  #caseList .badge.pending,#queryList .badge.pending,#queryListGm .badge.pending { border-color:#F5D7BB; }
+  #caseList .badge.done,#queryList .badge.done,#queryListGm .badge.done { border-color:#CEE3D4; }
+  #caseList .case-quick-close {
+    border:1px solid #CFE4D5; background:linear-gradient(180deg,#EFF8F2 0%,#E9F4ED 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9); color:#216B39;
+  }
+
+  /* 展開後只加深框線與景深，讓操作區自然成為焦點。 */
+  #caseList .case-card.expanded-card {
+    border-top-color:var(--case-panel-line-active);
+    border-right-color:var(--case-panel-line-active);
+    border-bottom-color:var(--case-panel-line-active);
+    background:linear-gradient(180deg,#FFFFFF 0%,#F9FCFD 100%)!important;
+    box-shadow:0 14px 32px rgba(16,45,73,.105),inset 0 1px 0 rgba(255,255,255,1);
+  }
+
+  @media (hover:hover) and (pointer:fine) {
+    #caseList .case-card:hover,
+    #queryList .case-card:hover,
+    #queryListGm .case-card:hover {
+      transform:translateY(-1px);
+      border-top-color:#C6D5DF; border-right-color:#C6D5DF; border-bottom-color:#C6D5DF;
+      box-shadow:var(--case-panel-shadow-hover);
+    }
+    #caseList .case-collapsed:hover { background:rgba(238,244,248,.52); }
+  }
+
+  /* 精簡檢討與手機保留質感，但縮小圓角、陰影與內距。 */
+  #page-mgr.mgr-compact-mode #caseList .case-card { border-left-width:4px; border-radius:5px 12px 12px 5px; }
+  #page-mgr.mgr-compact-mode .priority-strip { min-height:26px; padding:3px 8px; }
+  #page-mgr.mgr-compact-mode .case-row-note { padding:5px 8px; }
+
+  @media (max-width:600px) {
+    #caseList .case-card,
+    #queryList .case-card,
+    #queryListGm .case-card {
+      border-left-width:5px; border-radius:5px 14px 14px 5px;
+      box-shadow:0 5px 15px rgba(16,45,73,.05),inset 0 1px 0 rgba(255,255,255,.98);
+    }
+    #caseList .case-card { padding:13px; }
+    #queryList .case-card,#queryListGm .case-card { padding:13px; }
+    #caseList .case-row-title,#queryList .pub-title,#queryListGm .pub-title { font-size:14.5px; }
+    #caseList .case-row-desc,#queryList .pub-desc,#queryListGm .pub-desc { font-size:13px; }
+    #caseList .priority-strip { min-height:28px; font-size:10.5px; }
+  }
+
   @media (prefers-reduced-motion:reduce) {
     *,*::before,*::after { animation-duration:.001ms!important; animation-iteration-count:1!important; transition-duration:.001ms!important; scroll-behavior:auto!important; }
   }
@@ -5598,7 +5730,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=20', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=21', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
