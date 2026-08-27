@@ -1521,6 +1521,77 @@
     #caseList .priority-strip { min-height:28px; font-size:10.5px; }
   }
 
+  /* ══════════════ V3.10.1 單一案件處理視窗 ══════════════ */
+  #caseList .case-collapsed { cursor:pointer; }
+  #caseList .case-collapsed:focus-visible {
+    outline:3px solid rgba(232,118,26,.22); outline-offset:4px;
+  }
+  .case-row-status { display:flex; align-items:center; gap:7px; flex:0 0 auto; }
+  .case-open-chevron {
+    width:25px; height:25px; display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #D7E2E9; border-radius:50%; background:#F7FAFB; color:#557087;
+    font-size:19px; font-weight:650; line-height:1; transition:transform .16s var(--v35-ease),border-color .16s ease,color .16s ease;
+  }
+  @media (hover:hover) and (pointer:fine) {
+    #caseList .case-collapsed:hover .case-open-chevron { transform:translateX(2px); border-color:#E8761A; color:#C65F0D; }
+  }
+
+  .case-action-backdrop { align-items:center; padding:20px; background:rgba(9,27,41,.58); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  .quick-close-sheet.case-action-sheet {
+    width:min(860px,100%); max-height:min(92vh,920px); padding:0; overflow:hidden;
+    display:flex; flex-direction:column; border-radius:20px; background:#F9FBFC;
+  }
+  .case-action-head {
+    flex:0 0 auto; margin:0; padding:16px 18px 13px; border-bottom:1px solid #DCE6EC;
+    background:linear-gradient(180deg,#FFFFFF 0%,#F8FBFC 100%);
+  }
+  .case-action-content { min-height:0; overflow-y:auto; padding:16px 18px 22px; overscroll-behavior:contain; }
+  .case-action-content .case-expand-header { cursor:default; }
+  .case-action-content .case-expand-header:hover { opacity:1; }
+  .case-action-content .case-desc { font-size:14px; line-height:1.55; padding:11px 13px; }
+  .case-action-content .mgr-field { margin-bottom:15px; }
+  .case-action-content .mgr-label { color:#647684; font-size:12px; font-weight:750; }
+  .case-action-content .mgr-field textarea { min-height:108px; }
+  .case-action-content .quick-chip-row { margin-bottom:8px; }
+
+  /* 彈窗內的報修／結案照片使用大尺寸完整預覽，仍維持 contain 不裁切。 */
+  .case-action-content .photo-preview-wrap,
+  .case-action-content .photo-library-preview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .case-action-content .photo-preview-wrap > *,
+  .case-action-content .photo-library-preview > * { width:100%!important; min-width:0; display:block!important; }
+  .case-action-content .photo-preview-wrap > :only-child,
+  .case-action-content .photo-library-preview > :only-child { grid-column:1/-1; }
+  .case-action-content .photo-preview-img,
+  .case-action-content .photo-library-thumb {
+    width:100%; height:clamp(250px,31vw,340px); border-radius:13px;
+    background:#E8EEF2; border:1px solid #D3DFE7; box-shadow:0 5px 16px rgba(16,45,73,.07);
+  }
+  .case-action-content .photo-library-thumb img { object-fit:contain; }
+  .case-action-content .photo-del { top:7px; right:7px; width:30px; height:30px; font-size:17px; }
+  .case-photo-empty { padding:14px; border:1px dashed #D8E3EA; border-radius:11px; color:#8A98A3; background:#F5F8FA; font-size:12px; text-align:center; }
+
+  .case-action-footer {
+    flex:0 0 auto; padding:11px 18px calc(13px + env(safe-area-inset-bottom));
+    border-top:1px solid #D8E4EB; background:rgba(255,255,255,.98); box-shadow:0 -8px 22px rgba(16,45,73,.06);
+  }
+  .case-action-footer .btn-row { margin:0; }
+  .case-action-footer .btn-save,
+  .case-action-footer .btn-close-case,
+  .case-action-footer .btn-reopen { min-height:47px; border-radius:11px; font-size:14px; font-weight:800; }
+  .case-action-footer .btn-handoff-affairs { min-height:44px; margin-top:8px; border-radius:11px; }
+
+  @media (max-width:600px) {
+    .case-open-chevron { width:23px; height:23px; font-size:18px; }
+    .case-action-backdrop { align-items:flex-end; padding:0; backdrop-filter:none; -webkit-backdrop-filter:none; }
+    .quick-close-sheet.case-action-sheet { width:100%; max-height:95vh; border-radius:20px 20px 0 0; }
+    .case-action-head { padding:14px 14px 11px; }
+    .case-action-content { padding:14px 14px 20px; }
+    .case-action-content .case-desc { font-size:13.5px; }
+    .case-action-content .photo-preview-img,
+    .case-action-content .photo-library-thumb { height:clamp(230px,58vw,300px); }
+    .case-action-footer { padding:10px 14px calc(11px + env(safe-area-inset-bottom)); }
+  }
+
   @media (prefers-reduced-motion:reduce) {
     *,*::before,*::after { animation-duration:.001ms!important; animation-iteration-count:1!important; transition-duration:.001ms!important; scroll-behavior:auto!important; }
   }
@@ -1980,51 +2051,18 @@
   </div>
 </div>
 
-<!-- ══ V3.4 快速結案 Bottom Sheet ══ -->
-<div id="quickCloseBackdrop" class="quick-close-backdrop" onclick="if(event.target===this)closeQuickClose()">
-  <div class="quick-close-sheet" role="dialog" aria-modal="true" aria-labelledby="quickCloseTitle">
-    <div class="quick-close-head">
+<!-- ══ V3.10.1 單一案件處理視窗：取代卡片內展開與大型快速結案按鈕 ══ -->
+<div id="caseActionBackdrop" class="quick-close-backdrop case-action-backdrop" aria-hidden="true" onclick="if(event.target===this)closeCaseActionModal()">
+  <div class="quick-close-sheet case-action-sheet" role="dialog" aria-modal="true" aria-labelledby="caseActionTitle">
+    <div class="quick-close-head case-action-head">
       <div>
-        <div id="quickCloseTitle" class="quick-close-title">快速結案</div>
-        <div id="quickCloseCaseSummary" class="quick-close-case"></div>
+        <div id="caseActionTitle" class="quick-close-title">案件處理</div>
+        <div id="caseActionSummary" class="quick-close-case"></div>
       </div>
-      <button type="button" class="quick-close-x" onclick="closeQuickClose()" aria-label="關閉">×</button>
+      <button type="button" class="quick-close-x" onclick="closeCaseActionModal()" aria-label="關閉案件處理視窗">×</button>
     </div>
-
-    <div class="quick-section">
-      <div class="quick-label">結案照片 <span style="font-weight:500;color:#999;">選填，從相簿一次選擇最多2張</span></div>
-      <button type="button" class="quick-photo-pick" onclick="document.getElementById('quickClosePhotoInput').click()">＋ 從相簿選擇照片</button>
-      <input type="file" id="quickClosePhotoInput" accept="image/*" multiple style="display:none" onchange="handleQuickClosePhotos(this)">
-      <div id="quickClosePhotoPreview" class="quick-photo-preview"></div>
-    </div>
-
-    <div class="quick-section">
-      <div class="quick-label">結案／轉交人員<span class="quick-required">必填</span></div>
-      <div id="quickCloseCloser" class="quick-chip-row"></div>
-      <input type="text" id="quickCloseCloserOther" placeholder="請輸入結案人姓名" style="display:none;width:100%;margin-top:8px;padding:9px 11px;border:1.5px solid #E2DDD7;border-radius:10px;font-size:13px;font-family:inherit;">
-    </div>
-
-    <div class="quick-section">
-      <div class="quick-label">案件類型<span class="quick-required">一般結案必填</span></div>
-      <div id="quickCloseType" class="case-type-picker"></div>
-      <input type="text" id="quickCloseTypeOther" list="caseTypeOtherSuggestions" placeholder="請描述其他類型（選填）" oninput="updateQuickCustomCaseTypeLabel_()" style="display:none;width:100%;margin-top:8px;padding:9px 11px;border:1.5px solid #E2DDD7;border-radius:10px;font-size:13px;font-family:inherit;">
-    </div>
-
-    <div class="quick-section">
-      <div class="quick-label">常用處理結果</div>
-      <div class="quick-chip-row">
-        <button type="button" class="quick-chip" onclick="setQuickCloseNote('已修復並測試正常')">已修復</button>
-        <button type="button" class="quick-chip" onclick="setQuickCloseNote('已完成更換並測試正常')">已更換</button>
-        <button type="button" class="quick-chip" onclick="setQuickCloseNote('已完成調整並確認正常')">調整完成</button>
-        <button type="button" class="quick-chip" onclick="setQuickCloseNote('已由廠商完成處理')">廠商處理</button>
-      </div>
-      <textarea id="quickCloseNote" class="quick-note" placeholder="填寫處理情形…"></textarea>
-    </div>
-
-    <button type="button" id="quickCloseSubmit" class="quick-close-submit" onclick="submitQuickClose()">完成結案</button>
-    <div class="quick-help">送出後可立即繼續操作；照片、資料與通知會在背景完成同步。</div>
-    <button type="button" id="quickHandoffSubmit" class="quick-handoff-submit" onclick="handoffQuickCloseToGeneralAffairs()">↗ 轉總務處理</button>
-    <div class="quick-handoff-help">先寄信通知 Jason、Cindy；寄送成功後才會自動結案。無須選案件類型。</div>
+    <div id="caseActionContent" class="case-action-content"></div>
+    <div id="caseActionFooter" class="case-action-footer"></div>
   </div>
 </div>
 
@@ -3083,32 +3121,32 @@ function renderManagerCaseList() {
 
     const stampHtml = isFlagged ? `<div class="flag-stamp">${c.flagReason||'已標記'}</div>` : '';
 
-    // 收合摘要照常整包渲染(這是使用者最常看到的部分)；完整編輯表單改成空殼，
-    // 第一次點開這張卡片時(toggleCardEdit)才真的去建立內容，案件很多時不會一次把所有表單都塞進DOM
+    // V3.10.1：卡片只保留摘要。點擊整張卡片才建立單一案件處理視窗，
+    // 不再把完整表單展開在清單裡，也不在每張卡片放一個大型快速結案按鈕。
     const collapsedView = `
-      <div class="case-collapsed" id="collapsed-${c.rowIndex}" onclick="toggleCardEdit(${c.rowIndex})">
+      <div class="case-collapsed" id="collapsed-${c.rowIndex}" role="button" tabindex="0"
+        aria-label="${c.status==='待處理'?'處理':'查看'}案件 ${c.caseId}"
+        onclick="openCaseActionModal(${c.rowIndex})"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCaseActionModal(${c.rowIndex})}">
         ${stampHtml}
         ${priorityBannerHtml(c)}
         <div class="case-row-top">
           <div class="case-row-title">${titleHtml}</div>
-          ${badgeHtml}
+          <div class="case-row-status">${badgeHtml}<span class="case-open-chevron" aria-hidden="true">›</span></div>
         </div>
         <div class="case-row-meta"><span class="meta-caseid">${c.caseId}</span><span class="meta-date">${dateLabelPrefix}${shortDate}</span><span class="meta-people"> · ${c.unit} · ${c.name}</span>${photoTag?` · <span class="photo-tag">${photoTag}</span>`:''}</div>
         <div class="case-row-desc">${c.description}</div>
         ${c.repairNote?`<div class="case-row-note"><span class="note-icon">✅ </span>${c.repairNote}</div>`:''}
-        ${c.status==='待處理'&&!isFlagged?`<button type="button" class="case-quick-close" onclick="event.stopPropagation();openQuickClose(${c.rowIndex})">✓ 快速結案</button>`:''}
       </div>`;
 
-    const expandedPlaceholder = `<div class="case-expanded" id="expanded-${c.rowIndex}" style="display:none"></div>`;
-
-    return `<div class="${cls}">${collapsedView}${expandedPlaceholder}</div>`;
+    return `<div class="${cls}">${collapsedView}</div>`;
   }).join('');
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});
-  // 效能/穩定性：清單不再背景預抓整頁照片；只有展開案件或點照片時才讀取。
+  // 效能/穩定性：清單不背景預抓照片；只有開啟目前案件的處理視窗時才建立照片與表單內容。
 }
 
-// 建立完整編輯表單的HTML(區域/類型/結案人/標記/照片/更正選項)，只在卡片第一次展開時呼叫一次
+// 建立單一案件處理視窗的完整內容（區域／類型／結案人／照片／修正選項）。
 function caseTypePickerHtml_(rowIndex,currentType) {
   const normalized=normalizeCaseType(currentType||'');
   const storedType=normalized.startsWith('其他')?'其他':normalized;
@@ -3121,7 +3159,7 @@ function caseTypePickerHtml_(rowIndex,currentType) {
   </div>`;
 }
 
-function renderExpandedInner(c) {
+function renderExpandedInner(c, modalMode=false) {
   const isFlagged = !!c.flagReason;
   const isCloseSyncing = !!c.closeSyncState;
   const reportPhotos = Array.isArray(c.reportPhotos) ? c.reportPhotos : [];
@@ -3134,7 +3172,7 @@ function renderExpandedInner(c) {
 
   return `
         ${priorityBannerHtml(c)}
-        <div class="case-expand-header" onclick="toggleCardEdit(${c.rowIndex})">
+        <div class="case-expand-header"${modalMode?'':` onclick="toggleCardEdit(${c.rowIndex})"`}>
           <div>
             <div class="case-id">${c.caseId}</div>
             <div style="margin:4px 0;">${timeBadges}</div>
@@ -3144,16 +3182,19 @@ function renderExpandedInner(c) {
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
             ${badgeHtml}
             ${reportBtnHtml}
-            <span class="collapse-hint">收合 ▴</span>
+            ${modalMode?'':`<span class="collapse-hint">收合 ▴</span>`}
           </div>
         </div>
       <div class="case-desc">${c.description}</div>
-      <div class="mgr-field">
-        <div class="mgr-label">📷 照片 <span class="opt-tag">選填，從相簿一次選擇最多 2 張</span></div>
+      <div class="mgr-field case-action-photo-section">
+        <div class="mgr-label">📷 報修照片</div>
+        <div id="reportPhotosWrap-${c.rowIndex}">${reportPhotos.length?`<div class="photo-preview-wrap">${reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" ${remotePhotoAttrs_(url)} onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`:`<div class="case-photo-empty">本案沒有報修照片</div>`}</div>
+      </div>
+      <div class="mgr-field case-action-photo-section">
+        <div class="mgr-label">📷 結案照片 <span class="opt-tag">選填，從相簿一次選擇最多 2 張</span></div>
         <button type="button" id="close-photo-picker-${c.rowIndex}" class="photo-library-pick" onclick="openPhotoLibraryPicker_('close-${c.rowIndex}')">＋ 從相簿選擇照片</button>
         <input type="file" id="close-photo-input-${c.rowIndex}" accept="image/*" multiple style="display:none" onchange="handlePhotoLibrarySelection_('close-${c.rowIndex}',this)">
         <div id="close-photo-preview-${c.rowIndex}" class="photo-library-preview"></div>
-        <div id="reportPhotosWrap-${c.rowIndex}">${reportPhotos.length?`<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" ${remotePhotoAttrs_(url)} onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`:''}</div>
       </div>
       <div class="mgr-field">
         <div class="mgr-label">案件類型 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">一般結案必填</span></div>
@@ -3178,9 +3219,15 @@ function renderExpandedInner(c) {
       </div>
       <div class="mgr-field">
         <div class="mgr-label">維修記錄</div>
+        ${modalMode?`<div class="quick-chip-row">
+          <button type="button" class="quick-chip" onclick="setCaseActionNote(${c.rowIndex},'已修復並測試正常')">已修復</button>
+          <button type="button" class="quick-chip" onclick="setCaseActionNote(${c.rowIndex},'已完成更換並測試正常')">已更換</button>
+          <button type="button" class="quick-chip" onclick="setCaseActionNote(${c.rowIndex},'已完成調整並確認正常')">調整完成</button>
+          <button type="button" class="quick-chip" onclick="setCaseActionNote(${c.rowIndex},'已由廠商完成處理')">廠商處理</button>
+        </div>`:''}
         <textarea id="note-${c.rowIndex}" placeholder="填寫處理情形…">${c.repairNote||''}</textarea>
       </div>
-      <div class="btn-row">
+      ${modalMode?'':`<div class="btn-row">
         <button class="btn-save" onclick="updateCase(${c.rowIndex})">更新案件狀況</button>
         ${c.status==='待處理'
           ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">結案</button>`
@@ -3188,7 +3235,7 @@ function renderExpandedInner(c) {
             ? `<button class="btn-reopen" type="button" disabled style="opacity:.55;cursor:not-allowed;">同步完成後可取消</button>`
             : `<button class="btn-reopen" onclick="reopenCase(${c.rowIndex})">取消結案</button>`}
       </div>
-      ${c.status==='待處理'?`<button type="button" class="btn-handoff-affairs" onclick="handoffCaseToGeneralAffairs(${c.rowIndex})">↗ 轉總務處理</button>`:''}
+      ${c.status==='待處理'?`<button type="button" class="btn-handoff-affairs" onclick="handoffCaseToGeneralAffairs(${c.rowIndex})">↗ 轉總務處理</button>`:''}`}
       <div class="mgr-advanced-toggle" onclick="toggleAdvancedFields(${c.rowIndex},this)">更多修正選項（區域/位置/標準化/標記） ▾</div>
       <div class="mgr-advanced-fields" id="advanced-${c.rowIndex}" style="display:none">
         <div class="mgr-field">
@@ -3233,6 +3280,68 @@ function renderExpandedInner(c) {
         </div>
       </div>`;
 }
+
+let caseActionRowIndex_=0;
+let caseActionBodyOverflow_='';
+
+function renderCaseActionFooter_(c) {
+  const isCloseSyncing=!!c.closeSyncState;
+  const statusButton=c.status==='待處理'
+    ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">完成結案</button>`
+    : isCloseSyncing
+      ? `<button class="btn-reopen" type="button" disabled style="opacity:.55;cursor:not-allowed;">同步完成後可取消</button>`
+      : `<button class="btn-reopen" onclick="reopenCase(${c.rowIndex})">取消結案</button>`;
+  return `<div class="btn-row">
+    <button class="btn-save" onclick="updateCase(${c.rowIndex})">更新案件</button>
+    ${statusButton}
+  </div>
+  ${c.status==='待處理'?`<button type="button" class="btn-handoff-affairs" onclick="handoffCaseToGeneralAffairs(${c.rowIndex})">↗ 轉總務處理</button>`:''}`;
+}
+
+function openCaseActionModal(rowIndex) {
+  const c=findCaseByRowIndex_(rowIndex);
+  if(!c){showToast('案件資料已更新，請重新整理');return;}
+  const modal=document.getElementById('caseActionBackdrop');
+  const content=document.getElementById('caseActionContent');
+  const footer=document.getElementById('caseActionFooter');
+  if(!modal||!content||!footer)return;
+  caseActionRowIndex_=rowIndex;
+  delete photoData['close-'+rowIndex];
+  document.getElementById('caseActionTitle').textContent=c.status==='待處理'?'案件處理':'案件詳情';
+  document.getElementById('caseActionSummary').textContent=`${c.caseId} · ${c.status}`;
+  content.innerHTML=renderExpandedInner(c,true);
+  footer.innerHTML=renderCaseActionFooter_(c);
+  renderCasePhotoSlots(c);
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  caseActionBodyOverflow_=document.body.style.overflow;
+  document.body.style.overflow='hidden';
+  requestAnimationFrame(()=>modal.querySelector('.quick-close-x')?.focus());
+}
+
+function closeCaseActionModal() {
+  const modal=document.getElementById('caseActionBackdrop');
+  if(!modal||!modal.classList.contains('open'))return;
+  const rowIndex=caseActionRowIndex_;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  document.getElementById('caseActionContent').innerHTML='';
+  document.getElementById('caseActionFooter').innerHTML='';
+  document.body.style.overflow=caseActionBodyOverflow_;
+  caseActionRowIndex_=0;
+  requestAnimationFrame(()=>document.getElementById('collapsed-'+rowIndex)?.focus());
+}
+
+function setCaseActionNote(rowIndex,text) {
+  const note=document.getElementById('note-'+rowIndex);
+  if(note){note.value=text;note.focus();}
+}
+
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&document.getElementById('caseActionBackdrop')?.classList.contains('open')){
+    event.preventDefault(); closeCaseActionModal();
+  }
+});
 
 // 共用：在指定容器顯示「載入更早案件」按鈕(僅在後端回報還有更早的已結案案件時顯示)
 function renderLoadMoreBtn(wrapId) {
@@ -3341,55 +3450,19 @@ function toggleAdvancedFields(rowIndex, el) {
   el.textContent = isOpen ? '更多修正選項（區域/位置/標準化/標記） ▾' : '收起修正選項 ▴';
 }
 
-async function toggleCardEdit(rowIndex) {
-  const collapsed = document.getElementById('collapsed-'+rowIndex);
-  const expanded = document.getElementById('expanded-'+rowIndex);
-  if (!collapsed || !expanded) return;
-  const card = collapsed.closest('.case-card');
-  if (expanded.style.display === 'none') {
-    if (mgrCompactMode && currentPageId==='mgr') {
-      document.querySelectorAll('#caseList .case-expanded').forEach(other=>{
-        if(other===expanded||other.style.display==='none')return;
-        other.style.display='none';
-        const otherRow=other.id.replace('expanded-','');
-        const otherCollapsed=document.getElementById('collapsed-'+otherRow); if(otherCollapsed)otherCollapsed.style.display='block';
-        other.closest('.case-card')?.classList.remove('expanded-card');
-      });
-    }
-    if (!expanded.dataset.built) {
-      // 第一次展開這張卡片，才真的把完整編輯表單建出來；收合再展開直接重用，不會重建
-      const c = findCaseByRowIndex_(rowIndex);
-      if (!c) return;
-      expanded.innerHTML = renderExpandedInner(c);
-      expanded.dataset.built = '1';
-    }
-    collapsed.style.display = 'none';
-    expanded.style.display = 'block';
-    expanded.classList.remove('ui-expand-in');
-    requestAnimationFrame(()=>expanded.classList.add('ui-expand-in'));
-    if (card) card.classList.add('expanded-card');
-    const expandedCase = findCaseByRowIndex_(rowIndex);
-    if (expandedCase) renderCasePhotoSlots(expandedCase); // V3.1：照片網址已在案件資料裡，展開不再呼叫照片 API
-  } else {
-    collapsed.style.display = 'block';
-    collapsed.classList.remove('ui-collapse-in');
-    requestAnimationFrame(()=>collapsed.classList.add('ui-collapse-in'));
-    expanded.style.display = 'none';
-    if (card) card.classList.remove('expanded-card');
-  }
-}
+function toggleCardEdit(rowIndex) { openCaseActionModal(rowIndex); }
 
 // V3.1：一般修繕管理不再有 ensure/retry GAS 照片流程；網址已隨案件一次載入。
 
-// 把剛拿到的照片網址，局部更新進展開視圖的照片欄位(不整頁重繪，避免打斷正在編輯的其他卡片)
+// 把目前案件的照片網址填入單一處理視窗；不在案件清單裡建立多份照片表單。
 function renderCasePhotoSlots(c) {
   const reportPhotos = Array.isArray(c.reportPhotos) ? c.reportPhotos : [];
   renderPhotoLibraryPicker_(`close-${c.rowIndex}`);
   const wrap = document.getElementById(`reportPhotosWrap-${c.rowIndex}`);
   if (wrap) {
     wrap.innerHTML = reportPhotos.length
-      ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">報修照片：</div><div class="photo-preview-wrap">${reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" ${remotePhotoAttrs_(url)} onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`
-      : '';
+      ? `<div class="photo-preview-wrap">${reportPhotos.map((url,idx)=>`<div style="position:relative;display:inline-block;"><img class="photo-preview-img" ${remotePhotoAttrs_(url)} onclick="window.open('${url}')"><div class="photo-del" onclick="event.stopPropagation();deleteReportPhoto(${c.rowIndex},${idx})">×</div></div>`).join('')}</div>`
+      : '<div class="case-photo-empty">本案沒有報修照片</div>';
   }
 }
 
@@ -3930,7 +4003,7 @@ async function handoffCaseToGeneralAffairs(rowIndex) {
     flagReason:getSelectedFlag(rowIndex),caseType:getSelectedCaseType(rowIndex),
     correctedLocType:getSelectedLocType(rowIndex),correctedArea:getSelectedArea(rowIndex),closerName,
     closeFingerprint:getDeviceFingerprint()
-  },btn);
+  },btn,closeCaseActionModal);
 }
 
 
@@ -3943,7 +4016,7 @@ async function updateCase(rowIndex) {
   if(btn){btn.disabled=true;btn.textContent='更新中…';}
   try {
     const data=await callApi({action:'update',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos});
-    if(data&&data.success){showToast('✓ 已更新案件狀況');applyServerCasePatch_(data.case,data.version);}
+    if(data&&data.success){showToast('✓ 已更新案件狀況');applyServerCasePatch_(data.case,data.version);closeCaseActionModal();}
     else showToast('❌ '+((data&&data.message)||'更新失敗，請重試'));
   } catch(e){showToast('❌ '+(e.message||'連線失敗，請檢查網路'));}
   if(btn){btn.disabled=false;btn.textContent='更新案件狀況';}
@@ -3958,6 +4031,7 @@ async function closeCase(rowIndex) {
   const closePhotos=getClosePhotos(rowIndex),btn=document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
   if(btn){btn.disabled=true;btn.textContent='建立結案中…';}
   await enqueueCloseJob_(c,{action:'close',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos,closeFingerprint:getDeviceFingerprint(),operationId:makeCloseOperationId_()});
+  closeCaseActionModal();
   showToast('✓ 已完成操作，案件正在背景同步');
   if(btn){btn.disabled=false;btn.textContent='結案';}
 }
@@ -3968,7 +4042,7 @@ async function reopenCase(rowIndex) {
   const btn=document.querySelector(`[onclick="reopenCase(${rowIndex})"]`); if(btn){btn.disabled=true;btn.textContent='處理中…';}
   try {
     const data=await callApi({action:'reopen',caseId:c.caseId,rowHint:rowIndex});
-    if(data&&data.success){showToast('✓ 已取消結案');applyServerCasePatch_(data.case,data.version);}
+    if(data&&data.success){showToast('✓ 已取消結案');applyServerCasePatch_(data.case,data.version);closeCaseActionModal();}
     else showToast('❌ '+((data&&data.message)||'操作失敗，請重試'));
   } catch(e){showToast('❌ '+(e.message||'連線失敗，請檢查網路'));}
   if(btn){btn.disabled=false;btn.textContent='取消結案';}
@@ -5505,7 +5579,7 @@ async function deleteReportPhoto(rowIndex, idx) {
   const c=findCaseByRowIndex_(rowIndex); if(!c){showToast('案件資料已更新，請重新整理');return;}
   try {
     const data=await callApi({action:'deletePhoto',caseId:c.caseId,rowHint:rowIndex,photoType:'report',index:idx});
-    if(data.success){showToast('✓ 照片已刪除');applyServerCasePatch_(data.case,data.version);}
+    if(data.success){showToast('✓ 照片已刪除');applyServerCasePatch_(data.case,data.version);closeCaseActionModal();}
     else showToast('刪除失敗：'+(data.message||'未知錯誤'));
   } catch(e){showToast('刪除失敗：'+(e.message||'請檢查網路'));}
 }
@@ -5730,7 +5804,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=21', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=22', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
