@@ -454,11 +454,6 @@
   .mgr-toolbar-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
   .mgr-toolbar-actions { display:flex; gap:7px; align-items:center; }
   .print-label-short { display:none; }
-  .mgr-secondary-btn {
-    min-height:38px; padding:7px 11px; border:1px solid #ddd6cf; border-radius:10px;
-    background:white; color:#5f5a55; font-size:12px; font-weight:650; cursor:pointer; font-family:inherit;
-  }
-  .mgr-secondary-btn.active { background:#1a3a5c; border-color:#1a3a5c; color:white; }
   .mgr-print-btn { min-height:38px!important; padding:7px 11px!important; border-radius:10px!important; box-shadow:none!important; }
   .mgr-result-summary { font-size:11px; color:#8b847e; min-height:18px; margin:2px 2px 0; display:flex; align-items:center; gap:6px; }
   .mgr-result-summary b { color:#4d4945; font-size:12px; }
@@ -488,17 +483,6 @@
   .badge { padding:4px 10px; }
   .priority-strip { border-radius:8px; }
   .meta-caseid { color:#c1bbb5; font-size:10.5px; margin-right:4px; }
-
-  /* 精簡檢討模式：保留會議需要資訊，降低卡片高度 */
-  #page-mgr.mgr-compact-mode #caseList { gap:7px; }
-  #page-mgr.mgr-compact-mode #caseList .case-card { padding:9px 11px; border-radius:11px; }
-  #page-mgr.mgr-compact-mode .case-row-title { font-size:14px; }
-  #page-mgr.mgr-compact-mode .case-row-desc { margin-top:4px; -webkit-line-clamp:1; }
-  #page-mgr.mgr-compact-mode .meta-people,
-  #page-mgr.mgr-compact-mode .photo-tag,
-  #page-mgr.mgr-compact-mode .meta-caseid { display:none; }
-  #page-mgr.mgr-compact-mode .case-row-note { padding:4px 8px; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #page-mgr.mgr-compact-mode .priority-strip { padding:5px 8px; margin-bottom:5px; font-size:11px; }
 
   /* Dashboard：待處理成為視覺主角，其他卡片降低裝飾 */
   .stats-grid { gap:9px; }
@@ -718,7 +702,7 @@
 
   /* 可點元件：一致的輕壓回饋 */
   .btn-primary,.lock-btn,.filter-btn,.loc-type-btn,.page-btn,.stats-refresh,.case-quick-close,
-  .quick-photo-pick,.quick-chip,.quick-close-submit,.quick-handoff-submit,.quick-close-x,.flag-btn,.mgr-secondary-btn,
+  .quick-photo-pick,.quick-chip,.quick-close-submit,.quick-handoff-submit,.quick-close-x,.flag-btn,
   .mgr-print-btn,.time-btn,.priority-toggle,.priority-reason-btn,.priority-filter-btn,.close-sync-retry,
   .ppt-btn,.btn-save,.btn-close-case,.btn-handoff-affairs,.btn-reopen,.case-type-group-btn,.case-type-option,.case-type-other-toggle,.case-type-topic-item,.case-type-other-more {
     transition:transform .18s var(--v397-press-release),box-shadow .16s ease,background-color .16s ease,border-color .16s ease,color .16s ease;
@@ -728,7 +712,7 @@
   .loc-type-btn:active:not(:disabled),.page-btn:active:not(:disabled),.stats-refresh:active:not(:disabled),
   .case-quick-close:active:not(:disabled),.quick-photo-pick:active:not(:disabled),.quick-chip:active:not(:disabled),
   .quick-close-submit:active:not(:disabled),.quick-handoff-submit:active:not(:disabled),.quick-close-x:active:not(:disabled),.flag-btn:active:not(:disabled),
-  .mgr-secondary-btn:active:not(:disabled),.mgr-print-btn:active:not(:disabled),.time-btn:active:not(:disabled),
+  .mgr-print-btn:active:not(:disabled),.time-btn:active:not(:disabled),
   .priority-toggle:active:not(:disabled),.priority-reason-btn:active:not(:disabled),.priority-filter-btn:active:not(:disabled),
   .close-sync-retry:active:not(:disabled),.ppt-btn:active:not(:disabled),.btn-save:active:not(:disabled),
   .btn-close-case:active:not(:disabled),.btn-handoff-affairs:active:not(:disabled),.btn-reopen:active:not(:disabled),.case-type-group-btn:active:not(:disabled),.case-type-option:active:not(:disabled),.case-type-other-toggle:active:not(:disabled),
@@ -945,7 +929,6 @@
   .mgr-toolbar { padding:9px; }
   .mgr-result-summary { background:#EEF4F8; border-color:#D6E2EA; color:#526474; }
   .mgr-result-summary b { color:var(--ops-navy); }
-  .mgr-secondary-btn { border-color:#CAD8E2; color:var(--ops-navy); background:#fff; }
   .mgr-print-btn { background:var(--ops-navy)!important; }
   #mgrSearchInput,#queryKeywordInput { border-color:#D8E3EB!important; background:#fff; }
   #caseList .case-card { border-color:#DCE5EC; box-shadow:0 5px 17px rgba(16,45,73,.06); }
@@ -1134,7 +1117,6 @@
   .dispatch-controls .mgr-priority-row .priority-filter-btn { min-height:42px; white-space:nowrap; }
   .dispatch-controls .mgr-result-summary { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.12); color:rgba(255,255,255,.7); }
   .dispatch-controls .mgr-result-summary b { color:#fff; }
-  .dispatch-controls .mgr-secondary-btn { background:transparent; border-color:rgba(255,255,255,.24); color:#fff; }
   .dispatch-controls .mgr-print-btn { border:1px solid rgba(255,255,255,.18)!important; background:rgba(255,255,255,.1)!important; }
   .dispatch-controls .priority-filter-btn { background:rgba(240,122,21,.12); border-color:rgba(255,168,93,.45); color:#FFBC7E; }
   .dispatch-controls .priority-filter-btn.active { background:var(--ops-orange); color:#fff; }
@@ -1290,7 +1272,7 @@
       background:transparent; border:0; white-space:nowrap;
     }
     .dispatch-controls .mgr-toolbar-actions { flex:0 0 auto; gap:5px; }
-    .dispatch-controls .mgr-secondary-btn,.dispatch-controls .mgr-print-btn { min-height:36px!important; padding:6px 9px!important; }
+    .dispatch-controls .mgr-print-btn { min-height:36px!important; padding:6px 9px!important; }
     .dispatch-controls .mgr-search-wrap { margin:0 3px 7px!important; }
     .dispatch-controls #mgrSearchInput { min-height:42px; padding-top:9px!important; padding-bottom:9px!important; }
     .dispatch-controls .mgr-toolbar { padding:0 3px 2px; }
@@ -1501,11 +1483,6 @@
     }
     #caseList .case-collapsed:hover { background:rgba(238,244,248,.52); }
   }
-
-  /* 精簡檢討與手機保留質感，但縮小圓角、陰影與內距。 */
-  #page-mgr.mgr-compact-mode #caseList .case-card { border-left-width:4px; border-radius:5px 12px 12px 5px; }
-  #page-mgr.mgr-compact-mode .priority-strip { min-height:26px; padding:3px 8px; }
-  #page-mgr.mgr-compact-mode .case-row-note { padding:5px 8px; }
 
   @media (max-width:600px) {
     #caseList .case-card,
@@ -1821,7 +1798,6 @@
   <div class="mgr-toolbar-top">
     <div class="mgr-result-summary" id="mgrResultSummary"><b>案件</b><span>準備中…</span></div>
     <div class="mgr-toolbar-actions">
-      <button type="button" id="mgrCompactModeBtn" class="mgr-secondary-btn" onclick="toggleMgrCompactMode(this)">☰ 精簡檢討</button>
       <button class="mgr-print-btn" onclick="openPrintListModal()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">🖨️ <span class="print-label-long">列印派工清單</span><span class="print-label-short">列印</span></button>
     </div>
   </div>
@@ -2171,7 +2147,8 @@ function caseVisualClass_(c) {
 // 用途是進頁的當下先顯示上次看到的案件，不用整頁空等後端回應，背景再去跟後端同步最新資料。
 // 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
 // 不然修繕管理可能會不小心吃到統計頁抓回來、含封存舊案件的那份資料。
-const CASES_CACHE_KEY = 'aspire_cases_cache_v31_photo_urls';
+// V3.10.3：更換快取鍵，避免舊版「最新N筆待處理」的不完整快取在版本相同時被繼續沿用。
+const CASES_CACHE_KEY = 'aspire_cases_cache_v33_all_pending';
 try { localStorage.removeItem('aspire_cases_cache_v2'); } catch(e) {} // V3.1格式已含照片網址，舊快照不再沿用
 const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_area_cube_v4'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
 function loadCacheByKey_(key) {
@@ -2253,8 +2230,7 @@ const CASES_AUTO_REFRESH_INTERVAL = 30 * 1000; // 30秒內重複進同一種模�
 // 前端節流的主要目的已經不是省後端負擔，而是避免手滑連續點擊/快速切頁造成的無意義重複請求，30秒對這個目的已經足夠，
 // 拖到3分鐘反而會讓「剛新增的案件、後端明明已經準備好了」卻要多等快3分鐘才在修繕管理頁看得到，體感上得不償失
 let casesClosedLimit = 50; // 目前已結案案件的筆數上限(封存機制上線後主表本身就不大，預設值調高，減少「按載入更早案件」的頻率)
-let casesPendingLimit = 50; // 目前待處理案件的筆數上限(跟casesClosedLimit同步成長)
-let casesHasMore = false; // 後端是否還有更早的已結案案件或超過上限的待處理案件沒抓進來
+let casesHasMore = false; // 後端是否還有更早的已結案案件沒抓進來；待處理固定全量載入
 let lastLoadedDays = null; // 記錄上次實際抓到的資料範圍(數字或'all')，避免用windowed資料誤當成full資料
 let currentFilter = '待處理';
 let currentQueryFilter = '待處理';
@@ -2266,7 +2242,6 @@ let currentAreaDashFilter = 'all';
 let todayPriority = false;
 let selectedPriorityReason = '';
 let mgrPriorityOnly = false;
-let mgrCompactMode = false;
 let mgrPage = 1;
 let queryPage = 1;
 let locType = '';
@@ -2843,7 +2818,7 @@ async function submitForm() {
 let loadCasesRequestSeq = 0; // 請求序號:避免比較舊、比較慢的請求(不管成功或失敗)蓋掉後來更新的畫面結果
 
 function loadCases(force, closedLimitOverride) {
-  const targetClosedLimit=closedLimitOverride||casesClosedLimit, targetPendingLimit=targetClosedLimit==='all'?'all':casesPendingLimit;
+  const targetClosedLimit=closedLimitOverride||casesClosedLimit, targetPendingLimit='all';
   const key=JSON.stringify([targetClosedLimit,targetPendingLimit,!!force]);
   if(loadCasesInFlightPromise_ && loadCasesInFlightKey_===key) return loadCasesInFlightPromise_;
   const promise=_loadCasesImpl(force,closedLimitOverride);
@@ -2854,7 +2829,7 @@ function loadCases(force, closedLimitOverride) {
 
 async function _loadCasesImpl(force, closedLimitOverride) {
   const targetClosedLimit = closedLimitOverride || casesClosedLimit;
-  const targetPendingLimit = targetClosedLimit === 'all' ? 'all' : casesPendingLimit;
+  const targetPendingLimit = 'all';
   const isAllMode = targetClosedLimit === 'all';
 
   if (!allCases.length && !isAllMode) {
@@ -2932,11 +2907,10 @@ async function _loadCasesImpl(force, closedLimitOverride) {
   }
 }
 
-// 載入更早的案件：已結案、待處理筆數上限同步各+20筆
+// 載入更早案件只擴大已結案範圍；待處理案件永遠完整載入。
 async function loadMoreHistory(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
   casesClosedLimit += 10;
-  casesPendingLimit += 10;
   await loadCases(true);
 }
 
@@ -3021,12 +2995,6 @@ function applyServerCasePatch_(serverCase, serverVersion, opts = {}) {
   return true;
 }
 
-
-function toggleMgrCompactMode(btn) {
-  mgrCompactMode=!mgrCompactMode;
-  const page=document.getElementById('page-mgr'); if(page)page.classList.toggle('mgr-compact-mode',mgrCompactMode);
-  if(btn){btn.classList.toggle('active',mgrCompactMode);btn.textContent=mgrCompactMode?'☰ 一般檢視':'☰ 精簡檢討';}
-}
 
 function updateMgrResultSummary_(count) {
   const el=document.getElementById('mgrResultSummary'); if(!el)return;
@@ -3348,8 +3316,8 @@ function renderLoadMoreBtn(wrapId) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
   wrap.innerHTML = casesHasMore
-    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早案件（目前顯示：最新${casesClosedLimit}筆已結案 + 最新${casesPendingLimit}筆待處理）</button>`
-    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（最新${casesClosedLimit}筆已結案 + 最新${casesPendingLimit}筆待處理）</div>`;
+    ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早已結案案件（目前顯示：最新${casesClosedLimit}筆已結案 + 全部待處理）</button>`
+    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（最新${casesClosedLimit}筆已結案 + 全部待處理）</div>`;
 }
 
 // 遠端縮圖若第一次載入失敗，自動重試一次；第二次仍失敗才顯示可點擊重試狀態。
@@ -5804,7 +5772,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=22', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=24', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
