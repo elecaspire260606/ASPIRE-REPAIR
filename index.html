@@ -1953,6 +1953,8 @@
   }
 
 </style>
+<link rel="stylesheet" href="reporter.css?v=3.12.0">
+<script src="reporter.js?v=3.12.0"></script>
 </head>
 <body>
 
@@ -2678,7 +2680,9 @@ window.onload = () => {
   document.getElementById('today-label').textContent = `今天 ${m}/${d}`;
   document.getElementById('today-hero-label').textContent = `${m}/${d}`;
   initTimeFilterBtn();
+  initReporter_();
   restoreRepairDraft_();
+  refreshReporterSummary_(true);
   setupRepairDraftAutosave_();
   updateStickyOffsets_();
   updateSubmitStickyState_();
@@ -2735,6 +2739,7 @@ async function refreshStats() {
 
 // ── 位置類型 ──
 function setUnit(unit, btn) {
+  const previousUnit=document.getElementById('f-unit').value;
   document.querySelectorAll('#unit-btn-row .loc-type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   const input = document.getElementById('f-unit');
@@ -2747,7 +2752,7 @@ function setUnit(unit, btn) {
     input.value = unit;
     // 自動把單位名稱帶入申請人姓名，省得再打一次；想改名字的話可以自己刪掉重打
     const nameInput = document.getElementById('f-name');
-    if (nameInput) nameInput.value = unit;
+    if (nameInput && (!nameInput.value.trim() || nameInput.value===previousUnit)) nameInput.value = unit;
   }
 }
 
@@ -2959,14 +2964,16 @@ function collectRepairDraft_() {
   };
 }
 function repairDraftHasContent_(d) {
-  return !!(d && (d.unit||d.name||d.area||d.location||d.description||d.email||d.locType||d.selectedBuilding||d.todayPriority));
+  return !!(d && (d.area||d.location||d.description||d.locType||d.selectedBuilding||d.todayPriority));
 }
 function saveRepairDraft_() {
   const d=collectRepairDraft_();
+  // Identity is stored only after consent + successful submit, never in a draft.
+  delete d.unit; delete d.name; delete d.email;
   try { if(repairDraftHasContent_(d)) localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(d)); else localStorage.removeItem(FORM_DRAFT_KEY); } catch(e) {}
   updateSubmitStickyState_();
 }
-function clearRepairDraft_() { reportSubmitOperationId_=''; try { localStorage.removeItem(FORM_DRAFT_KEY); } catch(e) {} updateSubmitStickyState_(); }
+function clearRepairDraft_() { clearTimeout(repairDraftTimer_); reportSubmitOperationId_=''; try { localStorage.removeItem(FORM_DRAFT_KEY); } catch(e) {} updateSubmitStickyState_(); }
 
 function ensureReportSubmitOperationId_() {
   if(reportSubmitOperationId_)return reportSubmitOperationId_;
@@ -2995,20 +3002,20 @@ function restoreRepairDraft_() {
   let d; try { d=JSON.parse(localStorage.getItem(FORM_DRAFT_KEY)||'null'); } catch(e) { return; }
   if(!d)return;
   reportSubmitOperationId_=String(d.operationId||'');
-  const unitBtn=[...document.querySelectorAll('#unit-btn-row .loc-type-btn')].find(b=>b.textContent.trim()===d.unit);
-  if(d.unit&&unitBtn)setUnit(d.unit,unitBtn); else if(document.getElementById('f-unit'))document.getElementById('f-unit').value=d.unit||'';
+  if(d.unit){const unitBtn=[...document.querySelectorAll('#unit-btn-row .loc-type-btn')].find(b=>b.textContent.trim()===d.unit);if(unitBtn)setUnit(d.unit,unitBtn);else{document.getElementById('f-unit').value=d.unit;document.getElementById('f-unit').style.display='block';}}
   const areaBtn=[...document.querySelectorAll('#area-btn-row .loc-type-btn')].find(b=>b.textContent.trim()===d.area);
   if(d.area&&areaBtn)setArea(d.area,areaBtn);
   if(d.selectedBuilding){const bb=[...document.querySelectorAll('#yashe-building-row .loc-type-btn')].find(b=>b.textContent.trim()===d.selectedBuilding);if(bb)setBuilding(d.selectedBuilding,bb);}
   if(d.locType){const lb=[...document.querySelectorAll('#loctype-btn-row .loc-type-btn')].find(b=>(b.getAttribute('onclick')||'').includes("setLocType('"+d.locType+"'"));if(lb)setLocType(d.locType,lb);}
   if(document.getElementById('f-location'))document.getElementById('f-location').value=d.location||'';
-  if(document.getElementById('f-name'))document.getElementById('f-name').value=d.name||'';
+  if(typeof d.name==='string')document.getElementById('f-name').value=d.name;
   if(document.getElementById('f-desc'))document.getElementById('f-desc').value=d.description||'';
-  if(document.getElementById('f-email'))document.getElementById('f-email').value=d.email||'';
+  if(typeof d.email==='string')document.getElementById('f-email').value=d.email;
   if(d.todayPriority){ todayPriority=true; document.getElementById('todayPriorityBtn')?.classList.add('active'); const w=document.getElementById('priorityReasonWrap');if(w)w.style.display='block'; selectedPriorityReason=d.selectedPriorityReason||''; const rb=[...document.querySelectorAll('#priorityReasonRow .priority-reason-btn')].find(b=>b.textContent.trim()===selectedPriorityReason); if(rb)rb.classList.add('active'); const o=document.getElementById('priorityReasonOther');if(o){o.value=d.priorityReasonOther||'';o.style.display=selectedPriorityReason==='其他'?'block':'none';} }
   showNormPreview();
   updateSubmitStickyState_();
   if(repairDraftHasContent_(d)) setTimeout(()=>showToast('已恢復剛才未送出的報修內容'),120);
+  saveRepairDraft_(); // Migrate old draft identity out of persistent storage.
 }
 
 // ── 頁面切換 ──
@@ -3083,6 +3090,7 @@ function formValidationFail_(message, target) {
   showToast(message);
   let el=typeof target==='string'?document.getElementById(target):target;
   if(!el)return;
+  const details=el.closest?.('details');if(details)details.open=true;
   const field=el.closest?.('.field')||el;
   field.classList.remove('form-validation-flash'); void field.offsetWidth; field.classList.add('form-validation-flash');
   try { field.scrollIntoView({behavior:'smooth',block:'center'}); } catch(e) {}
@@ -3091,6 +3099,7 @@ function formValidationFail_(message, target) {
 
 // ── 送出報修 ──
 async function submitForm() {
+  if(document.getElementById('submitBtn').disabled)return;
   const unit = document.getElementById('f-unit').value.trim();
   const name = document.getElementById('f-name').value.trim();
   const area = document.getElementById('f-area').value;
@@ -3109,7 +3118,10 @@ async function submitForm() {
     // 快速按鈕帶入的也算，上面已確認 locVal 有值
   }
   const btn = document.getElementById('submitBtn');
+  const submittedDraft=collectRepairDraft_();
+  const submittedRemember=document.getElementById('reporterRemember').value;
   btn.disabled=true; btn.textContent='送出中…';
+  document.querySelector('#page-form > .card').inert=true;
   activeWriteCount++;
   try {
     const submitArea = selectedBuilding ? (area + selectedBuilding) : area;
@@ -3187,9 +3199,10 @@ async function submitForm() {
       document.getElementById('f-unit').style.display='none';
       locType='';
       clearRepairDraft_();
+      reporterSubmitSuccess_(submittedDraft,submittedRemember,data.caseId);
     } else { showToast('錯誤：'+data.message); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
-  finally { activeWriteCount=Math.max(0,activeWriteCount-1); if(currentPageId==='mgr')scheduleDashboardPrefetch_(); }
+  finally { document.querySelector('#page-form > .card').inert=false; activeWriteCount=Math.max(0,activeWriteCount-1); if(currentPageId==='mgr')scheduleDashboardPrefetch_(); }
   btn.disabled=false; btn.textContent='送出報修申請';
 }
 
@@ -6151,7 +6164,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=24', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.0', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
