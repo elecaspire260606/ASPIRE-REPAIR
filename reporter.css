@@ -1,4 +1,4 @@
-/* V3.12.1: quieter surfaces, stronger hierarchy, compact known identity. */
+/* V3.12.2: quieter surfaces, stronger hierarchy, compact known identity. */
 #page-form .form-module-basic {grid-column:1/-1;padding:0;}
 #reporterDetails summary {display:flex;align-items:center;gap:12px;min-height:58px;padding:14px 18px;cursor:pointer;list-style:none;color:#193c52;font-weight:700;}
 #reporterDetails summary::-webkit-details-marker {display:none;}

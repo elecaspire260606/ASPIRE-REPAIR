@@ -530,7 +530,7 @@
     #mgr-area-row { width:100%; min-width:0; max-width:100%; flex-wrap:nowrap!important; overflow-x:auto; overflow-y:hidden; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     #mgr-area-row::-webkit-scrollbar { display:none; }
     #mgr-area-row .filter-btn { flex:0 0 auto!important; min-width:64px; }
-    #submitBtn.sticky-ready { position:static; box-shadow:0 8px 24px rgba(232,118,26,.3); }
+    #submitBtn.sticky-ready { position:sticky; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:25; box-shadow:0 8px 24px rgba(232,118,26,.3); }
     .case-skeleton-grid { grid-template-columns:minmax(0,1fr); }
     #caseList, #caseList .case-card, .case-collapsed, .case-row-top, .case-row-meta, .case-row-note { min-width:0; max-width:100%; }
     .case-row-note { overflow-wrap:anywhere; }
@@ -1953,8 +1953,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.12.1">
-<script src="reporter.js?v=3.12.1"></script>
+<link rel="stylesheet" href="reporter.css?v=3.12.2">
+<script src="reporter.js?v=3.12.2"></script>
 </head>
 <body>
 
@@ -2133,7 +2133,7 @@
     <div id="query-status-filter" style="display:none;margin-bottom:10px;">
       <div class="filter-row">
         <button class="filter-btn active" onclick="filterQueryStatus('待處理',this)">待處理</button>
-        <button class="filter-btn" onclick="filterQueryStatus('已結案',this)">已結案</button>
+        <button class="filter-btn" onclick="filterQueryStatus('已結案',this)">已結案／已排除</button>
       </div>
     </div>
     <div id="queryList"><div class="empty-state" style="color:#ccc;">請輸入姓名後查詢</div></div>
@@ -2147,7 +2147,7 @@
     </div>
     <div class="filter-row">
       <button class="filter-btn active" data-status="待處理" onclick="filterQuery('待處理',this)">待處理</button>
-      <button class="filter-btn" data-status="已結案" onclick="filterQuery('已結案',this)">已結案</button>
+      <button class="filter-btn" data-status="已結案" onclick="filterQuery('已結案',this)">已結案／已排除</button>
     </div>
     <div style="position:relative;margin-bottom:10px;">
       <input type="text" id="queryKeywordInput" placeholder="搜尋案件編號、地點、描述、申請人…" oninput="onQueryKeywordInput()" style="width:100%;padding:11px 38px 11px 14px;border:1.5px solid #e8e8e8;border-radius:12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
@@ -2190,7 +2190,7 @@
     <div class="mgr-main-filter-row">
       <div class="filter-row" id="mgr-status-row">
         <button class="filter-btn active" data-status="待處理" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
-        <button class="filter-btn" data-status="已結案" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
+        <button class="filter-btn" data-status="已結案" onclick="filterCases(&#39;已結案&#39;,this)">已結案／已排除</button>
       </div>
       <div class="mgr-priority-row">
         <button type="button" id="mgrPriorityOnlyBtn" class="priority-filter-btn" onclick="toggleMgrPriorityOnly(this)">⚡ 今日優先</button>
@@ -3098,25 +3098,6 @@ function formValidationFail_(message, target) {
 }
 
 // ── 送出報修 ──
-// Deadline includes the response body, not just receipt of HTTP headers.
-async function fetchReportResponse_(payload, timeoutMs=40000) {
-  const controller=new AbortController();
-  let timer;
-  const deadline=new Promise((_,reject)=>{
-    timer=setTimeout(()=>{
-      reject(new Error('尚未確認送出結果，請先至案件查詢確認；填寫內容已保留'));
-      controller.abort();
-    },timeoutMs);
-  });
-  try {
-    return await Promise.race([deadline,(async()=>{
-      const response=await fetch(API_URL,{method:'POST',body:JSON.stringify(payload),signal:controller.signal});
-      const text=await response.text();
-      return {response,text};
-    })()]);
-  } finally { clearTimeout(timer); }
-}
-
 async function submitForm() {
   if(document.getElementById('submitBtn').disabled)return;
   const unit = document.getElementById('f-unit').value.trim();
@@ -3140,10 +3121,9 @@ async function submitForm() {
   const submittedDraft=collectRepairDraft_();
   const submittedRemember=document.getElementById('reporterRemember').value;
   btn.disabled=true; btn.textContent='送出中…';
-  const formCard=document.querySelector('#page-form > .card');
+  document.querySelector('#page-form > .card').inert=true;
   activeWriteCount++;
   try {
-    formCard.inert=true;
     const submitArea = selectedBuilding ? (area + selectedBuilding) : area;
     const isOfficeArea = (area === '研究園' || area === '智尊');
     const locTypeLabel = locType==='room' ? (isOfficeArea?'辦公室':'客房') : ({restaurant:'餐廳',facility:'設施',other:'公共區域／其他'}[locType]||'');
@@ -3155,13 +3135,14 @@ async function submitForm() {
     const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, todayPriority, priorityReason, deviceFingerprint: getDeviceFingerprint() };
 
     const attemptSubmit = async () => {
-      let response,text;
+      let response;
       try {
-        ({response,text}=await fetchReportResponse_(payload));
+        response = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(payload) }, 40000);
       } catch (e) {
         console.error('submitForm 網路層錯誤:', e);
-        throw new Error('尚未確認送出結果，請先至案件查詢確認；填寫內容已保留');
+        throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
       }
+      const text = await response.text();
       if (!response.ok) {
         console.error('submitForm HTTP錯誤:', response.status, text);
         throw new Error('系統暫時無法連線，剛才填寫的內容仍保留，請稍後再試');
@@ -3221,12 +3202,8 @@ async function submitForm() {
       reporterSubmitSuccess_(submittedDraft,submittedRemember,data.caseId);
     } else { showToast('錯誤：'+data.message); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
-  finally {
-    btn.disabled=false; btn.textContent='送出報修申請';
-    formCard.inert=false;
-    activeWriteCount=Math.max(0,activeWriteCount-1);
-    if(currentPageId==='mgr')scheduleDashboardPrefetch_();
-  }
+  finally { document.querySelector('#page-form > .card').inert=false; activeWriteCount=Math.max(0,activeWriteCount-1); if(currentPageId==='mgr')scheduleDashboardPrefetch_(); }
+  btn.disabled=false; btn.textContent='送出報修申請';
 }
 
 // ── 載入案件 ──
@@ -3491,7 +3468,7 @@ function renderManagerCaseList() {
     const syncLabel = c.closeSyncState==='failed' ? '⚠ 未同步' : c.closeSyncState ? '↻ 同步中' : '';
     const badgeHtml = syncLabel
       ? `<span class="badge sync-badge${c.closeSyncState==='failed'?' failed':''}">${syncLabel}</span>`
-      : `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>`;
+      : `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?escapeHtml_(({寫錯:'填寫錯誤',測試:'測試案件'})[c.flagReason]||c.flagReason):c.status}</span>`;
     const photoTag = [
       (c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length)) ? `📷報修${c.reportPhotoCount||c.reportPhotos.length}` : '',
       (c.closePhotoCount||(c.closePhotos&&c.closePhotos.length)) ? `📷結案${c.closePhotoCount||c.closePhotos.length}` : '',
@@ -3549,7 +3526,7 @@ function renderExpandedInner(c, modalMode=false) {
   const area = effArea(c);
   const locDisplay = c.normalizedLocation || c.location || '—';
   const titleHtml = `${area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
-  const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>`;
+  const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?escapeHtml_(({寫錯:'填寫錯誤',測試:'測試案件'})[c.flagReason]||c.flagReason):c.status}</span>`;
   const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
   const reportBtnHtml = (c.status==='已結案' && !isFlagged && !isCloseSyncing) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
 
@@ -3972,33 +3949,39 @@ function toggleFlag(rowIndex, reason, btn) {
 async function autoCloseAsFlagged(rowIndex, reason) {
   const labels = {重複報修:'重複報修', 寫錯:'填寫錯誤', 測試:'測試案件'};
   const label = labels[reason] || reason;
-  if (!confirm(`確定標記為「${label}」並自動結案？此案件將移至已結案，不列入統計。`)) {
-    const btns = document.getElementById('flags-'+rowIndex)?.querySelectorAll('.flag-btn');
-    if (btns) btns.forEach(b=>b.classList.remove('active-flag'));
+  const c=findCaseByRowIndex_(rowIndex);
+  const resetFlag=()=>document.querySelectorAll('#flags-'+rowIndex+' .flag-btn').forEach(b=>b.classList.toggle('active-flag',b.textContent.trim()===c?.flagReason));
+  if(!c || c.closeSyncState){resetFlag();showToast('請先完成案件同步並重新開啟');return;}
+  const closerName=getSelectedCloser(rowIndex);
+  if(!closerName){resetFlag();showToast('請先選擇操作人員');return;}
+  if (!confirm(`確定將此案件列為「${label}」？不列入維修業績與結案統計。${reason==='測試'?'不寄送通知信。':'寄送原因通知，不會通知維修完成。'}`)) {
+    resetFlag();
     return;
   }
   try {
     const data = await callApi({
       action: 'close',
-      rowIndex,
-      repairNote: '',
-      normalizedLocation: '',
+      caseId:c.caseId,
+      rowHint:rowIndex,
+      repairNote: document.getElementById('note-'+rowIndex)?.value.trim() || c.repairNote || '',
+      normalizedLocation: c.normalizedLocation || '',
       flagReason: reason,
-      caseType: '',
-      correctedLocType: '',
-      correctedArea: '',
-      closerName: '',
+      caseType: c.caseType || '',
+      correctedLocType: c.correctedLocType || '',
+      correctedArea: c.correctedArea || '',
+      closerName,
       closePhotos: [],
       closeFingerprint: getDeviceFingerprint()
     }, 45000);
     if (data.success) {
-      showToast(`✓ 已標記「${label}」並結案`);
-      playRepairSuccessBurst_();
+      showToast(`✓ 已排除：${label}（不計入業績）`);
       applyServerCasePatch_(data.case, data.version);
     } else {
+      resetFlag();
       showToast('操作失敗：'+(data.message||'未知錯誤'));
     }
   } catch(e) {
+    resetFlag();
     showToast('操作失敗，請檢查網路');
   }
 }
@@ -4675,7 +4658,7 @@ function renderPubCard(c) {
         <div class="pub-meta">${c.unit} · ${c.name}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-        <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?'已標記':c.status}</span>
+        <span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?escapeHtml_(({寫錯:'填寫錯誤',測試:'測試案件'})[c.flagReason]||c.flagReason):c.status}</span>
         ${isFlagged?`<span style="font-size:10px;color:#aaa;text-align:right;">${flagLabel}</span>`:''}
       </div>
     </div>
@@ -6187,7 +6170,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.1', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.2', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aspire-repair-v3-12-1-photo-fix';
+const CACHE_NAME = 'aspire-repair-v3-12-2-flag-notice';
 
 // 保留 Service Worker / PWA 註冊能力，但不再攔截任何 fetch。
 // Apps Script 會跨網域並經過 Google redirect；讓瀏覽器原生網路層處理最穩定。
