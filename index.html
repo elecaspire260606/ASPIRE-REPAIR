@@ -530,7 +530,7 @@
     #mgr-area-row { width:100%; min-width:0; max-width:100%; flex-wrap:nowrap!important; overflow-x:auto; overflow-y:hidden; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     #mgr-area-row::-webkit-scrollbar { display:none; }
     #mgr-area-row .filter-btn { flex:0 0 auto!important; min-width:64px; }
-    #submitBtn.sticky-ready { position:sticky; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:25; box-shadow:0 8px 24px rgba(232,118,26,.3); }
+    #submitBtn.sticky-ready { position:static; box-shadow:0 8px 24px rgba(232,118,26,.3); }
     .case-skeleton-grid { grid-template-columns:minmax(0,1fr); }
     #caseList, #caseList .case-card, .case-collapsed, .case-row-top, .case-row-meta, .case-row-note { min-width:0; max-width:100%; }
     .case-row-note { overflow-wrap:anywhere; }
@@ -1953,8 +1953,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.12.0">
-<script src="reporter.js?v=3.12.0"></script>
+<link rel="stylesheet" href="reporter.css?v=3.12.1">
+<script src="reporter.js?v=3.12.1"></script>
 </head>
 <body>
 
@@ -3098,6 +3098,25 @@ function formValidationFail_(message, target) {
 }
 
 // ── 送出報修 ──
+// Deadline includes the response body, not just receipt of HTTP headers.
+async function fetchReportResponse_(payload, timeoutMs=40000) {
+  const controller=new AbortController();
+  let timer;
+  const deadline=new Promise((_,reject)=>{
+    timer=setTimeout(()=>{
+      reject(new Error('尚未確認送出結果，請先至案件查詢確認；填寫內容已保留'));
+      controller.abort();
+    },timeoutMs);
+  });
+  try {
+    return await Promise.race([deadline,(async()=>{
+      const response=await fetch(API_URL,{method:'POST',body:JSON.stringify(payload),signal:controller.signal});
+      const text=await response.text();
+      return {response,text};
+    })()]);
+  } finally { clearTimeout(timer); }
+}
+
 async function submitForm() {
   if(document.getElementById('submitBtn').disabled)return;
   const unit = document.getElementById('f-unit').value.trim();
@@ -3121,9 +3140,10 @@ async function submitForm() {
   const submittedDraft=collectRepairDraft_();
   const submittedRemember=document.getElementById('reporterRemember').value;
   btn.disabled=true; btn.textContent='送出中…';
-  document.querySelector('#page-form > .card').inert=true;
+  const formCard=document.querySelector('#page-form > .card');
   activeWriteCount++;
   try {
+    formCard.inert=true;
     const submitArea = selectedBuilding ? (area + selectedBuilding) : area;
     const isOfficeArea = (area === '研究園' || area === '智尊');
     const locTypeLabel = locType==='room' ? (isOfficeArea?'辦公室':'客房') : ({restaurant:'餐廳',facility:'設施',other:'公共區域／其他'}[locType]||'');
@@ -3135,14 +3155,13 @@ async function submitForm() {
     const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, todayPriority, priorityReason, deviceFingerprint: getDeviceFingerprint() };
 
     const attemptSubmit = async () => {
-      let response;
+      let response,text;
       try {
-        response = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(payload) }, 40000);
+        ({response,text}=await fetchReportResponse_(payload));
       } catch (e) {
         console.error('submitForm 網路層錯誤:', e);
-        throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
+        throw new Error('尚未確認送出結果，請先至案件查詢確認；填寫內容已保留');
       }
-      const text = await response.text();
       if (!response.ok) {
         console.error('submitForm HTTP錯誤:', response.status, text);
         throw new Error('系統暫時無法連線，剛才填寫的內容仍保留，請稍後再試');
@@ -3202,8 +3221,12 @@ async function submitForm() {
       reporterSubmitSuccess_(submittedDraft,submittedRemember,data.caseId);
     } else { showToast('錯誤：'+data.message); }
   } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
-  finally { document.querySelector('#page-form > .card').inert=false; activeWriteCount=Math.max(0,activeWriteCount-1); if(currentPageId==='mgr')scheduleDashboardPrefetch_(); }
-  btn.disabled=false; btn.textContent='送出報修申請';
+  finally {
+    btn.disabled=false; btn.textContent='送出報修申請';
+    formCard.inert=false;
+    activeWriteCount=Math.max(0,activeWriteCount-1);
+    if(currentPageId==='mgr')scheduleDashboardPrefetch_();
+  }
 }
 
 // ── 載入案件 ──
@@ -6164,7 +6187,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.0', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.1', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
