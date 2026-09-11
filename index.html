@@ -1952,8 +1952,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.13.0">
-<script src="reporter.js?v=3.13.0"></script>
+<link rel="stylesheet" href="reporter.css?v=3.14.0">
+<script src="reporter.js?v=3.14.0"></script>
 </head>
 <body>
 
@@ -1970,12 +1970,12 @@
     <div class="nav-tab" onclick="requireAuth(&#39;mgr&#39;)"><span class="nav-glyph"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg></span><span class="nav-long">修繕管理</span><span class="nav-short">修繕</span></div>
     <div class="nav-tab" onclick="requireAuth(&#39;dash&#39;)"><span class="nav-glyph"><svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7M3 19h18"/></svg></span><span class="nav-long">後台統計</span><span class="nav-short">統計</span></div>
   </div>
-  <div class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()"><span class="logout-glyph">↪</span><span class="logout-text">登出</span></div>
+  <div class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()"><span class="logout-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4v16h6M13 8l4 4-4 4M8 12h12"/></svg></span><span class="logout-text">登出</span></div>
 </nav>
 
 <div class="stats-bar">
   <div id="syncStatus" style="font-size:12px;color:#999;"></div>
-  <div class="stats-refresh" id="statsRefreshBtn" onclick="refreshStats()" title="重新整理">↻</div>
+  <button type="button" class="stats-refresh" id="statsRefreshBtn" onclick="refreshStats()" title="重新整理" aria-label="重新整理"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5v6h-6M20 11a8 8 0 1 0-2 7"/></svg></button>
 </div>
 
 <!-- ── 密碼鎖 ── -->
@@ -2680,6 +2680,7 @@ window.onload = () => {
   document.getElementById('today-hero-label').textContent = `${m}/${d}`;
   initTimeFilterBtn();
   initReporter_();
+  mountHeroTools_('form');
   restoreRepairDraft_();
   refreshReporterSummary_(true);
   setupRepairDraftAutosave_();
@@ -3030,6 +3031,19 @@ function renderCurrentPage() {
   caseVisualEffects_.clear(); // 特效只屬於這次資料異動，不因搜尋、篩選或換頁再次播放
 }
 
+function mountHeroTools_(id) {
+  const hero=document.querySelector('#page-'+id+' .page-hero');
+  const bar=document.querySelector('.stats-bar');
+  if(!hero || !bar)return;
+  let tools=document.getElementById('heroTools');
+  if(!tools){
+    tools=document.createElement('div');tools.id='heroTools';
+    tools.append(document.getElementById('syncStatus'),document.getElementById('statsRefreshBtn'));
+  }
+  hero.append(tools);
+  bar.classList.add('is-integrated');
+}
+
 function switchPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-lock').style.display='none';
@@ -3038,6 +3052,7 @@ function switchPage(id) {
   const idx = ['form','query','mgr','dash'].indexOf(id);
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   currentPageId = id;
+  mountHeroTools_(id);
   if (id === 'dash') {
     // Dashboard 核心 Snapshot 已經瘦身；不再同時打第二支 Quick Counts API，減少 GAS 冷啟動/並發請求。
     loadDashboardSnapshot();
@@ -3439,7 +3454,7 @@ function renderManagerCaseList() {
     const areaClass = area.startsWith('會館') ? 'area-館' : area.startsWith('雅舍') ? 'area-雅' : area.startsWith('研究') ? 'area-研' : area.startsWith('智尊') ? 'area-智' : 'area-其';
     const cls = (isFlagged ? 'case-card is-flagged' : currentFilter==='已結案' ? 'case-card is-closed' : 'case-card') + ' ' + areaClass + caseVisualClass_(c);
     const locDisplay = c.normalizedLocation || c.location || '—';
-    const titleHtml = `${area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
+    const titleHtml = `<span class="case-place">${escapeHtml_(area)} · ${escapeHtml_(locDisplay)}</span>${c.locationType ? '<span class="case-location-type">'+escapeHtml_(c.locationType)+'</span>' : ''}`;
     const syncLabel = c.closeSyncState==='failed' ? '⚠ 未同步' : c.closeSyncState ? '↻ 同步中' : '';
     const badgeHtml = syncLabel
       ? `<span class="badge sync-badge${c.closeSyncState==='failed'?' failed':''}">${syncLabel}</span>`
@@ -6145,7 +6160,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.13.0', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.14.0', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
