@@ -530,7 +530,7 @@
     #mgr-area-row { width:100%; min-width:0; max-width:100%; flex-wrap:nowrap!important; overflow-x:auto; overflow-y:hidden; padding-bottom:2px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
     #mgr-area-row::-webkit-scrollbar { display:none; }
     #mgr-area-row .filter-btn { flex:0 0 auto!important; min-width:64px; }
-    #submitBtn.sticky-ready { position:sticky; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:25; box-shadow:0 8px 24px rgba(232,118,26,.3); }
+    #page-form #submitBtn { position:static; bottom:auto; z-index:auto; }
     .case-skeleton-grid { grid-template-columns:minmax(0,1fr); }
     #caseList, #caseList .case-card, .case-collapsed, .case-row-top, .case-row-meta, .case-row-note { min-width:0; max-width:100%; }
     .case-row-note { overflow-wrap:anywhere; }
@@ -1248,7 +1248,6 @@
     .logout-text { display:inline; font-size:10px; }
     .stats-bar { top:0; }
     .page { padding-top:12px; }
-    #submitBtn.sticky-ready { bottom:calc(73px + env(safe-area-inset-bottom)); }
     .close-sync-tray { bottom:calc(76px + env(safe-area-inset-bottom)); }
     .toast { bottom:calc(82px + env(safe-area-inset-bottom)); }
   }
@@ -1953,8 +1952,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.12.2">
-<script src="reporter.js?v=3.12.2"></script>
+<link rel="stylesheet" href="reporter.css?v=3.12.3">
+<script src="reporter.js?v=3.12.3"></script>
 </head>
 <body>
 
@@ -2991,7 +2990,8 @@ function setupRepairDraftAutosave_() {
 }
 function updateSubmitStickyState_() {
   const btn=document.getElementById('submitBtn'); if(!btn)return;
-  btn.classList.toggle('sticky-ready', repairDraftHasContent_(collectRepairDraft_()));
+  // Keep submit below the photo picker, even after draft input or restoration.
+  btn.classList.remove('sticky-ready');
 }
 function updateStickyOffsets_() {
   const stats=document.querySelector('.stats-bar');
@@ -6170,7 +6170,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.2', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.3', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
