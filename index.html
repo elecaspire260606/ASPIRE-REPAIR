@@ -1952,8 +1952,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.12.3">
-<script src="reporter.js?v=3.12.3"></script>
+<link rel="stylesheet" href="reporter.css?v=3.13.0">
+<script src="reporter.js?v=3.13.0"></script>
 </head>
 <body>
 
@@ -3117,10 +3117,11 @@ async function submitForm() {
   if (locType === 'restaurant' || locType === 'facility') {
     // 快速按鈕帶入的也算，上面已確認 locVal 有值
   }
+  if(document.getElementById('report-photo-picker').disabled && photoData.report.length<2){showToast('照片正在準備，請稍候再送出');return;}
   const btn = document.getElementById('submitBtn');
   const submittedDraft=collectRepairDraft_();
   const submittedRemember=document.getElementById('reporterRemember').value;
-  btn.disabled=true; btn.textContent='送出中…';
+  btn.disabled=true; btn.textContent='正在保存…';
   document.querySelector('#page-form > .card').inert=true;
   activeWriteCount++;
   try {
@@ -3134,49 +3135,7 @@ async function submitForm() {
     const operationId=ensureReportSubmitOperationId_();
     const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, todayPriority, priorityReason, deviceFingerprint: getDeviceFingerprint() };
 
-    const attemptSubmit = async () => {
-      let response;
-      try {
-        response = await fetchWithTimeout(API_URL, { method: 'POST', body: JSON.stringify(payload) }, 40000);
-      } catch (e) {
-        console.error('submitForm 網路層錯誤:', e);
-        throw new Error('網路目前不穩定，案件尚未送出，請再試一次');
-      }
-      const text = await response.text();
-      if (!response.ok) {
-        console.error('submitForm HTTP錯誤:', response.status, text);
-        throw new Error('系統暫時無法連線，剛才填寫的內容仍保留，請稍後再試');
-      }
-      if (!text) {
-        console.error('submitForm 回傳空內容');
-        throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
-      }
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        console.error('submitForm JSON解析失敗:', text);
-        throw new Error('系統暫時忙碌，剛才填寫的內容仍保留，請稍後再試');
-      }
-    };
-
-    // 送出報修會新增一筆案件，如果自動重試、第一次其實已經成功，會造成重複報修，
-    // 所以這裡不做自動重試，失敗就讓使用者自己看訊息決定要不要再送一次(填寫內容仍保留)。
-    const data = await attemptSubmit();
-    if (data.success) {
-      showToast('✓ '+data.message+(data.caseId?' '+data.caseId:''));
-      playRepairSuccessBurst_();
-      if(data.warning)setTimeout(()=>showToast('⚠️ '+data.warning),1400);
-      // 新案件已在伺服器建立，但目前 allCases 尚未包含它；讓下次進管理/查詢頁立刻做 version sync，不等30秒節流。
-      lastCasesLoadTime = 0;
-      dashboardSnapshot = null;
-      dashboardCube = null;
-      dashboardVersions = null;
-      dashboardDatasetKey = '';
-      locationStatsMemoryCache.clear();
-      lastDashboardLoadTime = 0;
-      fullHistoryCasesCache_ = null;
-      fullHistoryCasesLoadedAt_ = 0;
-      try { localStorage.removeItem(DASHBOARD_SNAPSHOT_CACHE_KEY); } catch(e) {}
+    await enqueueReportJob_(payload);
       ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
       resetPriorityForm_();
       photoData.report = [];
@@ -3199,12 +3158,28 @@ async function submitForm() {
       document.getElementById('f-unit').style.display='none';
       locType='';
       clearRepairDraft_();
-      reporterSubmitSuccess_(submittedDraft,submittedRemember,data.caseId);
-    } else { showToast('錯誤：'+data.message); }
-  } catch(e) { showToast('❌ ' + (e.message || '連線失敗，請檢查網路')); }
-  finally { document.querySelector('#page-form > .card').inert=false; activeWriteCount=Math.max(0,activeWriteCount-1); if(currentPageId==='mgr')scheduleDashboardPrefetch_(); }
-  btn.disabled=false; btn.textContent='送出報修申請';
+      reporterQueued_(submittedDraft,submittedRemember);
+  } catch(e) { showToast('❌ ' + (e.message || '無法暫存，內容仍保留')); }
+  finally {
+    document.querySelector('#page-form > .card').inert=false;
+    activeWriteCount=Math.max(0,activeWriteCount-1);
+    btn.disabled=false; btn.textContent='送出報修申請';
+    void processReportJobs_();
+  }
 }
+
+function invalidateReportCaches_() {
+      lastCasesLoadTime = 0;
+      dashboardSnapshot = null;
+      dashboardCube = null;
+      dashboardVersions = null;
+      dashboardDatasetKey = '';
+      locationStatsMemoryCache.clear();
+      lastDashboardLoadTime = 0;
+      fullHistoryCasesCache_ = null;
+      fullHistoryCasesLoadedAt_ = 0;
+      try { localStorage.removeItem(DASHBOARD_SNAPSHOT_CACHE_KEY); } catch(e) {}
+ }
 
 // ── 載入案件 ──
 let loadCasesRequestSeq = 0; // 請求序號:避免比較舊、比較慢的請求(不管成功或失敗)蓋掉後來更新的畫面結果
@@ -6170,7 +6145,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.12.3', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.13.0', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
