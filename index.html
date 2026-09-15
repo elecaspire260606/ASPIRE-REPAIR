@@ -1952,8 +1952,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.15.0">
-<script src="reporter.js?v=3.15.0"></script>
+<link rel="stylesheet" href="reporter.css?v=3.16.0">
+<script src="reporter.js?v=3.16.0"></script>
 </head>
 <body>
 
@@ -2423,10 +2423,10 @@
 </div>
 
 <!-- V3.4 背景同步狀態 -->
-<div id="closeSyncTray" class="close-sync-tray" aria-live="polite">
-  <div class="close-sync-head">結案背景同步</div>
+<details id="closeSyncTray" class="close-sync-tray" aria-live="polite">
+  <summary class="close-sync-head">結案進度</summary>
   <div id="closeSyncItems"></div>
-</div>
+</details>
 
 
 
@@ -2472,7 +2472,7 @@ async function parseGetResponse_(response) {
     throw new Error('系統暫時忙碌，請稍後再試');
   }
   try {
-    return JSON.parse(text);
+    return withoutDeviceData_(JSON.parse(text));
   } catch (e) {
     console.error('查詢API JSON解析失敗:', text.slice(0, 500));
     const err = new Error('API回傳格式異常，請重新部署 Apps Script');
@@ -2500,7 +2500,8 @@ async function callReadApi_(params, timeoutMs = 15000, onStage) {
 }
 
 // Raw server snapshot is independent of UI patches and optimistic close overlays.
-const CASE_SYNC_BASE_KEY_ = 'aspire_case_sync_base_v1';
+const CASE_SYNC_BASE_KEY_ = 'aspire_case_sync_base_v2';
+try { localStorage.removeItem('aspire_case_sync_base_v1'); localStorage.removeItem('aspire_cases_cache_v33_all_pending'); } catch(e) {}
 let caseSyncBase_ = null;
 async function caseManifest_(cases) {
   if (!globalThis.crypto?.subtle || !Array.isArray(cases) || cases.length > 3000) return null;
@@ -2579,7 +2580,7 @@ function caseVisualClass_(c) {
 // 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
 // 不然修繕管理可能會不小心吃到統計頁抓回來、含封存舊案件的那份資料。
 // V3.10.3：更換快取鍵，避免舊版「最新N筆待處理」的不完整快取在版本相同時被繼續沿用。
-const CASES_CACHE_KEY = 'aspire_cases_cache_v33_all_pending';
+const CASES_CACHE_KEY = 'aspire_cases_cache_v3151';
 try { localStorage.removeItem('aspire_cases_cache_v2'); } catch(e) {} // V3.1格式已含照片網址，舊快照不再沿用
 const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_area_cube_v4'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
 function loadCacheByKey_(key) {
@@ -2597,7 +2598,7 @@ function loadCacheByKey_(key) {
 }
 function saveCacheByKey_(key, cases, serverVersion, loadedRange) {
   try {
-    localStorage.setItem(key, JSON.stringify({ version: 2, savedAt: Date.now(), cases, serverVersion:serverVersion||'', loadedRange:loadedRange??null }));
+    localStorage.setItem(key, JSON.stringify({ version: 2, savedAt: Date.now(), cases, serverVersion:serverVersion||'', loadedRange:loadedRange??null, syncedAt:lastCasesSuccessfulSyncAt_ }));
   } catch(e) {}
 }
 function clearCacheByKey_(key) {
@@ -2632,26 +2633,43 @@ function loadSnapshotCache(params) {
 function saveSnapshotCache(cube, versions, params, locationFirstPages) {
   try {
     localStorage.setItem(DASHBOARD_SNAPSHOT_CACHE_KEY,JSON.stringify({
-      version:5,savedAt:Date.now(),paramsKey:dashboardParamsKey_(params),cube,versions:versions||{},locationFirstPages:locationFirstPages||{}
+      version:6,savedAt:Date.now(),syncedAt:lastDashboardSuccessfulSyncAt_,paramsKey:dashboardParamsKey_(params),cube,versions:versions||{},locationFirstPages:locationFirstPages||{}
     }));
   } catch(e) {}
 }
 
-// 同步狀態小提示，顯示在頂部列左側，不擋住操作、不是大型遮罩
-function renderSyncStatus(text, opts = {}) {
-  const el = document.getElementById('syncStatus');
-  if (!el) return;
-  clearTimeout(renderSyncStatus._t);
-  el.textContent = text || '';
-  const strip = document.getElementById('caseSyncStrip');
-  if (strip) {
-    strip.hidden = !text;
-    strip.dataset.state = opts.warn ? 'error' : opts.autoClear ? 'done' : 'loading';
-    strip.querySelector('button').hidden = !opts.warn;
-  }
-  if (opts.autoClear) renderSyncStatus._t = setTimeout(() => {
-    if (el.textContent === text) { el.textContent = ''; if(strip)strip.hidden = true; }
-  }, 2200);
+// Successful synchronization time is separate from local cache writes and UI patches.
+let lastCasesSuccessfulSyncAt_=0;
+let lastDashboardSuccessfulSyncAt_=0;
+const syncDisplay316_={cases:{text:'',warn:false},dashboard:{text:'',warn:false}};
+let syncClock316_=null;
+function syncScope316_(){return currentPageId==='dash'?'dashboard':'cases';}
+function syncAge316_(at,now=Date.now()){
+  if(!Number.isFinite(Number(at))||Number(at)<=0)return '上次同步：時間待確認';
+  const minutes=Math.max(0,Math.floor((now-Number(at))/60000));
+  if(minutes<1)return '上次同步：剛剛';
+  if(minutes<60)return '上次同步：'+minutes+' 分鐘前';
+  if(minutes<1440)return '上次同步：'+Math.floor(minutes/60)+' 小時前';
+  return '上次同步：'+Math.floor(minutes/1440)+' 天前';
+}
+function refreshSyncStatusView316_(){
+  const el=document.getElementById('syncStatus'),strip=document.getElementById('caseSyncStrip');if(!el||!strip)return;
+  if(!['mgr','query','dash'].includes(currentPageId)){strip.hidden=true;return;}
+  const scope=syncScope316_(),item=syncDisplay316_[scope];
+  const at=scope==='dashboard'?lastDashboardSuccessfulSyncAt_:lastCasesSuccessfulSyncAt_;
+  el.textContent=syncAge316_(at)+(item.text?' ｜ '+item.text:'');
+  strip.hidden=false;
+  strip.dataset.state=item.warn?'error':item.text?(item.done?'done':'loading'):'idle';
+  strip.querySelector('button').hidden=!item.warn;
+}
+function renderSyncStatus(text,opts={}){
+  const scope=opts.scope||syncScope316_();
+  clearTimeout(syncDisplay316_[scope].timer);
+  const item={text:text||'',warn:!!opts.warn,done:!!opts.autoClear};syncDisplay316_[scope]=item;
+  refreshSyncStatusView316_();
+  if(opts.autoClear)item.timer=setTimeout(()=>{
+    if(syncDisplay316_[scope]===item){item.text='';item.done=false;refreshSyncStatusView316_();}
+  },2200);
 }
 
 // 修繕管理清單這一頁要顯示的案件，是allCases篩選+排序+切頁後的結果(見renderCases())
@@ -2737,12 +2755,14 @@ window.onload = () => {
   initTimeFilterBtn();
   initReporter_();
   mountHeroTools_('form');
+  clearInterval(syncClock316_);
+  syncClock316_=setInterval(()=>{if(document.visibilityState==='visible')refreshSyncStatusView316_();},60000);
   restoreRepairDraft_();
   refreshReporterSummary_(true);
   setupRepairDraftAutosave_();
   updateStickyOffsets_();
   updateSubmitStickyState_();
-  initCloseSync_();
+  void initCloseSync_().catch(e=>console.warn('結案暫存尚未就緒:',e.message));
   setupMaintenanceGameEasterEgg_();
   window.addEventListener('resize', updateStickyOffsets_, {passive:true});
   window.addEventListener('online', () => processCloseQueue_());
@@ -2765,6 +2785,7 @@ document.addEventListener('visibilitychange', () => {
     stopMaintenanceGame_('遊戲已暫停，按開始可重新挑戰');
     return;
   }
+  refreshSyncStatusView316_();
   // 報修頁隔離：從相機切回App時不做任何案件/統計API，優先讓照片壓縮與表單操作順暢。
   if (currentPageId === 'form') return;
   // 手機切App常會連續觸發可見狀態；稍等400ms再判斷，避免一回來就搶資源。
@@ -2988,6 +3009,7 @@ async function checkPassword() {
       document.getElementById('page-lock').style.display='none';
       document.getElementById('logoutBtn').style.display='flex';
       switchPage(pendingPage||'mgr'); pendingPage=null;
+      void resumeCloseAfterLogin_();
     } else {
       document.getElementById('pwErr').textContent='密碼錯誤，請再試一次';
       document.getElementById('pwInput').value='';
@@ -3108,6 +3130,7 @@ function mountHeroTools_(id) {
   }
   hero.after(strip);
   bar.classList.add('is-integrated');
+  refreshSyncStatusView316_();
 }
 
 function switchPage(id) {
@@ -3214,7 +3237,7 @@ async function submitForm() {
     const reportPhotos = (photoData.report||[]).filter(Boolean);
     // 不再送datetime，報修時間一律由後端記錄伺服器時間(手機時間可能不準，伺服器時間比較可靠)
     const operationId=ensureReportSubmitOperationId_();
-    const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, todayPriority, priorityReason, deviceFingerprint: getDeviceFingerprint() };
+    const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, todayPriority, priorityReason };
 
     await enqueueReportJob_(payload);
       ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
@@ -3276,6 +3299,7 @@ function loadCases(force, closedLimitOverride) {
 }
 
 async function _loadCasesImpl(force, closedLimitOverride) {
+  const showCaseSync=(text,opts={})=>renderSyncStatus(text,{...opts,scope:'cases'});
   const targetClosedLimit = closedLimitOverride || casesClosedLimit;
   const targetPendingLimit = 'all';
   const isAllMode = targetClosedLimit === 'all';
@@ -3284,13 +3308,13 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     const cached = loadCasesCache();
     if (cached && cached.cases.length) {
       allCases = cached.cases;
+      lastCasesSuccessfulSyncAt_=Number(cached.syncedAt)||0;
       applyPendingCloseOverlays_();
       if (!isAllMode && cached.serverVersion) lastCasesServerVersion = cached.serverVersion;
       // 畫面快取只供先行顯示；增量基準另外驗證，不能把局部更新當成完整快照。
       lastLoadedDays = (!isAllMode && cached.serverVersion && cached.loadedRange !== null && cached.loadedRange !== undefined)
         ? cached.loadedRange : null;
-      const savedAgo = Math.round((Date.now() - cached.savedAt) / 60000);
-      renderSyncStatus(`顯示${caseCacheAge_(savedAgo)}資料・正在同步…`);
+      showCaseSync('正在同步最新案件…');
       renderCurrentPage();
     }
   }
@@ -3300,13 +3324,14 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     : (lastLoadedDays !== null && lastLoadedDays !== 'all' && lastLoadedDays >= targetClosedLimit);
   if (!force && alreadyHaveEnough && Date.now() - lastCasesLoadTime < CASES_AUTO_REFRESH_INTERVAL && allCases.length) {
     renderCurrentPage();
+    showCaseSync('');
     return;
   }
 
   const mySeq = ++loadCasesRequestSeq;
   const timeoutMs = isAllMode ? 45000 : 25000;
   const readParams = { action:'getAll', closedLimit:targetClosedLimit, pendingLimit:targetPendingLimit };
-  renderSyncStatus('正在連線同步…');
+  showCaseSync('正在連線同步…');
   const started = performance.now();
   const base = isAllMode ? null : await readCaseSyncBase_();
   if (mySeq !== loadCasesRequestSeq) return;
@@ -3317,7 +3342,7 @@ async function _loadCasesImpl(force, closedLimitOverride) {
   const attemptLoad = async () => {
     attempts++;
     const result = await callReadApi_(readParams, timeoutMs, text => {
-      if(mySeq === loadCasesRequestSeq) renderSyncStatus(text);
+      if(mySeq === loadCasesRequestSeq) showCaseSync(text);
     });
     if (!result.success) throw new Error(result.message || '案件載入失敗');
     // A malformed delta retries through the same existing retry budget, using a full snapshot.
@@ -3337,7 +3362,7 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     } catch (e) {
       if (e && e.noRetry) throw e;
       console.warn('loadCases 第一次失敗，1.5秒後自動重試一次:', e.message);
-      renderSyncStatus('連線較慢，正在重新同步…');
+      showCaseSync('連線較慢，正在重新同步…');
       await new Promise(r => setTimeout(r, 1500));
       if (mySeq !== loadCasesRequestSeq) return;
       data = await attemptLoad();
@@ -3345,7 +3370,7 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     if (mySeq !== loadCasesRequestSeq) return;
     if (!data.success) throw new Error(data.message || '案件載入失敗');
 
-    renderSyncStatus('正在套用最新資料…');
+    showCaseSync('正在套用最新資料…');
     const nextCases = data.changed === false ? base.cases : assembleCaseSync_(data, base);
     if (!isAllMode && data.changed !== false) {
       const raw = JSON.parse(JSON.stringify(nextCases));
@@ -3365,14 +3390,15 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     casesHasMore = data.changed === false ? !!base.hasMore : !!data.hasMore;
     lastLoadedDays = targetClosedLimit;
     lastCasesLoadTime = Date.now();
+    lastCasesSuccessfulSyncAt_=lastCasesLoadTime;
     if (isAllMode) { fullHistoryCasesCache_=allCases; fullHistoryCasesLoadedAt_=Date.now(); }
     else saveCasesCache(allCases);
     renderCurrentPage();
-    renderSyncStatus(data.changed === false ? '✓ 已是最新資料' : '✓ 案件已更新', {autoClear:true});
+    showCaseSync(data.changed === false ? '✓ 已是最新資料' : '✓ 案件已更新', {autoClear:true});
   } catch(e) {
     if (mySeq !== loadCasesRequestSeq) return;
     console.error('loadCases 失敗:', e);
-    renderSyncStatus(allCases.length ? '同步未完成・保留上次資料' : '同步未完成・請重試', {warn:true});
+    showCaseSync(allCases.length ? '同步未完成・保留上次資料' : '同步未完成・請重試', {warn:true});
     if (allCases.length) { /* Keep the existing list available. */ }
     else if (currentPageId === 'dash') showToast('❌ 統計資料載入失敗，請點右上角重新整理再試一次');
     else document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
@@ -3428,7 +3454,7 @@ function filterCases(status, btn) {
 // 帶來的複雜度已經大於它們省下來的效能，反而增加彼此互動出bug的風險。
 function applyServerCasePatch_(serverCase, serverVersion, opts = {}) {
   if (!serverCase) return false;
-  const idx = allCases.findIndex(c => c.caseId === serverCase.caseId || c.rowIndex === serverCase.rowIndex);
+  const idx = allCases.findIndex(c => serverCase.caseId ? c.caseId === serverCase.caseId : c.rowIndex === serverCase.rowIndex);
   if (idx < 0) {
     // 手上的清單可能是較小範圍；不硬塞未知案件，下一次 version sync 會拿正式清單。
     lastCasesLoadTime = 0;
@@ -3545,7 +3571,7 @@ function renderManagerCaseList() {
     const cls = (isFlagged ? 'case-card is-flagged' : currentFilter==='已結案' ? 'case-card is-closed' : 'case-card') + ' ' + areaClass + caseVisualClass_(c);
     const locDisplay = c.normalizedLocation || c.location || '—';
     const titleHtml = `<span class="case-place">${escapeHtml_(area)} · ${escapeHtml_(locDisplay)}</span>${c.locationType ? '<span class="case-location-type">'+escapeHtml_(c.locationType)+'</span>' : ''}`;
-    const syncLabel = c.closeSyncState==='failed' ? '⚠ 未同步' : c.closeSyncState ? '↻ 同步中' : '';
+    const syncLabel = c.closeSyncState==='failed' ? '待確認' : c.closeSyncState ? '↻ 同步中' : '';
     const badgeHtml = syncLabel
       ? `<span class="badge sync-badge${c.closeSyncState==='failed'?' failed':''}">${syncLabel}</span>`
       : `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?escapeHtml_(({寫錯:'填寫錯誤',測試:'測試案件'})[c.flagReason]||c.flagReason):c.status}</span>`;
@@ -3726,6 +3752,7 @@ let caseActionBodyOverflow_='';
 
 function renderCaseActionFooter_(c) {
   const isCloseSyncing=!!c.closeSyncState;
+  if(isCloseSyncing)return '<button type="button" class="btn-close-case" disabled>請查看結案進度</button>';
   const statusButton=c.status==='待處理'
     ? `<button class="btn-close-case" onclick="closeCase(${c.rowIndex})">完成結案</button>`
     : isCloseSyncing
@@ -4039,7 +4066,7 @@ async function autoCloseAsFlagged(rowIndex, reason) {
     return;
   }
   try {
-    const data = await callApi({
+    await enqueueCloseJob_(c,{
       action: 'close',
       caseId:c.caseId,
       rowHint:rowIndex,
@@ -4050,19 +4077,13 @@ async function autoCloseAsFlagged(rowIndex, reason) {
       correctedLocType: c.correctedLocType || '',
       correctedArea: c.correctedArea || '',
       closerName,
-      closePhotos: [],
-      closeFingerprint: getDeviceFingerprint()
-    }, 45000);
-    if (data.success) {
-      showToast(`✓ 已排除：${label}（不計入業績）`);
-      applyServerCasePatch_(data.case, data.version);
-    } else {
-      resetFlag();
-      showToast('操作失敗：'+(data.message||'未知錯誤'));
-    }
+      closePhotos: []
+    });
+    closeCaseActionModal();showToast('排除案件的操作已保存，正在背景送出');
+
   } catch(e) {
     resetFlag();
-    showToast('操作失敗，請檢查網路');
+    showToast(e.message||'操作尚未送出，內容仍保留');
   }
 }
 
@@ -4075,10 +4096,16 @@ function getSelectedFlag(rowIndex) {
 
 // ══════════════ V3.4 快速結案＋背景同步 ══════════════
 const QUICK_CLOSE_CLOSERS_ = ['林益程','劉奕錦','余冠魁','鄭嘉榮','高賓瞬','郭于賢','其他'];
+function withoutDeviceData_(value) {
+  return JSON.parse(JSON.stringify(value,(key,v)=>key==='deviceFingerprint'||key==='closeFingerprint'?undefined:v));
+}
 const CLOSE_SYNC_DB_NAME_ = 'aspire-repair-v34';
 const CLOSE_SYNC_STORE_ = 'closeJobs';
 let closeSyncDbPromise_ = null;
 let closeSyncReady_ = false;
+let closeSyncInitPromise_=null;
+const closeEnqueueCases_=new Set();
+let closeTrayFailureSignature_='';
 let closeQueueProcessing_ = false;
 const closeSyncJobs_ = new Map();
 let quickCloseState_ = { rowIndex:null, caseId:'', closerNames:[], caseType:'', photos:[] };
@@ -4095,65 +4122,49 @@ function makeCloseOperationId_() {
 
 function openCloseSyncDb_() {
   if (closeSyncDbPromise_) return closeSyncDbPromise_;
-  closeSyncDbPromise_ = new Promise((resolve,reject) => {
-    if (!window.indexedDB) { reject(new Error('此瀏覽器不支援離線結案暫存')); return; }
-    const req = indexedDB.open(CLOSE_SYNC_DB_NAME_, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(CLOSE_SYNC_STORE_)) db.createObjectStore(CLOSE_SYNC_STORE_, { keyPath:'id' });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error || new Error('無法開啟結案暫存'));
-  });
+  closeSyncDbPromise_=new Promise((resolve,reject)=>{
+    if(!window.indexedDB){reject(new Error('此瀏覽器不支援結案暫存'));return;}
+    let settled=false;
+    const timer=setTimeout(()=>finish(new Error('無法開啟暫存，請關閉其他報修頁面後重試')),10000);
+    function finish(error,db){if(settled){if(db)db.close();return;}settled=true;clearTimeout(timer);error?reject(error):resolve(db);}
+    const req=indexedDB.open(CLOSE_SYNC_DB_NAME_,1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(CLOSE_SYNC_STORE_))db.createObjectStore(CLOSE_SYNC_STORE_,{keyPath:'id'});};
+    req.onsuccess=()=>{const db=req.result;db.onversionchange=()=>{db.close();closeSyncDbPromise_=null;};finish(null,db);};
+    req.onerror=()=>finish(req.error||new Error('無法開啟結案暫存'));
+    req.onblocked=()=>finish(new Error('請先關閉其他報修頁面，再試一次'));
+  }).catch(e=>{closeSyncDbPromise_=null;throw e;});
   return closeSyncDbPromise_;
 }
-
-async function closeJobPut_(job) {
-  const db = await openCloseSyncDb_();
-  return new Promise((resolve,reject) => {
-    const tx = db.transaction(CLOSE_SYNC_STORE_, 'readwrite');
-    tx.objectStore(CLOSE_SYNC_STORE_).put(job);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error || new Error('結案暫存寫入失敗'));
+async function closeJobStore_(action,value) {
+  const db=await openCloseSyncDb_();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(CLOSE_SYNC_STORE_,action==='getAll'?'readonly':'readwrite');
+    const req=tx.objectStore(CLOSE_SYNC_STORE_)[action](value);
+    const timer=setTimeout(()=>{try{tx.abort();}catch(e){}reject(new Error('暫存逾時，內容仍保留'));},10000);
+    tx.oncomplete=()=>{clearTimeout(timer);resolve(req.result);};
+    tx.onerror=tx.onabort=()=>{clearTimeout(timer);reject(tx.error||req.error||new Error('結案暫存未完成'));};
   });
 }
-
-async function closeJobDelete_(id) {
-  const db = await openCloseSyncDb_();
-  return new Promise((resolve,reject) => {
-    const tx = db.transaction(CLOSE_SYNC_STORE_, 'readwrite');
-    tx.objectStore(CLOSE_SYNC_STORE_).delete(id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error || new Error('結案暫存刪除失敗'));
-  });
-}
-
-async function closeJobsGetAll_() {
-  const db = await openCloseSyncDb_();
-  return new Promise((resolve,reject) => {
-    const tx = db.transaction(CLOSE_SYNC_STORE_, 'readonly');
-    const req = tx.objectStore(CLOSE_SYNC_STORE_).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error || new Error('結案暫存讀取失敗'));
-  });
-}
-
+function closeJobPut_(job){return closeJobStore_('put',withoutDeviceData_(job));}
+function closeJobDelete_(id){return closeJobStore_('delete',id);}
+function closeJobsGetAll_(){return closeJobStore_('getAll');}
 async function initCloseSync_() {
-  try {
-    const jobs = await closeJobsGetAll_();
-    for (const raw of jobs) {
-      const job = { ...raw, state:raw.state==='syncing'?'queued':raw.state };
-      closeSyncJobs_.set(job.id, job);
-      if (job.state !== raw.state) await closeJobPut_(job);
+  if(closeSyncInitPromise_)return closeSyncInitPromise_;
+  closeSyncInitPromise_=(async()=>{
+    const jobs=await closeJobsGetAll_();
+    for(const raw of jobs||[]){
+      const job=withoutDeviceData_(raw);
+      if(job.state==='done'){try{await closeJobDelete_(job.id);}catch(e){closeSyncJobs_.set(job.id,job);}continue;}
+      if(job.state==='syncing'){job.state='uncertain';job.lastError='上次送出結果待確認';}
+      if(job.payload?.closeProtocol!==1){job.state='blocked';job.lastError='舊版未完成操作，請核對案件後重新處理';}
+      closeSyncJobs_.set(job.id,job);
+      if(JSON.stringify(raw)!==JSON.stringify(job))await closeJobPut_(job);
     }
-  } catch(e) {
-    console.warn('背景結案暫存無法使用，仍可在本次開啟期間同步:', e.message);
-  }
-  closeSyncReady_ = true;
-  applyPendingCloseOverlays_();
-  renderCloseSyncTray_();
-  if (allCases.length) renderCurrentPage();
-  processCloseQueue_();
+    closeSyncReady_=true;applyPendingCloseOverlays_();renderCloseSyncTray_();
+    if(allCases.length)renderCurrentPage();
+    void processCloseQueue_();
+  })().catch(e=>{closeSyncInitPromise_=null;throw e;});
+  return closeSyncInitPromise_;
 }
 
 function localCloseDatetime_() {
@@ -4162,24 +4173,16 @@ function localCloseDatetime_() {
 }
 
 function applyCloseJobOverlay_(job) {
-  const idx = allCases.findIndex(c => c.caseId === job.caseId);
-  if (idx < 0) return;
-  const c = allCases[idx];
-  allCases[idx] = {
-    ...c,
-    status:'已結案',
-    repairNote:job.optimistic.repairNote,
-    normalizedLocation:job.optimistic.normalizedLocation,
-    flagReason:job.optimistic.flagReason,
-    caseType:job.optimistic.caseType,
-    correctedLocType:job.optimistic.correctedLocType,
-    correctedArea:job.optimistic.correctedArea,
-    closerName:job.optimistic.closerName,
-    closeDatetime:job.optimistic.closeDatetime,
-    closePhotoCount:job.optimistic.closePhotoCount,
-    closeSyncState:job.state==='failed'?'failed':'syncing',
-    closeSyncJobId:job.id
-  };
+  if(job.state==='done'||job.state==='blocked')return;
+  const idx=allCases.findIndex(c=>c.caseId===job.caseId);if(idx<0)return;
+  const c=allCases[idx];
+  // Only the server can move a case into the completed list or contribute to KPIs.
+  allCases[idx]={...c,closeSyncState:['failed','uncertain','auth'].includes(job.state)?'failed':'syncing',closeSyncJobId:job.id};
+}
+
+function clearCloseOverlay_(caseId) {
+  const c=allCases.find(c=>c.caseId===caseId);
+  if(c){delete c.closeSyncState;delete c.closeSyncJobId;}
 }
 
 function applyPendingCloseOverlays_() {
@@ -4188,86 +4191,107 @@ function applyPendingCloseOverlays_() {
 }
 
 function renderCloseSyncTray_() {
-  const tray=document.getElementById('closeSyncTray'), wrap=document.getElementById('closeSyncItems');
-  if (!tray || !wrap) return;
+  const tray=document.getElementById('closeSyncTray'),wrap=document.getElementById('closeSyncItems');if(!tray||!wrap)return;
   const jobs=[...closeSyncJobs_.values()].sort((a,b)=>a.createdAt-b.createdAt);
-  tray.classList.toggle('show', jobs.length>0);
+  tray.classList.toggle('show',!!jobs.length);
+  tray.querySelector('summary').textContent='結案進度 · '+jobs.filter(j=>j.state!=='done').length+' 件';
+  const errors=jobs.filter(j=>['failed','uncertain','blocked','auth'].includes(j.state));
+  const signature=errors.map(j=>j.id+':'+j.state).join('|');
+  if(signature&&signature!==closeTrayFailureSignature_)tray.open=true;
+  closeTrayFailureSignature_=signature;
   wrap.innerHTML=jobs.map(job=>{
-    const failed=job.state==='failed';
     const waiting=job.state==='queued'&&!navigator.onLine;
-    const stateClass=failed?'failed':waiting?'waiting':job.state==='syncing'?'syncing':'queued';
-    const label=failed ? `⚠ ${escapeHtml_(job.lastError||'同步失敗')}` : waiting ? '等待網路恢復' : job.state==='syncing' ? '照片與案件同步中…' : '等待背景同步…';
-    return `<div class="close-sync-item"><div class="close-sync-main"><div class="close-sync-id">${escapeHtml_(job.caseId)} · ${escapeHtml_(job.optimistic.closerName)}</div><div class="close-sync-state ${stateClass}">${label}</div></div>${failed?`<button type="button" class="close-sync-retry" onclick="retryCloseJob_('${job.id}')">重試</button>`:''}</div>`;
+    const labels={done:'已結案・清理暫存中',auth:'請登入後繼續',blocked:'請核對案件',uncertain:'結果待確認',failed:'未完成',syncing:'正在儲存照片與案件…',queued:waiting?'等待網路恢復':'等待背景送出…'};
+    const label=labels[job.state]||'待確認';
+    const retry=['failed','uncertain','auth'].includes(job.state);
+    const end=job.state==='blocked'||job.state==='done';
+    const payload=job.payload||{},saved=job.optimistic||{};
+    const photos=(payload.closePhotos||[]).filter(x=>typeof x==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(x));
+    const details=job.state!=='done'?`<details class="close-saved-details"><summary>查看暫存內容</summary><p>${escapeHtml_(payload.closerName||saved.closerName||'')} · ${escapeHtml_(payload.caseType||saved.caseType||'')}</p><p>${escapeHtml_(payload.repairNote||saved.repairNote||'未填寫維修紀錄')}</p>${photos.map(src=>`<img src="${escapeHtml_(src)}" alt="暫存結案照片">`).join('')}</details>`:'';
+    return `<div class="close-sync-item"><div class="close-sync-main"><div class="close-sync-id">${escapeHtml_(job.caseId)}</div><div class="close-sync-state ${errors.includes(job)?'failed':waiting?'waiting':job.state}">${escapeHtml_(label)}</div>${job.lastError?`<p class="close-sync-message">${escapeHtml_(job.lastError)}</p>`:''}${details}</div>${retry?`<button type="button" class="close-sync-retry" onclick="retryCloseJob_('${escapeHtml_(job.id)}')">${job.state==='uncertain'?'確認／重試':job.state==='auth'?'登入':'重試'}</button>`:end?`<button type="button" class="close-sync-retry" onclick="dismissCloseJob_('${escapeHtml_(job.id)}')">${job.state==='done'?'完成':'清除暫存'}</button>`:''}</div>`;
   }).join('');
 }
-
 async function retryCloseJob_(id) {
-  const job=closeSyncJobs_.get(id); if(!job)return;
-  job.state='queued'; job.lastError='';
-  try { await closeJobPut_(job); } catch(e) {}
-  applyCloseJobOverlay_(job); renderCloseSyncTray_(); renderCurrentPage(); processCloseQueue_();
+  const job=closeSyncJobs_.get(id);if(!job||!['failed','uncertain','auth'].includes(job.state))return;
+  if(!getStoredAuthToken()){pendingPage='mgr';showLock();return;}
+  const queued={...job,state:'queued',lastError:''};
+  try {await closeJobPut_(queued);closeSyncJobs_.set(id,queued);applyCloseJobOverlay_(queued);renderCloseSyncTray_();renderCurrentPage();void processCloseQueue_();}
+  catch(e){showToast('暫存無法更新，內容仍保留，請稍後重試');}
 }
-
+async function resumeCloseAfterLogin_(){
+  for(const job of closeSyncJobs_.values())if(job.state==='auth')await retryCloseJob_(job.id);
+  void processCloseQueue_();
+}
+async function dismissCloseJob_(id){
+  const job=closeSyncJobs_.get(id);if(!job||!['done','blocked'].includes(job.state))return;
+  if(job.state==='blocked'&&!confirm('確定清除此筆結案暫存？請先核對案件並保存需要的內容；這不會修改伺服器的案件。'))return;
+  try{await closeJobDelete_(id);closeSyncJobs_.delete(id);clearCloseOverlay_(job.caseId);lastCasesLoadTime=0;renderCloseSyncTray_();renderCurrentPage();}
+  catch(e){showToast('暫存尚未清除，請稍後再試');}
+}
 async function enqueueCloseJob_(c, payload) {
-  const id=payload.operationId||makeCloseOperationId_();
-  payload.operationId=id;
-  const job={
-    id, caseId:c.caseId, rowHint:c.rowIndex, payload, state:'queued', attempts:0, createdAt:Date.now(), lastError:'',
-    optimistic:{
-      repairNote:payload.repairNote||'', normalizedLocation:payload.normalizedLocation||'', flagReason:payload.flagReason||'',
-      caseType:payload.caseType||'', correctedLocType:payload.correctedLocType||'', correctedArea:payload.correctedArea||'',
-      closerName:payload.closerName||'', closeDatetime:localCloseDatetime_(),
-      closePhotoCount:(Number(c.closePhotoCount)||((c.closePhotos||[]).length)||0)+(payload.closePhotos||[]).length
-    }
-  };
-  closeSyncJobs_.set(job.id,job);
-  try { await closeJobPut_(job); }
-  catch(e) { console.warn('結案暫存寫入失敗，本次仍會嘗試同步:',e.message); }
-  applyCloseJobOverlay_(job);
-  saveCasesCache(allCases);
-  renderCloseSyncTray_();
-  renderCurrentPage();
-  processCloseQueue_();
-  return job;
+  if(closeEnqueueCases_.has(c.caseId))throw new Error('這筆案件正在建立結案，請稍候');
+  closeEnqueueCases_.add(c.caseId);
+  try {
+    try{await initCloseSync_();}catch(e){throw new Error('此瀏覽器目前無法保存結案內容，視窗與照片仍保留');}
+    if([...closeSyncJobs_.values()].some(j=>j.caseId===c.caseId&&j.state!=='done'))throw new Error('這筆案件已有未完成操作，請查看結案進度');
+    const id=payload.operationId||makeCloseOperationId_();
+    const safePayload=withoutDeviceData_({...payload,operationId:id,closeProtocol:1,expectedCloseRevision:Number(c.closeRevision)||0});
+    const job={id,caseId:c.caseId,rowHint:c.rowIndex,payload:safePayload,state:'queued',attempts:0,createdAt:Date.now(),lastError:'',optimistic:{closerName:safePayload.closerName||''}};
+    try{await closeJobPut_(job);}catch(e){throw new Error('結案暫存未完成，內容與照片仍保留，請稍後再試');}
+    closeSyncJobs_.set(id,job);applyCloseJobOverlay_(job);saveCasesCache(allCases);renderCloseSyncTray_();renderCurrentPage();void processCloseQueue_();return job;
+  }finally{closeEnqueueCases_.delete(c.caseId);}
 }
-
+async function sendCloseJob_(job){
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const data=await callApi(job.payload,60000);
+      if(!data?.success){const e=new Error(data?.message||'送出結果待確認');e.code=data?.code||'RESULT_UNKNOWN';e.serverCase=data?.case;e.version=data?.version;throw e;}
+      if(!data.case||data.case.caseId!==job.caseId||data.operationId!==job.id){const e=new Error('未收到完整結案確認');e.code='RESULT_UNKNOWN';throw e;}
+      return data;
+    }catch(e){
+      if(attempt===0&&job.payload.closeProtocol===1&&['RESULT_UNKNOWN','CASE_BUSY'].includes(e.code)&&navigator.onLine&&getStoredAuthToken()){
+        job.lastError='回覆較慢，正在確認／重試…';renderCloseSyncTray_();await new Promise(r=>setTimeout(r,1500));continue;
+      }
+      throw e;
+    }
+  }
+}
 async function processCloseQueue_() {
-  if (closeQueueProcessing_ || !navigator.onLine) { renderCloseSyncTray_(); return; }
+  if(closeQueueProcessing_||!closeSyncReady_||!navigator.onLine){renderCloseSyncTray_();return;}
   closeQueueProcessing_=true;
   try {
     const queue=[...closeSyncJobs_.values()].filter(j=>j.state==='queued').sort((a,b)=>a.createdAt-b.createdAt);
-    for (const job of queue) {
-      job.state='syncing'; job.attempts=(job.attempts||0)+1; job.lastError='';
-      try { await closeJobPut_(job); } catch(e) {}
-      applyCloseJobOverlay_(job); renderCloseSyncTray_();
-      try {
-        const data=await callApi(job.payload,60000);
-        if (!data || !data.success) throw new Error((data&&data.message)||'結案同步失敗');
-        closeSyncJobs_.delete(job.id);
-        try { await closeJobDelete_(job.id); } catch(e) {}
-        if (photoData['close-'+job.rowHint]) delete photoData['close-'+job.rowHint];
-        applyServerCasePatch_(data.case,data.version,{clearCloseSync:true});
-        showToast(data.alreadyClosed?'✓ 已確認案件完成結案':'✓ 案件已完成背景同步');
-        playRepairSuccessBurst_();
-        if(data.warning)showToast('⚠️ '+data.warning);
-      } catch(e) {
-        job.state = navigator.onLine ? 'failed' : 'queued';
-        job.lastError=e.message||'連線失敗';
-        try { await closeJobPut_(job); } catch(e2) {}
-        applyCloseJobOverlay_(job);
-        renderCurrentPage();
-        if (!navigator.onLine) break;
+    for(const job of queue){
+      if(!navigator.onLine)break;
+      if(!getStoredAuthToken()){job.state='auth';job.lastError='結案內容已保存，請登入後繼續';try{await closeJobPut_(job);}catch(e){}continue;}
+      job.state='syncing';job.attempts=(job.attempts||0)+1;job.lastError='';
+      try{await closeJobPut_(job);}catch(e){job.state='failed';job.lastError='暫存無法更新，尚未送出';continue;}
+      applyCloseJobOverlay_(job);renderCloseSyncTray_();
+      let data;
+      try{data=await sendCloseJob_(job);}
+      catch(e){
+        job.state=e.code==='UNAUTHORIZED'?'auth':['CLOSE_STATE_CHANGED','CASE_MOVED','INVALID_PHOTOS','INVALID_CLOSE'].includes(e.code)?'blocked':e.code==='RESULT_UNKNOWN'?'uncertain':'failed';
+        job.lastError=e.message||'送出結果待確認';
+        if(job.state==='blocked')clearCloseOverlay_(job.caseId);
+        if(e.serverCase)try{applyServerCasePatch_(e.serverCase,e.version,{clearCloseSync:true});}catch(renderError){console.error(renderError);}
+        try{await closeJobPut_(job);}catch(storeError){job.lastError+='（暫存更新失敗，請保持頁面開啟）';}
+        applyCloseJobOverlay_(job);renderCurrentPage();renderCloseSyncTray_();continue;
       }
+      // Server success is final even if later local cleanup or rendering fails.
+      const receipt={id:job.id,caseId:job.caseId,createdAt:job.createdAt,state:'done',lastError:''};
+      closeSyncJobs_.set(job.id,receipt);
+      try{await closeJobPut_(receipt);await closeJobDelete_(job.id);closeSyncJobs_.delete(job.id);}catch(e){receipt.lastError='案件已結案，稍後可清除本機暫存';}
+      if(photoData['close-'+job.rowHint])delete photoData['close-'+job.rowHint];
+      try{applyServerCasePatch_(data.case,data.version,{clearCloseSync:true});}catch(e){console.error('結案已完成，畫面更新待重新整理',e);lastCasesLoadTime=0;}
+      showToast(data.alreadyClosed?'✓ 已確認伺服器的結案紀錄':'✓ 案件已完成結案');
+      if(data.warning)showToast('⚠ '+data.warning);
+      try{playRepairSuccessBurst_();}catch(e){}
       renderCloseSyncTray_();
     }
   } finally {
-    closeQueueProcessing_=false;
-    renderCloseSyncTray_();
-    // 同一筆正在上傳時，同仁可能又結案下一筆；新工作不在本輪 queue 快照裡，
-    // 結束後立刻再檢查一次，避免它停在「等待背景同步」直到下次重開或網路事件。
-    if(navigator.onLine&&[...closeSyncJobs_.values()].some(job=>job.state==='queued')) {
-      setTimeout(processCloseQueue_,0);
-    }
+    closeQueueProcessing_=false;renderCloseSyncTray_();
+    if(navigator.onLine&&[...closeSyncJobs_.values()].some(j=>j.state==='queued'))setTimeout(processCloseQueue_,0);
+    else if(currentPageId==='mgr')scheduleDashboardPrefetch_();
   }
 }
 
@@ -4375,12 +4399,13 @@ async function submitQuickClose() {
     action:'close',caseId:c.caseId,rowHint:c.rowIndex,repairNote:document.getElementById('quickCloseNote').value.trim(),
     normalizedLocation:c.normalizedLocation||'',flagReason:c.flagReason||'',caseType,
     correctedLocType:c.correctedLocType||'',correctedArea:c.correctedArea||'',closerName:closer,
-    closePhotos:[...(quickCloseState_.photos||[])],closeFingerprint:getDeviceFingerprint(),operationId:makeCloseOperationId_()
+    closePhotos:[...(quickCloseState_.photos||[])],operationId:makeCloseOperationId_()
   };
-  await enqueueCloseJob_(c,payload);
-  closeQuickClose();
-  showToast('✓ 已完成操作，案件正在背景同步');
-  btn.disabled=false; btn.textContent='完成結案';
+  try {
+    await enqueueCloseJob_(c,payload);closeQuickClose();showToast('結案內容已保存，正在背景送出');
+  }catch(e){showToast(e.message||'結案尚未送出，內容仍保留');}
+  finally{btn.disabled=false;btn.textContent='完成結案';}
+
 }
 
 function quickCloseCloserName_() {
@@ -4430,8 +4455,7 @@ async function handoffQuickCloseToGeneralAffairs() {
   await sendGeneralAffairsHandoff_(c,{
     repairNote:document.getElementById('quickCloseNote').value.trim(),
     normalizedLocation:c.normalizedLocation||'',flagReason:c.flagReason||'',caseType:quickCloseCaseType_(),
-    correctedLocType:c.correctedLocType||'',correctedArea:c.correctedArea||'',closerName,
-    closeFingerprint:getDeviceFingerprint()
+    correctedLocType:c.correctedLocType||'',correctedArea:c.correctedArea||'',closerName
   },btn,closeQuickClose);
   if(normalBtn&&document.body.contains(normalBtn))normalBtn.disabled=false;
 }
@@ -4447,8 +4471,7 @@ async function handoffCaseToGeneralAffairs(rowIndex) {
     repairNote:document.getElementById('note-'+rowIndex).value.trim(),
     normalizedLocation:document.getElementById('norm-'+rowIndex).value.trim(),
     flagReason:getSelectedFlag(rowIndex),caseType:getSelectedCaseType(rowIndex),
-    correctedLocType:getSelectedLocType(rowIndex),correctedArea:getSelectedArea(rowIndex),closerName,
-    closeFingerprint:getDeviceFingerprint()
+    correctedLocType:getSelectedLocType(rowIndex),correctedArea:getSelectedArea(rowIndex),closerName
   },btn,closeCaseActionModal);
 }
 
@@ -4476,10 +4499,12 @@ async function closeCase(rowIndex) {
   if(!closerName){showToast('請選擇結案人');return;}
   const closePhotos=getClosePhotos(rowIndex),btn=document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
   if(btn){btn.disabled=true;btn.textContent='建立結案中…';}
-  await enqueueCloseJob_(c,{action:'close',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos,closeFingerprint:getDeviceFingerprint(),operationId:makeCloseOperationId_()});
-  closeCaseActionModal();
-  showToast('✓ 已完成操作，案件正在背景同步');
-  if(btn){btn.disabled=false;btn.textContent='結案';}
+  try {
+    await enqueueCloseJob_(c,{action:'close',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos,operationId:makeCloseOperationId_()});
+    closeCaseActionModal();showToast('結案內容已保存，正在背景送出');
+  }catch(e){showToast(e.message||'結案尚未送出，內容仍保留');}
+  finally{if(btn){btn.disabled=false;btn.textContent='完成結案';}}
+
 }
 
 async function reopenCase(rowIndex) {
@@ -4495,49 +4520,32 @@ async function reopenCase(rowIndex) {
 }
 // 實際發送一次請求(不含重試邏輯)
 async function callApiOnce(params, timeoutMs) {
-  const token = localStorage.getItem('adminToken');
-  let response;
+  const controller=new AbortController(); let timer;
+  const deadline=new Promise((_,reject)=>{
+    timer=setTimeout(()=>{const e=new Error('送出結果待確認，請稍後確認／重試');e.code='RESULT_UNKNOWN';reject(e);controller.abort();},timeoutMs||20000);
+  });
   try {
-    response = await fetchWithTimeout(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ ...params, token })
-    }, timeoutMs || 20000); // 預設20秒(一般更新)，結案/報告生成等較重的動作由呼叫端傳入更長的逾時
-  } catch (e) {
-    console.error('callApi 網路層錯誤:', e);
-    throw new Error(e.message === '請求逾時，請稍後再試' ? e.message : '網路目前不穩定，請再試一次');
-  }
-  const text = await response.text();
-  if (!response.ok) {
-    console.error('callApi HTTP錯誤:', response.status, text);
-    throw new Error('系統暫時無法連線，請稍後再試');
-  }
-  if (!text) {
-    console.error('callApi 回傳空內容');
-    throw new Error('系統暫時忙碌，請稍後再試');
-  }
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch (e) {
-    console.error('callApi JSON解析失敗:', text);
-    throw new Error('系統暫時忙碌，請稍後再試');
-  }
-  if (data && data.code === 'UNAUTHORIZED') {
-    clearStoredAuth();
-    document.getElementById('logoutBtn').style.display='none';
-    pendingPage = currentPageId;
-    showLock();
-    showToast('登入已過期，請重新登入');
-  }
-  return data;
+    return await Promise.race([deadline,(async()=>{
+      let response,text;
+      try {
+        response=await fetch(API_URL,{method:'POST',body:JSON.stringify({...withoutDeviceData_(params),token:localStorage.getItem('adminToken')}),signal:controller.signal});
+        text=await response.text();
+      } catch(cause) {const e=new Error('連線中斷，送出結果待確認');e.code='RESULT_UNKNOWN';throw e;}
+      if(controller.signal.aborted){const e=new Error('送出結果待確認');e.code='RESULT_UNKNOWN';throw e;}
+      if(!response.ok){const e=new Error('系統暫時無法連線，請稍後再試');e.code=[400,401,403,404].includes(response.status)?'HTTP_REJECTED':'RESULT_UNKNOWN';throw e;}
+      let data;
+      try{data=JSON.parse(text);}catch(cause){const e=new Error('未收到完整回覆，送出結果待確認');e.code='RESULT_UNKNOWN';throw e;}
+      if(data?.code==='UNAUTHORIZED'){
+        clearStoredAuth();document.getElementById('logoutBtn').style.display='none';
+        pendingPage=currentPageId;showLock();showToast('登入已過期，請重新登入');
+      }
+      return data;
+    })()]);
+  } finally {clearTimeout(timer);}
 }
 
-// 對外用的callApi：失敗時安靜自動重試一次，中間等1.5秒再試
-// (背景推測：後端其實常常有把事情做完，只是手機在等待期間網路瞬斷或切到背景，導致這次請求連線中斷；
-//  安靜重試一次可以撐過這種暫時性狀況，不用讓使用者自己再按一次)
-// callApi只用於「寫入類」動作(更新/結案/生成報告/刪除照片等)，這些動作都有副作用(建立雲端硬碟檔案、
-// 寫入試算表)，如果自動重試、而第一次其實已經成功(只是回應沒送達手機)，重試會造成重複結案/重複照片/重複報告。
-// 所以這裡刻意不做自動重試，失敗就讓使用者自己決定要不要再按一次。
+// General writes do not retry automatically. The close queue owns a bounded retry
+// only for a durable operation carrying a server-checked close revision.
 async function callApi(params, timeoutMs) {
   activeWriteCount++;
   clearTimeout(dashboardPrefetchTimer_);
@@ -4901,21 +4909,6 @@ function renderPieChart(containerId, counts, colors, total, clickHandler) {
   </div>`;
 }
 
-// ── 裝置指紋 ──
-function getDeviceFingerprint() {
-  const ua = navigator.userAgent;
-  const lang = navigator.language || '';
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-  const screen = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
-  const raw = [ua, lang, tz, screen].join('|');
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
-    hash |= 0;
-  }
-  return 'FP' + Math.abs(hash).toString(16).toUpperCase().padStart(8,'0');
-}
-
 // ── 備份下載／匯入 ──
 async function downloadBackup(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '準備中…'; }
@@ -5041,9 +5034,9 @@ function seedLocationFirstPages_(params, pages) {
 }
 function scheduleDashboardPrefetch_() {
   clearTimeout(dashboardPrefetchTimer_);
-  if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0||!navigator.onLine)return;
+  if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0||closeQueueProcessing_||!navigator.onLine)return;
   const run=()=>{
-    if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0)return;
+    if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0||closeQueueProcessing_)return;
     prefetchDashboard_();
   };
   if('requestIdleCallback' in window) requestIdleCallback(run,{timeout:1800});
@@ -5064,18 +5057,18 @@ async function requestDashboardBundle_(params, force=false) {
   finally{if(dashboardBundlePromise_===promise){dashboardBundlePromise_=null;dashboardBundlePromiseKey_='';}}
 }
 async function prefetchDashboard_() {
-  if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0)return;
+  if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0||closeQueueProcessing_)return;
   const params=dashboardDatasetParams(),key=dashboardParamsKey_(params);
   if(!dashboardCube||dashboardDatasetKey!==key){
     const cached=loadSnapshotCache(params);
-    if(cached){dashboardCube=cached.cube;dashboardVersions=cached.versions||{};dashboardDatasetKey=key;seedLocationFirstPages_(params,cached.locationFirstPages||{});}
+    if(cached){dashboardCube=cached.cube;dashboardVersions=cached.versions||{};dashboardDatasetKey=key;lastDashboardSuccessfulSyncAt_=Number(cached.syncedAt)||0;seedLocationFirstPages_(params,cached.locationFirstPages||{});}
   }
   try{
     const data=await requestDashboardBundle_(params,false);
     if(!data.success)return;
-    if(data.changed===false){lastDashboardLoadTime=Date.now();return;}
+    if(data.changed===false){lastDashboardLoadTime=Date.now();lastDashboardSuccessfulSyncAt_=lastDashboardLoadTime;saveSnapshotCache(dashboardCube,dashboardVersions,params,loadSnapshotCache(params)?.locationFirstPages||{});return;}
     if(!data.cube||!data.cube.areas)return;
-    dashboardCube=data.cube; dashboardVersions=data.versions||{}; dashboardDatasetKey=key; lastDashboardLoadTime=Date.now();
+    dashboardCube=data.cube; dashboardVersions=data.versions||{}; dashboardDatasetKey=key; lastDashboardLoadTime=Date.now();lastDashboardSuccessfulSyncAt_=lastDashboardLoadTime;
     seedLocationFirstPages_(params,data.locationFirstPages||{});
     saveSnapshotCache(dashboardCube,dashboardVersions,params,data.locationFirstPages||{});
   }catch(e){console.debug('Dashboard背景預載略過:',e.message);}
@@ -5087,26 +5080,28 @@ async function loadDashboardSnapshot(force) {
 
   if(!dashboardCube||dashboardDatasetKey!==key){
     const cached=loadSnapshotCache(params);
+    if(!cached)lastDashboardSuccessfulSyncAt_=0;
     if(cached){
-      dashboardCube=cached.cube; dashboardVersions=cached.versions||{}; dashboardDatasetKey=key;
+      dashboardCube=cached.cube; dashboardVersions=cached.versions||{}; dashboardDatasetKey=key;lastDashboardSuccessfulSyncAt_=Number(cached.syncedAt)||0;
       seedLocationFirstPages_(params,cached.locationFirstPages||{});
       dashboardSnapshot=dashboardCube.areas[currentAreaDashFilter]||dashboardCube.areas.all||null;
       if(currentPageId==='dash'){renderDashboard();loadDashboardLocationStats(0);}
-      const mins=Math.round((Date.now()-cached.savedAt)/60000);
-      if(currentPageId==='dash')renderSyncStatus(mins<1?'顯示上次統計資料，正在同步最新結果…':`顯示${mins}分鐘前的統計資料，正在同步最新結果…`);
+      if(currentPageId==='dash')renderSyncStatus('正在同步統計資料…',{scope:'dashboard'});
     }
   }
 
   if(!force&&dashboardCube&&dashboardDatasetKey===key&&Date.now()-lastDashboardLoadTime<CASES_AUTO_REFRESH_INTERVAL){
     dashboardSnapshot=dashboardCube.areas[currentAreaDashFilter]||dashboardCube.areas.all;
-    if(currentPageId==='dash'){renderDashboard();loadDashboardLocationStats(0);} return;
+    if(currentPageId==='dash'){renderDashboard();loadDashboardLocationStats(0);renderSyncStatus('',{scope:'dashboard'});} return;
   }
+  if(currentPageId==='dash')renderSyncStatus('正在同步統計資料…',{scope:'dashboard'});
   try {
     const data=await requestDashboardBundle_(params,!!force);
     if(mySeq!==dashboardSnapshotSeq)return;
     if(!data.success)throw new Error(data.message||'統計資料載入失敗');
     if(data.changed===false){
-      lastDashboardLoadTime=Date.now();
+      lastDashboardLoadTime=Date.now();lastDashboardSuccessfulSyncAt_=lastDashboardLoadTime;
+      saveSnapshotCache(dashboardCube,dashboardVersions,params,loadSnapshotCache(params)?.locationFirstPages||{});
       dashboardSnapshot=dashboardCube?.areas?.[currentAreaDashFilter]||dashboardCube?.areas?.all||dashboardSnapshot;
       if(currentPageId==='dash'){renderDashboard();loadDashboardLocationStats(0);renderSyncStatus('✓ 統計資料已是最新',{autoClear:true});}
       return;
@@ -5114,7 +5109,7 @@ async function loadDashboardSnapshot(force) {
     if(!data.cube||!data.cube.areas)throw new Error('統計資料格式異常');
     const oldVersion=dashboardVersions?JSON.stringify(dashboardVersions):'',newVersion=JSON.stringify(data.versions||{});
     if(oldVersion&&oldVersion!==newVersion)locationStatsMemoryCache.clear();
-    dashboardCube=data.cube;dashboardVersions=data.versions||{};dashboardDatasetKey=key;lastDashboardLoadTime=Date.now();
+    dashboardCube=data.cube;dashboardVersions=data.versions||{};dashboardDatasetKey=key;lastDashboardLoadTime=Date.now();lastDashboardSuccessfulSyncAt_=lastDashboardLoadTime;
     seedLocationFirstPages_(params,data.locationFirstPages||{});
     saveSnapshotCache(dashboardCube,dashboardVersions,params,data.locationFirstPages||{});
     dashboardSnapshot=dashboardCube.areas[currentAreaDashFilter]||dashboardCube.areas.all||null;
@@ -5483,15 +5478,6 @@ function openCasePanel(c) {
     <div class="panel-section">
       <div class="panel-label">結案人</div>
       <div class="panel-value">${c.closerName}</div>
-    </div>`:''}
-    ${c.deviceFingerprint||c.closeFingerprint?`
-    <hr class="panel-divider">
-    <div class="panel-section">
-      <div class="panel-label">裝置指紋</div>
-      <div style="font-size:11px;color:#aaa;font-family:monospace;">
-        📝報修：${c.deviceFingerprint||'—'}<br>
-        ✅結案：${c.closeFingerprint||'—'}
-      </div>
     </div>`:''}
     ${photos(c.reportPhotos, '報修照片', 'report')}
     ${photos(c.closePhotos, '結案照片', 'close')}
@@ -6276,7 +6262,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.15.0', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.0', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);

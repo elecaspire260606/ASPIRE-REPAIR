@@ -134,7 +134,9 @@ async function initReportJobs_(){
   if(reportInitPromise_)return reportInitPromise_;
   reportInitPromise_=(async()=>{
     const rows=await reportStore_('getAll');
-    for(const job of rows){
+    for(const raw of rows){
+      const job=withoutDeviceData_(raw);
+      if(JSON.stringify(raw)!==JSON.stringify(job))await reportStore_('put',job);
       if(job.state==='sending'){job.state='uncertain';job.message='上次送出結果待確認';}
       reportJobs_.set(job.id,job);
     }
@@ -146,6 +148,7 @@ async function initReportJobs_(){
   return reportInitPromise_;
 }
 async function enqueueReportJob_(payload){
+  payload=withoutDeviceData_(payload);
   try { await initReportJobs_(); }
   catch(e){throw new Error('此瀏覽器目前無法保存待送資料，內容與照片仍保留，請稍後重試');}
   // The same draft may survive an interrupted page reset; do not queue it twice.
@@ -164,7 +167,7 @@ async function sendReportJob_(payload){
     return await Promise.race([
       new Promise((_,reject)=>{timer=setTimeout(()=>{reject(new Error('送出結果待確認'));controller.abort();},45000);}),
       (async()=>{
-        const r=await fetch(API_URL,{method:'POST',body:JSON.stringify(payload),signal:controller.signal});
+        const r=await fetch(API_URL,{method:'POST',body:JSON.stringify(withoutDeviceData_(payload)),signal:controller.signal});
         const text=await r.text();
         if(!r.ok)throw new Error('連線暫時異常');
         const data=JSON.parse(text);
