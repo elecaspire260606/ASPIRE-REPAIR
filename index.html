@@ -1952,8 +1952,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.14.0">
-<script src="reporter.js?v=3.14.0"></script>
+<link rel="stylesheet" href="reporter.css?v=3.15.0">
+<script src="reporter.js?v=3.15.0"></script>
 </head>
 <body>
 
@@ -2484,14 +2484,65 @@ async function parseGetResponse_(response) {
 // 唯讀 API 統一走 POST。
 // 系統原本登入/更新/結案的 POST 通道已長期使用；把讀取也統一走同一路徑，
 // 可避開 Apps Script GET + redirect + Service Worker/瀏覽器快取組合下偶發的 404。
-async function callReadApi_(params, timeoutMs = 15000) {
-  const response = await fetchWithTimeout(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(params),
-    cache: 'no-store',
-    redirect: 'follow'
-  }, timeoutMs);
-  return await parseGetResponse_(response);
+async function callReadApi_(params, timeoutMs = 15000, onStage) {
+  const controller = new AbortController();
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => { controller.abort(); reject(new Error('請求逾時，請稍後再試')); }, timeoutMs);
+  });
+  try {
+    return await Promise.race([deadline, (async () => {
+      const response = await fetch(API_URL, {method:'POST',body:JSON.stringify(params),cache:'no-store',redirect:'follow',signal:controller.signal});
+      if (onStage && !controller.signal.aborted) onStage('正在接收案件資料…');
+      return await parseGetResponse_(response);
+    })()]);
+  } finally { clearTimeout(timer); }
+}
+
+// Raw server snapshot is independent of UI patches and optimistic close overlays.
+const CASE_SYNC_BASE_KEY_ = 'aspire_case_sync_base_v1';
+let caseSyncBase_ = null;
+async function caseManifest_(cases) {
+  if (!globalThis.crypto?.subtle || !Array.isArray(cases) || cases.length > 3000) return null;
+  const ids = new Set(), entries = [];
+  for (const c of cases) {
+    const id = String(c.caseId || '');
+    if (!id || ids.has(id)) return null;
+    ids.add(id);
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(c)));
+    entries.push([id, Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2,'0')).join('')]);
+  }
+  return entries;
+}
+async function readCaseSyncBase_() {
+  if (caseSyncBase_) return caseSyncBase_;
+  try {
+    const b = JSON.parse(localStorage.getItem(CASE_SYNC_BASE_KEY_) || 'null');
+    if (b?.protocol !== 1 || !b.version || !Array.isArray(b.cases) || !Array.isArray(b.manifest)) return null;
+    const actual = await caseManifest_(b.cases);
+    if (!actual || JSON.stringify(actual) !== JSON.stringify(b.manifest)) return null;
+    if (!caseSyncBase_) caseSyncBase_ = b;
+    return caseSyncBase_;
+  } catch (_) { return null; }
+}
+function assembleCaseSync_(data, base) {
+  if (data.syncMode !== 'delta') {
+    if (!Array.isArray(data.cases)) throw new Error('案件資料不完整，請重新整理');
+    return data.cases;
+  }
+  if (!base || data.baseVersion !== base.version || !Array.isArray(data.cases) || !Array.isArray(data.order) || !Array.isArray(data.removed)) throw new Error('同步基準不符，請重新整理');
+  const byId = new Map(base.cases.map(c => [String(c.caseId), c]));
+  data.removed.forEach(id => byId.delete(id));
+  data.cases.forEach(c => byId.set(String(c.caseId), c));
+  const unique = new Set(data.order);
+  if (unique.size !== data.order.length || unique.size !== byId.size || data.order.some(id => !byId.has(id))) throw new Error('案件資料不完整，請重新整理');
+  return data.order.map(id => byId.get(id));
+}
+function caseCacheAge_(minutes) {
+  if (minutes < 1) return '上次';
+  if (minutes < 60) return minutes+' 分鐘前';
+  if (minutes < 1440) return Math.floor(minutes/60)+' 小時前';
+  return Math.floor(minutes/1440)+' 天前';
 }
 // 密碼驗證已移至後端
 const PAGE_SIZE = 20;
@@ -2587,15 +2638,20 @@ function saveSnapshotCache(cube, versions, params, locationFirstPages) {
 }
 
 // 同步狀態小提示，顯示在頂部列左側，不擋住操作、不是大型遮罩
-function renderSyncStatus(text, opts) {
+function renderSyncStatus(text, opts = {}) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
+  clearTimeout(renderSyncStatus._t);
   el.textContent = text || '';
-  el.style.color = (opts && opts.warn) ? '#C0392B' : '#999';
-  if (opts && opts.autoClear) {
-    clearTimeout(renderSyncStatus._t);
-    renderSyncStatus._t = setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 1800);
+  const strip = document.getElementById('caseSyncStrip');
+  if (strip) {
+    strip.hidden = !text;
+    strip.dataset.state = opts.warn ? 'error' : opts.autoClear ? 'done' : 'loading';
+    strip.querySelector('button').hidden = !opts.warn;
   }
+  if (opts.autoClear) renderSyncStatus._t = setTimeout(() => {
+    if (el.textContent === text) { el.textContent = ''; if(strip)strip.hidden = true; }
+  }, 2200);
 }
 
 // 修繕管理清單這一頁要顯示的案件，是allCases篩選+排序+切頁後的結果(見renderCases())
@@ -3038,9 +3094,19 @@ function mountHeroTools_(id) {
   let tools=document.getElementById('heroTools');
   if(!tools){
     tools=document.createElement('div');tools.id='heroTools';
-    tools.append(document.getElementById('syncStatus'),document.getElementById('statsRefreshBtn'));
+    tools.append(document.getElementById('statsRefreshBtn'));
   }
   hero.append(tools);
+  let strip=document.getElementById('caseSyncStrip');
+  if(!strip){
+    strip=document.createElement('div'); strip.id='caseSyncStrip'; strip.hidden=true;
+    const status=document.getElementById('syncStatus');
+    status.setAttribute('role','status'); status.setAttribute('aria-live','polite');
+    const retry=document.createElement('button'); retry.type='button'; retry.textContent='重試'; retry.hidden=true;
+    retry.addEventListener('click',()=>refreshStats());
+    strip.append(status,retry);
+  }
+  hero.after(strip);
   bar.classList.add('is-integrated');
 }
 
@@ -3220,11 +3286,11 @@ async function _loadCasesImpl(force, closedLimitOverride) {
       allCases = cached.cases;
       applyPendingCloseOverlays_();
       if (!isAllMode && cached.serverVersion) lastCasesServerVersion = cached.serverVersion;
-      // 有 serverVersion + loadedRange 時可直接用極小 version request 驗證快取；版本不同才回完整案件。
+      // 畫面快取只供先行顯示；增量基準另外驗證，不能把局部更新當成完整快照。
       lastLoadedDays = (!isAllMode && cached.serverVersion && cached.loadedRange !== null && cached.loadedRange !== undefined)
         ? cached.loadedRange : null;
       const savedAgo = Math.round((Date.now() - cached.savedAt) / 60000);
-      renderSyncStatus(savedAgo < 1 ? '顯示上次資料，正在同步最新案件…' : `顯示${savedAgo}分鐘前的資料，正在同步最新案件…`);
+      renderSyncStatus(`顯示${caseCacheAge_(savedAgo)}資料・正在同步…`);
       renderCurrentPage();
     }
   }
@@ -3240,9 +3306,29 @@ async function _loadCasesImpl(force, closedLimitOverride) {
   const mySeq = ++loadCasesRequestSeq;
   const timeoutMs = isAllMode ? 45000 : 25000;
   const readParams = { action:'getAll', closedLimit:targetClosedLimit, pendingLimit:targetPendingLimit };
-  // 只有『手上的資料範圍已足夠』時才送 version；載入更早/force/冷快取仍拿完整資料，避免版本相同卻範圍不足。
-  if (!isAllMode && !force && alreadyHaveEnough && lastCasesServerVersion) readParams.clientVersion = lastCasesServerVersion;
-  const attemptLoad = () => callReadApi_(readParams, timeoutMs);
+  renderSyncStatus('正在連線同步…');
+  const started = performance.now();
+  const base = isAllMode ? null : await readCaseSyncBase_();
+  if (mySeq !== loadCasesRequestSeq) return;
+  if (!isAllMode) readParams.sync = base && String(base.range) === String(targetClosedLimit)
+    ? {protocol:1,range:base.range,version:base.version,manifest:base.manifest}
+    : {protocol:1};
+  let attempts = 0;
+  const attemptLoad = async () => {
+    attempts++;
+    const result = await callReadApi_(readParams, timeoutMs, text => {
+      if(mySeq === loadCasesRequestSeq) renderSyncStatus(text);
+    });
+    if (!result.success) throw new Error(result.message || '案件載入失敗');
+    // A malformed delta retries through the same existing retry budget, using a full snapshot.
+    if (result.changed !== false) {
+      try { assembleCaseSync_(result, base); }
+      catch (e) { readParams.sync = {protocol:1}; throw e; }
+    } else if (!base || result.baseVersion !== base.version) {
+      readParams.sync = {protocol:1}; throw new Error('同步基準已失效');
+    }
+    return result;
+  };
 
   try {
     let data;
@@ -3251,39 +3337,43 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     } catch (e) {
       if (e && e.noRetry) throw e;
       console.warn('loadCases 第一次失敗，1.5秒後自動重試一次:', e.message);
+      renderSyncStatus('連線較慢，正在重新同步…');
       await new Promise(r => setTimeout(r, 1500));
+      if (mySeq !== loadCasesRequestSeq) return;
       data = await attemptLoad();
     }
     if (mySeq !== loadCasesRequestSeq) return;
     if (!data.success) throw new Error(data.message || '案件載入失敗');
 
-    if (data.changed === false) {
-      lastCasesServerVersion = data.version || lastCasesServerVersion;
-      lastCasesLoadTime = Date.now();
-      applyPendingCloseOverlays_();
-      saveCasesCache(allCases);
-      renderCurrentPage();
-      renderSyncStatus('✓ 已是最新資料', {autoClear:true});
-      return;
+    renderSyncStatus('正在套用最新資料…');
+    const nextCases = data.changed === false ? base.cases : assembleCaseSync_(data, base);
+    if (!isAllMode && data.changed !== false) {
+      const raw = JSON.parse(JSON.stringify(nextCases));
+      const manifest = await caseManifest_(raw).catch(() => null);
+      if (mySeq !== loadCasesRequestSeq) return;
+      caseSyncBase_ = manifest && data.version ? {protocol:1,version:data.version,range:targetClosedLimit,cases:raw,manifest:manifest,hasMore:!!data.hasMore} : null;
+      try {
+        if (caseSyncBase_) localStorage.setItem(CASE_SYNC_BASE_KEY_,JSON.stringify(caseSyncBase_));
+        else localStorage.removeItem(CASE_SYNC_BASE_KEY_);
+      } catch (_) { /* Memory baseline remains usable when storage is full. */ }
     }
-
-    // 走到完整回應代表版本不同、force 或載入範圍擴大；只比對案件識別與可見內容，標記真正新增／變更的卡片一次。
-    const nextCases = data.cases || [];
+    window.lastCaseSyncMetrics_ = {mode:data.syncMode || 'full',attempts:attempts,elapsedMs:Math.round(performance.now()-started),receivedCases:data.cases?.length || 0,totalCases:nextCases.length};
     queueCaseVisualChanges_(nextCases);
-    allCases = nextCases;
+    allCases = JSON.parse(JSON.stringify(nextCases));
     applyPendingCloseOverlays_();
     lastCasesServerVersion = data.version || lastCasesServerVersion;
-    casesHasMore = !!data.hasMore;
+    casesHasMore = data.changed === false ? !!base.hasMore : !!data.hasMore;
     lastLoadedDays = targetClosedLimit;
     lastCasesLoadTime = Date.now();
     if (isAllMode) { fullHistoryCasesCache_=allCases; fullHistoryCasesLoadedAt_=Date.now(); }
     else saveCasesCache(allCases);
     renderCurrentPage();
-    renderSyncStatus('✓ 案件已更新', {autoClear:true});
+    renderSyncStatus(data.changed === false ? '✓ 已是最新資料' : '✓ 案件已更新', {autoClear:true});
   } catch(e) {
     if (mySeq !== loadCasesRequestSeq) return;
     console.error('loadCases 失敗:', e);
-    if (allCases.length) renderSyncStatus('⚠ 同步失敗，目前顯示上次資料', {warn:true});
+    renderSyncStatus(allCases.length ? '同步未完成・保留上次資料' : '同步未完成・請重試', {warn:true});
+    if (allCases.length) { /* Keep the existing list available. */ }
     else if (currentPageId === 'dash') showToast('❌ 統計資料載入失敗，請點右上角重新整理再試一次');
     else document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
   }
@@ -5905,28 +5995,54 @@ function removePhotoLibraryItem_(prefix,idx) {
   renderPhotoLibraryPicker_(prefix);
 }
 
-async function generateReport(rowIndex, btn) {
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '生成中…';
+const pptRequests_=new Set();
+async function requestPptReport_(params) {
+  const controller=new AbortController();let timer;
+  activeWriteCount++;
   try {
-    const c=findCaseByRowIndex_(rowIndex);
-    const data = await callApi({action:'generateReport', caseId:c?.caseId||'', rowHint:rowIndex}, 60000);
-    if (data.success) {
-      const a = document.createElement('a');
-      a.href = data.url;
-      a.download = data.fileName || 'report.pptx';
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      showToast('✓ 報告已生成');
-    } else {
-      showToast('生成失敗：'+(data.message||'未知錯誤'));
-    }
-  } catch(e) { showToast('生成失敗：' + (e.message || '請檢查網路')); }
-  btn.disabled = false;
-  btn.textContent = originalText;
+    return await Promise.race([
+      new Promise((_,reject)=>{timer=setTimeout(()=>{reject(new Error('報告可能仍在製作，稍後再按生成報告可取回結果'));controller.abort();},150000);}),
+      (async()=>{
+        const response=await fetch(API_URL,{method:'POST',body:JSON.stringify({...params,token:localStorage.getItem('adminToken')}),signal:controller.signal});
+        const text=await response.text();
+        if(!response.ok)throw new Error('連線暫時異常，稍後再按生成報告可確認結果');
+        const data=JSON.parse(text);
+        if(data.code==='UNAUTHORIZED'){
+          clearStoredAuth();document.getElementById('logoutBtn').style.display='none';pendingPage=currentPageId;showLock();
+          throw new Error('登入已過期，請重新登入');
+        }
+        return data;
+      })()
+    ]);
+  }finally{clearTimeout(timer);activeWriteCount=Math.max(0,activeWriteCount-1);}
+}
+function showPptDownload_(data) {
+  let panel=document.getElementById('pptDownloadResult');
+  if(!panel){panel=document.createElement('div');panel.id='pptDownloadResult';panel.setAttribute('role','status');document.querySelector('#page-mgr .page-hero').after(panel);}
+  panel.replaceChildren();
+  const label=document.createElement('span');label.textContent='報告已完成：'+data.fileName;
+  const link=document.createElement('a');link.href=data.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';link.download=data.fileName;
+  panel.append(label,link);
+  return panel;
+}
+async function generateReport(rowIndex, btn) {
+  const c=findCaseByRowIndex_(rowIndex);
+  if(!c || !c.caseId){showToast('案件資料已變更，請重新整理');return;}
+  if(pptRequests_.has(c.caseId)){showToast('此案件報告正在製作，可繼續操作其他案件');return;}
+  pptRequests_.add(c.caseId);
+  const originalText=btn.textContent;btn.disabled=true;btn.textContent='製作中…';
+  showToast('正在製作報告，可繼續操作其他案件');
+  try {
+    const data=await requestPptReport_({action:'generateReport',caseId:c.caseId,rowHint:rowIndex});
+    if(data.success){
+      showPptDownload_(data);
+      const link=document.createElement('a');link.href=data.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';link.className='ppt-inline-download';
+      btn.parentElement?.querySelector('.ppt-inline-download')?.remove();
+      btn.after(link);
+      showToast('✓ 報告已完成，請點「下載 PPT」');
+    }else showToast(data.message||'報告未完成，請稍後再試');
+  }catch(e){showToast(e.message||'連線中斷，稍後再按生成報告可確認結果');}
+  finally{pptRequests_.delete(c.caseId);btn.disabled=false;btn.textContent=originalText;}
 }
 
 
@@ -6160,7 +6276,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.14.0', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.15.0', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
