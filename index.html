@@ -1952,7 +1952,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.3">
+<link rel="stylesheet" href="reporter.css?v=3.16.4">
 <script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
@@ -3534,6 +3534,10 @@ function groupManagerCases_(cases,pending) {
   }
   return groups;
 }
+function roomPlaqueHtml_(c,count,statusHtml) {
+  const e=escapeHtml_;
+  return `<span class="room-plaque"><span class="room-plaque-building">${e(String(effArea(c)))}</span><span class="room-plaque-number">${e(String(c.normalizedLocation||c.location||'—'))}</span><span class="room-plaque-detail"><span>客房</span><span aria-hidden="true">·</span>${statusHtml||`<span class="badge pending">待處理 ${count} 件</span>`}</span></span>`;
+}
 function renderRoomGroup_(group) {
   const cases=group.cases,first=cases[0],e=escapeHtml_;
   const row=c=>{
@@ -3549,7 +3553,7 @@ function renderRoomGroup_(group) {
   };
   const layoutClass=cases.length>=3?' room-group-wide':'';
   const countClass=` room-group-count-${Math.min(cases.length,5)}`;
-  return `<section class="case-card area-雅 room-group${layoutClass}${countClass}"><div class="room-group-header"><span class="case-place">${e(String(effArea(first)))} · ${e(String(first.normalizedLocation||first.location))}</span><span class="badge pending">待處理 ${cases.length} 件</span></div>
+  return `<section class="case-card area-雅 room-group${layoutClass}${countClass}"><div class="room-group-header"><span class="case-place">${e(String(effArea(first)))} · ${e(String(first.normalizedLocation||first.location))}</span><span class="badge pending">待處理 ${cases.length} 件</span>${roomPlaqueHtml_(first,cases.length)}</div>
     <div class="room-case-list">${cases.slice(0,4).map(row).join('')}</div>
     ${cases.length>4?`<details class="room-more"><summary><span class="room-more-closed">查看其餘 ${cases.length-4} 件</span><span class="room-more-open">收合其餘事項</span></summary><div class="room-case-list">${cases.slice(4).map(row).join('')}</div></details>`:''}</section>`;
 }
@@ -3643,7 +3647,7 @@ function renderManagerCaseList() {
         ${stampHtml}
         ${priorityBannerHtml(c)}
         <div class="case-row-top">
-          <div class="case-row-title">${titleHtml}</div>
+          <div class="case-row-title">${titleHtml}${currentFilter==='待處理'?(managerRoomKey_(c)?roomPlaqueHtml_(c,1,(syncLabel||isFlagged)?badgeHtml:''):`<span class="desktop-case-status">${badgeHtml}</span>`):''}</div>
           <div class="case-row-status">${badgeHtml}<span class="case-open-chevron" aria-hidden="true">›</span></div>
         </div>
         <div class="case-row-meta"><span class="meta-caseid">${c.caseId}</span><span class="meta-date">${dateLabelPrefix}${shortDate}</span><span class="meta-people"> · ${c.unit} · ${c.name}</span>${photoTag?` · <span class="photo-tag">${photoTag}</span>`:''}</div>
@@ -3651,7 +3655,7 @@ function renderManagerCaseList() {
         ${c.repairNote?`<div class="case-row-note"><span class="note-icon">✅ </span>${c.repairNote}</div>`:''}
       </div>`;
 
-    return `<div class="${cls}">${collapsedView}</div>`;
+    return `<div class="${cls}${currentFilter==='待處理'&&managerRoomKey_(c)?' has-room-plaque':''}">${collapsedView}</div>`;
   }).join('');
 
   renderPagination('mgrPagination', mgrPage, totalPages, p=>{mgrPage=p;renderCases();});

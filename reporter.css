@@ -138,6 +138,8 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 #caseSyncStrip[data-state="idle"]::after { display:none; }
 #caseSyncStrip #syncStatus { overflow-wrap:anywhere; }
 
+.room-plaque,.desktop-case-status { display:none; }
+
 /* V3.16.1: independent room issues, fixed readable type and natural card height. */
 #caseList { align-items:start; }
 #caseList .room-group { min-width:0; padding:0; overflow:hidden; }
@@ -243,4 +245,50 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 }
 @media(min-width:701px) and (hover:hover) {
   #caseList.manager-room-rows .room-group .room-case-row:hover { background:#edf5f8; }
+}
+
+/* V3.16.4: quiet hotel-style room plaque, desktop pending guest rooms only. */
+@media(min-width:701px) {
+  #caseList.manager-room-rows .room-group { grid-template-columns:190px minmax(0,1fr); }
+  #caseList.manager-room-rows .case-collapsed { grid-template-columns:190px minmax(0,1fr) auto; }
+  #caseList.manager-room-rows .room-group .room-group-header,
+  #caseList.manager-room-rows .has-room-plaque .case-row-title {
+    display:flex; flex-direction:column; justify-content:center; align-items:flex-start;
+    background:linear-gradient(135deg,#edf3f7,#f8fafc);
+    border-right:1px solid #d7e3ec; padding:20px 22px; gap:0; min-width:0;
+  }
+  #caseList.manager-room-rows .has-room-plaque .case-row-title {
+    margin-top:-18px; margin-bottom:-18px;
+  }
+  #caseList.manager-room-rows .room-group-header > .case-place,
+  #caseList.manager-room-rows .room-group-header > .badge,
+  #caseList.manager-room-rows .has-room-plaque .case-row-title > .case-place,
+  #caseList.manager-room-rows .has-room-plaque .case-row-title > .case-location-type,
+  #caseList.manager-room-rows .case-row-status > .badge { display:none; }
+  #caseList.manager-room-rows .desktop-case-status { display:block; margin-top:10px; }
+  #caseList.manager-room-rows .room-plaque {
+    display:flex; flex-direction:column; align-items:flex-start; gap:7px; width:100%; min-width:0;
+  }
+  #caseList.manager-room-rows .room-plaque-building {
+    color:#637d90; font-size:13px; font-weight:600; line-height:1.5; letter-spacing:.08em;
+  }
+  #caseList.manager-room-rows .room-plaque-number {
+    color:#244d6b; font-size:32px; font-weight:700; line-height:1.15;
+    font-variant-numeric:tabular-nums; letter-spacing:.035em; overflow-wrap:anywhere;
+  }
+  #caseList.manager-room-rows .room-plaque-detail {
+    display:flex; flex-wrap:wrap; align-items:center; gap:5px;
+    font-size:12px; line-height:1.5; font-weight:500; color:#667e8d; margin-top:4px;
+  }
+  #caseList.manager-room-rows .room-plaque-detail .badge {
+    padding:0; margin:0; border:0; background:transparent; box-shadow:none;
+    font-size:12px; line-height:1.5; white-space:normal;
+  }
+  #caseList.manager-room-rows .room-plaque-detail .badge::before { display:none; }
+}
+@media(min-width:701px) and (max-width:1100px) {
+  #caseList.manager-room-rows .room-group { grid-template-columns:170px minmax(0,1fr); }
+  #caseList.manager-room-rows .case-collapsed { grid-template-columns:170px minmax(0,1fr); }
+  #caseList.manager-room-rows .room-group .room-group-header,
+  #caseList.manager-room-rows .has-room-plaque .case-row-title { padding-left:18px; padding-right:18px; }
 }
