@@ -1952,7 +1952,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.1">
+<link rel="stylesheet" href="reporter.css?v=3.16.3">
 <script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
@@ -3605,7 +3605,8 @@ function renderCases() {
 function renderManagerCaseList() {
   const list = document.getElementById('caseList');
   const totalPages = Math.max(1, Math.ceil(managerGroupTotal_/MGR_PAGE_SIZE));
-  // V3.16.2: desktop groups with 3+ issues span both columns while preserving the original sorted DOM order.
+  // V3.16.3: desktop pending cards use full rows; mobile and closed cards retain their layout.
+  list.className = currentFilter==='待處理' ? 'manager-room-rows' : '';
 
   list.innerHTML = managerGroups_.map(group => {
     if(group.cases.length>1)return renderRoomGroup_(group);
