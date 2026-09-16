@@ -1952,8 +1952,8 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.0">
-<script src="reporter.js?v=3.16.0"></script>
+<link rel="stylesheet" href="reporter.css?v=3.16.1">
+<script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
 
@@ -2675,6 +2675,8 @@ function renderSyncStatus(text,opts={}){
 // 修繕管理清單這一頁要顯示的案件，是allCases篩選+排序+切頁後的結果(見renderCases())
 let managerCases = [];
 let managerCasesTotal = 0;
+let managerGroups_ = [];
+let managerGroupTotal_ = 0;
 // 依rowIndex找案件物件：修繕管理/姓名查詢/GM全覽現在都直接從allCases篩選，統一查找同一份資料即可
 function findCaseByRowIndex_(rowIndex) {
   return allCases.find(x => x.rowIndex === rowIndex);
@@ -3515,6 +3517,41 @@ function refreshManagerCases() {
 }
 
 // 修繕管理清單：直接從allCases依狀態/區域/關鍵字篩選、排序、切頁，全部在瀏覽器裡做，不用另外打API。
+// Group only explicit Yashe guest rooms; preserve each original case and its modal.
+function managerRoomKey_(c) {
+  const area=String(effArea(c)||'').trim();
+  const type=String(c.correctedLocType||c.locationType||'').trim();
+  const room=String(c.normalizedLocation||c.location||'').normalize('NFKC').trim();
+  if(!/^雅舍[一二三]棟$/.test(area)||type!=='客房'||!/^\d{3,5}[A-Za-z]?$/.test(room))return null;
+  return JSON.stringify([area,room.toUpperCase()]);
+}
+function groupManagerCases_(cases,pending) {
+  const groups=[],byRoom=new Map();
+  for(const c of cases){
+    const key=pending?managerRoomKey_(c):null;
+    if(key&&byRoom.has(key)){byRoom.get(key).cases.push(c);continue;}
+    const group={key,cases:[c]};groups.push(group);if(key)byRoom.set(key,group);
+  }
+  return groups;
+}
+function renderRoomGroup_(group) {
+  const cases=group.cases,first=cases[0],e=escapeHtml_;
+  const row=c=>{
+    const date=String(c.datetime||c.date||'').split(' ')[0].replace(/^\d{4}[/-]/,'');
+    const photoCount=c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length)||0;
+    const sync=c.closeSyncState?(c.closeSyncState==='failed'?'待確認':'同步中'):'';
+    return `<button type="button" class="room-case-row${caseVisualClass_(c)}" onclick="openCaseActionModal(${Number(c.rowIndex)})" aria-label="處理案件 ${e(String(c.caseId||''))}：${e(String(c.description||''))}">
+      <span class="room-case-main"><span class="room-case-description">${e(String(c.description||'未填寫描述'))}</span>
+      <span class="room-case-meta">${e(date)} · ${e(String(c.caseId||''))}${photoCount?' · 照片 '+Number(photoCount):''}</span>
+      ${c.repairNote?`<span class="room-case-note">${e(String(c.repairNote))}</span>`:''}
+      ${(c.todayPriority||sync)?`<span class="room-case-hints">${c.todayPriority?'<span>今日優先'+(c.priorityReason?' · '+e(String(c.priorityReason)):'')+'</span>':''}${sync?'<span>'+sync+'</span>':''}</span>`:''}</span>
+      <span class="room-case-arrow" aria-hidden="true">›</span></button>`;
+  };
+  return `<section class="case-card area-雅 room-group"><div class="room-group-header"><span class="case-place">${e(String(effArea(first)))} · ${e(String(first.normalizedLocation||first.location))}</span><span class="badge pending">待處理 ${cases.length} 件</span></div>
+    <div class="room-case-list">${cases.slice(0,4).map(row).join('')}</div>
+    ${cases.length>4?`<details class="room-more"><summary><span class="room-more-closed">查看其餘 ${cases.length-4} 件</span><span class="room-more-open">收合其餘事項</span></summary><div class="room-case-list">${cases.slice(4).map(row).join('')}</div></details>`:''}</section>`;
+}
+
 function renderCases() {
   const list = document.getElementById('caseList');
   let filtered = allCases.filter(c => c.status === currentFilter);
@@ -3544,9 +3581,12 @@ function renderCases() {
   }
   managerCasesTotal = filtered.length;
   updateMgrResultSummary_(managerCasesTotal);
-  const totalPages = Math.max(1, Math.ceil(managerCasesTotal/MGR_PAGE_SIZE));
+  const groups=groupManagerCases_(filtered,currentFilter==='待處理');
+  managerGroupTotal_=groups.length;
+  const totalPages = Math.max(1, Math.ceil(managerGroupTotal_/MGR_PAGE_SIZE));
   if (mgrPage>totalPages) mgrPage=totalPages;
-  managerCases = filtered.slice((mgrPage-1)*MGR_PAGE_SIZE, mgrPage*MGR_PAGE_SIZE);
+  managerGroups_ = groups.slice((mgrPage-1)*MGR_PAGE_SIZE, mgrPage*MGR_PAGE_SIZE);
+  managerCases = managerGroups_.flatMap(group=>group.cases);
   if (!managerCases.length) {
     // 已結案分頁顯示「沒有案件」時，容易誤會成「這個篩選條件從來沒有案件」，
     // 但實際上可能只是7天內剛好沒有，更早的已經被封存機制搬走了，加個提示避免誤解
@@ -3562,9 +3602,11 @@ function renderCases() {
 
 function renderManagerCaseList() {
   const list = document.getElementById('caseList');
-  const totalPages = Math.max(1, Math.ceil(managerCasesTotal/MGR_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(managerGroupTotal_/MGR_PAGE_SIZE));
 
-  list.innerHTML = managerCases.map(c => {
+  list.innerHTML = managerGroups_.map(group => {
+    if(group.cases.length>1)return renderRoomGroup_(group);
+    const c=group.cases[0];
     const isFlagged = !!c.flagReason;
     const area = effArea(c);
     const areaClass = area.startsWith('會館') ? 'area-館' : area.startsWith('雅舍') ? 'area-雅' : area.startsWith('研究') ? 'area-研' : area.startsWith('智尊') ? 'area-智' : 'area-其';
@@ -6262,7 +6304,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.0', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.1', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);

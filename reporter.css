@@ -137,3 +137,24 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 /* V3.16: retain trustworthy data age after progress finishes. */
 #caseSyncStrip[data-state="idle"]::after { display:none; }
 #caseSyncStrip #syncStatus { overflow-wrap:anywhere; }
+
+/* V3.16.1: independent room issues, fixed readable type and natural card height. */
+#caseList { align-items:start; }
+#caseList .room-group { min-width:0; padding:0; overflow:hidden; }
+.room-group-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px 14px; }
+.room-group-header .case-place { min-width:0; overflow-wrap:anywhere; }
+.room-group-header .badge { flex-shrink:0; }
+#caseList .room-case-row { appearance:none; display:flex; align-items:center; gap:14px; width:100%; min-height:76px; margin:0; padding:14px 20px; border:0; border-top:1px solid #dce6eb; border-radius:0; background:transparent; box-shadow:none; color:#25485b; text-align:left; font:inherit; cursor:pointer; transform:none; }
+.room-case-main { display:flex; flex:1; min-width:0; flex-direction:column; gap:5px; }
+.room-case-description { font-size:16px; font-weight:650; line-height:1.55; overflow-wrap:anywhere; }
+.room-case-meta { font-size:12px; line-height:1.5; color:#647e8e; overflow-wrap:anywhere; }
+.room-case-note { font-size:13px; line-height:1.5; color:#537567; overflow-wrap:anywhere; }
+.room-case-hints { display:flex; flex-wrap:wrap; gap:6px 12px; color:#af590a; font-size:12px; font-weight:650; }
+.room-case-arrow { flex:0 0 auto; font-size:26px; color:#557b91; }
+.room-more { border-top:1px solid #dce6eb; }
+.room-more summary { cursor:pointer; padding:14px 20px; color:#355f77; font-size:14px; font-weight:600; min-height:44px; box-sizing:border-box; }
+.room-more-open,.room-more[open] .room-more-closed { display:none; }
+.room-more[open] .room-more-open { display:inline; }
+#caseList .room-case-row:focus-visible,.room-more summary:focus-visible { outline:2px solid #32799f; outline-offset:-3px; }
+@media(hover:hover) { #caseList .room-case-row:hover { background:#edf5f8; } }
+@media(max-width:600px) { .room-group-header { padding:15px 14px 12px; flex-wrap:wrap; } #caseList .room-case-row { padding:13px 14px; } .room-more summary { padding:14px; } }
