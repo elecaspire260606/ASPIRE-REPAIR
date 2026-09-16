@@ -284,11 +284,35 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
     padding:0; margin:0; border:0; background:transparent; box-shadow:none;
     font-size:12px; line-height:1.5; white-space:normal;
   }
-  #caseList.manager-room-rows .room-plaque-detail .badge::before { display:none; }
+  #caseList.manager-room-rows .room-plaque-detail .badge::before { display:inline-block; }
 }
 @media(min-width:701px) and (max-width:1100px) {
   #caseList.manager-room-rows .room-group { grid-template-columns:170px minmax(0,1fr); }
   #caseList.manager-room-rows .case-collapsed { grid-template-columns:170px minmax(0,1fr); }
   #caseList.manager-room-rows .room-group .room-group-header,
   #caseList.manager-room-rows .has-room-plaque .case-row-title { padding-left:18px; padding-right:18px; }
+}
+
+/* V3.16.5: same plaque for all areas; explicit rows include priority and notes. */
+@media(min-width:701px) {
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed {
+    grid-template-rows:auto auto auto auto;
+  }
+  #caseList.manager-room-rows .has-room-plaque .case-row-title,
+  #caseList.manager-room-rows .has-room-plaque .case-row-status { grid-row:1 / -1; }
+  #caseList.manager-room-rows .has-room-plaque .case-row-note { grid-row:4; }
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed > :not(.case-row-top):not(.case-row-meta):not(.case-row-desc):not(.case-row-note):not(.flag-stamp) { grid-row:3; }
+  #caseList.manager-room-rows .room-plaque-location {
+    font-size:22px; line-height:1.4; letter-spacing:0; overflow-wrap:anywhere;
+  }
+  #caseList.manager-room-rows .room-plaque-detail { flex-direction:column; align-items:flex-start; gap:9px; }
+  #caseList.manager-room-rows .room-plaque-detail .badge.pending {
+    display:inline-flex; align-items:center; gap:7px; padding:4px 8px;
+    background:#fff7ef; border:1px solid #f5d7bb; border-radius:7px;
+  }
+}
+@media(min-width:701px) and (max-width:1100px) {
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed { grid-template-columns:170px minmax(0,1fr) 28px; column-gap:14px; }
+  #caseList.manager-room-rows .has-room-plaque .case-row-status { grid-column:3; }
+  #caseList.manager-room-rows .has-room-plaque .case-open-chevron { width:26px; }
 }
