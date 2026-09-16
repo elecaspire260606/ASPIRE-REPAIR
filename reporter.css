@@ -158,3 +158,36 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 #caseList .room-case-row:focus-visible,.room-more summary:focus-visible { outline:2px solid #32799f; outline-offset:-3px; }
 @media(hover:hover) { #caseList .room-case-row:hover { background:#edf5f8; } }
 @media(max-width:600px) { .room-group-header { padding:15px 14px 12px; flex-wrap:wrap; } #caseList .room-case-row { padding:13px 14px; } .room-more summary { padding:14px; } }
+
+
+/* V3.16.2: adaptive Yashe room groups on desktop.
+   3+ issues become a full-width room board with two compact issue columns.
+   Keep normal grid flow so visual reading order continues to match the existing priority/date sort.
+   Mobile stays single-column and keeps the V3.16.1 interaction. */
+@media(min-width:701px) {
+  #caseList .room-group.room-group-wide { grid-column:1 / -1; }
+  #caseList .room-group.room-group-wide .room-group-header { padding:15px 18px 12px; }
+  #caseList .room-group.room-group-wide > .room-case-list,
+  #caseList .room-group.room-group-wide .room-more > .room-case-list {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:1px;
+    border-top:1px solid #dce6eb;
+    background:#dce6eb;
+  }
+  #caseList .room-group.room-group-wide .room-case-row {
+    min-height:66px;
+    padding:11px 18px;
+    border-top:0;
+    background:rgba(255,255,255,.78);
+  }
+  #caseList .room-group.room-group-wide .room-case-description { font-size:15px; line-height:1.45; }
+  #caseList .room-group.room-group-wide .room-case-main { gap:3px; }
+  #caseList .room-group.room-group-wide .room-case-arrow { font-size:23px; }
+  #caseList .room-group.room-group-wide.room-group-count-3 > .room-case-list > .room-case-row:nth-child(3) { grid-column:1 / -1; }
+  #caseList .room-group:not(.room-group-wide) .room-group-header { padding:15px 18px 11px; }
+  #caseList .room-group:not(.room-group-wide) .room-case-row { min-height:64px; padding:10px 18px; }
+  #caseList .room-group:not(.room-group-wide) .room-case-description { font-size:15px; line-height:1.45; }
+  #caseList .room-group.room-group-wide .room-more { border-top:0; }
+  #caseList .room-group.room-group-wide .room-more summary { border-top:1px solid #dce6eb; background:rgba(255,255,255,.45); }
+}

@@ -3547,7 +3547,9 @@ function renderRoomGroup_(group) {
       ${(c.todayPriority||sync)?`<span class="room-case-hints">${c.todayPriority?'<span>今日優先'+(c.priorityReason?' · '+e(String(c.priorityReason)):'')+'</span>':''}${sync?'<span>'+sync+'</span>':''}</span>`:''}</span>
       <span class="room-case-arrow" aria-hidden="true">›</span></button>`;
   };
-  return `<section class="case-card area-雅 room-group"><div class="room-group-header"><span class="case-place">${e(String(effArea(first)))} · ${e(String(first.normalizedLocation||first.location))}</span><span class="badge pending">待處理 ${cases.length} 件</span></div>
+  const layoutClass=cases.length>=3?' room-group-wide':'';
+  const countClass=` room-group-count-${Math.min(cases.length,5)}`;
+  return `<section class="case-card area-雅 room-group${layoutClass}${countClass}"><div class="room-group-header"><span class="case-place">${e(String(effArea(first)))} · ${e(String(first.normalizedLocation||first.location))}</span><span class="badge pending">待處理 ${cases.length} 件</span></div>
     <div class="room-case-list">${cases.slice(0,4).map(row).join('')}</div>
     ${cases.length>4?`<details class="room-more"><summary><span class="room-more-closed">查看其餘 ${cases.length-4} 件</span><span class="room-more-open">收合其餘事項</span></summary><div class="room-case-list">${cases.slice(4).map(row).join('')}</div></details>`:''}</section>`;
 }
@@ -3603,6 +3605,7 @@ function renderCases() {
 function renderManagerCaseList() {
   const list = document.getElementById('caseList');
   const totalPages = Math.max(1, Math.ceil(managerGroupTotal_/MGR_PAGE_SIZE));
+  // V3.16.2: desktop groups with 3+ issues span both columns while preserving the original sorted DOM order.
 
   list.innerHTML = managerGroups_.map(group => {
     if(group.cases.length>1)return renderRoomGroup_(group);
