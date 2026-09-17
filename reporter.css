@@ -438,3 +438,98 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
   #caseList.manager-room-rows .case-open-chevron,
   #caseList.manager-room-rows .room-case-arrow { transition:none!important; transform:none!important; }
 }
+
+/* V3.16.8: unified manager workspace. Explicit surfaces and readable states. */
+#page-mgr .page-hero {
+  background:#12364b; border-radius:12px; border:1px solid #234b61;
+  border-left:4px solid #e98427; box-shadow:0 3px 10px rgba(18,54,75,.06);
+}
+#page-mgr .page-hero::before,#page-mgr .page-hero::after,
+#page-mgr .dispatch-controls::before,#page-mgr .dispatch-controls::after,
+#caseList.manager-room-rows .room-plaque::before,
+#caseList.manager-room-rows .room-plaque::after,
+#caseList.manager-room-rows .case-open-chevron::after { display:none; }
+#page-mgr .dispatch-controls {
+  background:#fff; color:#25485d; border:1px solid #d6e2e9; border-radius:12px;
+  box-shadow:0 3px 12px rgba(18,54,75,.045); padding:16px; margin-bottom:16px;
+}
+#page-mgr .dispatch-controls .mgr-result-summary {
+  background:transparent; border:0; padding:0; color:#5c7282; font-size:13px;
+}
+#page-mgr .dispatch-controls .mgr-result-summary b { color:#193f55; font-size:16px; }
+#page-mgr .dispatch-controls .mgr-result-summary span { color:#5c7282; }
+#page-mgr .dispatch-controls .mgr-print-btn {
+  color:#294f65!important; background:#f1f6f9!important; border:1px solid #cbdce6!important;
+  border-radius:8px!important; box-shadow:none;
+}
+#page-mgr .dispatch-controls #mgrSearchInput {
+  color:#25485d; background:#f7f9fb!important; border:1px solid #d8e3eb!important;
+  border-radius:8px!important; box-shadow:none; min-height:46px;
+}
+#page-mgr .dispatch-controls #mgrSearchInput::placeholder { color:#6c8090; opacity:1; }
+#page-mgr .dispatch-controls #mgrSearchInput:focus { outline:2px solid #6596b4; outline-offset:1px; }
+#page-mgr .dispatch-controls .filter-btn,
+#page-mgr .dispatch-controls .priority-filter-btn {
+  color:#4e6575; background:#f5f8fa; border:1px solid #dce5eb; border-radius:8px;
+  box-shadow:none; min-height:38px;
+}
+#page-mgr .dispatch-controls .filter-btn:hover:not(.active),
+#page-mgr .dispatch-controls .priority-filter-btn:hover:not(.active) {
+  color:#21495f; background:#eaf1f6; border-color:#adc4d4;
+}
+#page-mgr .dispatch-controls .filter-btn.active {
+  color:#fff; background:#234d65; border-color:#234d65; box-shadow:none;
+}
+#page-mgr #mgr-status-row .filter-btn.active[data-status="待處理"] {
+  color:#a54c12; background:#fff1e5; border-color:#e7a16b;
+}
+#page-mgr #mgr-status-row .filter-btn.active::after { display:none; }
+#page-mgr .dispatch-controls .priority-filter-btn { color:#a5521b; background:#fff8f2; border-color:#eed4bd; }
+#page-mgr .dispatch-controls .priority-filter-btn.active { color:#fff; background:#ae541b; border-color:#ae541b; }
+#page-mgr .dispatch-controls button:focus-visible { outline:2px solid #397696; outline-offset:2px; }
+#caseList.manager-room-rows > .case-card {
+  border-radius:12px; border-top:1px solid #d8e3eb; border-right:1px solid #d8e3eb;
+  border-bottom:1px solid #d8e3eb; box-shadow:0 2px 7px rgba(20,50,70,.035);
+}
+#caseList.manager-room-rows .case-open-chevron::after { animation:none; }
+.toast.success.show::after { animation:none; display:none; }
+@media(min-width:701px) {
+  #caseList.manager-room-rows { gap:14px; }
+  #caseList.manager-room-rows .room-group { grid-template-columns:176px minmax(0,1fr); }
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed {
+    grid-template-columns:176px minmax(0,1fr) auto; column-gap:22px;
+    padding:18px 20px 18px 0;
+  }
+  #caseList.manager-room-rows .room-group .room-group-header,
+  #caseList.manager-room-rows .has-room-plaque .case-row-title {
+    padding:18px; background:#f2f6f9; border-right:1px solid #dce6ed;
+    border-radius:9px 0 0 9px;
+  }
+  #caseList.manager-room-rows .room-plaque { padding:0; gap:8px; }
+  #caseList.manager-room-rows .room-plaque-building { color:#587487; font-size:13px; letter-spacing:.04em; }
+  #caseList.manager-room-rows .room-plaque-number { font-size:30px; color:#214b65; line-height:1.2; }
+  #caseList.manager-room-rows .room-plaque-location { font-size:19px; line-height:1.45; }
+  #caseList.manager-room-rows .room-plaque-detail { gap:7px; margin-top:2px; }
+  #caseList.manager-room-rows .case-summary-body .case-row-desc { font-size:20px; line-height:1.5; color:#25475c; }
+  #caseList.manager-room-rows .room-group .room-case-description { font-size:18px; line-height:1.5; color:#25475c; }
+  #caseList.manager-room-rows .case-summary-body .case-row-meta,
+  #caseList.manager-room-rows .room-case-meta { font-size:12px; color:#627b8c; line-height:1.6; }
+  #caseList.manager-room-rows .room-group .room-case-row { background:#fff; padding:18px 20px; min-height:94px; }
+  #caseList.manager-room-rows .has-room-plaque .case-open-chevron {
+    clip-path:none; border-radius:8px; border:1px solid #cbdde8;
+    background:#f0f6fa; color:#2c5b76; font-size:20px; padding:7px 11px;
+  }
+  #caseList.manager-room-rows .case-summary-tags > span { background:#f5f8fa; border-color:#e1e8ed; }
+}
+@media(min-width:701px) and (max-width:1100px) {
+  #caseList.manager-room-rows .room-group { grid-template-columns:164px minmax(0,1fr); }
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed { grid-template-columns:164px minmax(0,1fr); }
+  #caseList.manager-room-rows .has-room-plaque .case-row-status { grid-column:2; grid-row:2; }
+}
+@media(max-width:700px) {
+  #page-mgr .dispatch-controls { padding:10px; }
+}
+@media(hover:hover) and (pointer:fine) {
+  #caseList.manager-room-rows .room-group .room-case-row:hover { background:#f5f9fc; }
+  #caseList.manager-room-rows .case-collapsed:hover { background:#fafcfd; }
+}
