@@ -143,6 +143,67 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 .case-original-priority { display:contents; }
 .case-summary-priority { display:none; }
 
+/* V3.16.7: decorative detail only; no new text, fonts, requests or timers. */
+@media(min-width:701px) {
+  #page-mgr .dispatch-controls {
+    position:relative; border-radius:3px 18px 3px 18px;
+    background-image:linear-gradient(135deg,rgba(104,174,199,.08),transparent 55%);
+  }
+  #page-mgr .dispatch-controls::before {
+    content:''; position:absolute; top:0; left:0; width:42px; height:3px;
+    background:#e9a64e; pointer-events:none; right:auto;
+    border:0; border-radius:0; box-shadow:none; opacity:.8;
+  }
+  #page-mgr .dispatch-controls::after {
+    content:''; position:absolute; bottom:7px; right:9px; width:24px; height:5px;
+    border-top:1px solid rgba(147,192,210,.45); border-bottom:1px solid rgba(147,192,210,.25);
+    transform:skewX(-25deg); pointer-events:none;
+  }
+  #caseList.manager-room-rows .room-plaque { position:relative; padding-top:5px; }
+  #caseList.manager-room-rows .room-plaque::before {
+    content:''; position:absolute; top:-5px; left:0; width:8px; height:8px;
+    background:#d3a147; clip-path:polygon(0 0,100% 0,0 100%); pointer-events:none;
+  }
+  #caseList.manager-room-rows .room-plaque::after {
+    content:''; position:absolute; top:-4px; left:14px; width:30px; height:1px;
+    background:#b9cbd8; pointer-events:none;
+  }
+  #caseList.manager-room-rows .has-room-plaque .case-open-chevron {
+    position:relative; overflow:hidden; border-radius:2px;
+    clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+    background:linear-gradient(135deg,#f7fbfd,#e9f1f6);
+  }
+  #caseList.manager-room-rows .case-open-chevron::after {
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:0;
+    background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.85) 50%,transparent 75%);
+    transform:translateX(-110%);
+  }
+  #page-mgr .mgr-print-btn { border-radius:2px 10px 2px 10px !important; }
+}
+@keyframes panelDetailSweep {
+  0% { transform:translateX(-110%); opacity:0; }
+  20% { opacity:.8; }
+  100% { transform:translateX(110%); opacity:0; }
+}
+@media(min-width:701px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  #caseList.manager-room-rows .case-collapsed:hover .case-open-chevron::after,
+  #caseList.manager-room-rows .case-collapsed:focus-visible .case-open-chevron::after {
+    animation:panelDetailSweep .55s ease-out 1;
+  }
+}
+.toast.success { position:fixed; overflow:hidden; border-color:rgba(180,231,197,.45); }
+.toast.success::after {
+  content:''; position:absolute; inset:0; pointer-events:none; opacity:0;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.18) 50%,transparent 70%);
+}
+@media(prefers-reduced-motion:no-preference) {
+  .toast.success.show::after { animation:panelDetailSweep .6s ease-out 1; }
+}
+@media(prefers-reduced-motion:reduce) {
+  #caseList.manager-room-rows .case-open-chevron::after,
+  .toast.success.show::after { animation:none; opacity:0; }
+}
+
 /* V3.16.1: independent room issues, fixed readable type and natural card height. */
 #caseList { align-items:start; }
 #caseList .room-group { min-width:0; padding:0; overflow:hidden; }
