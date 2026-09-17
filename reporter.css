@@ -138,7 +138,10 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 #caseSyncStrip[data-state="idle"]::after { display:none; }
 #caseSyncStrip #syncStatus { overflow-wrap:anywhere; }
 
-.room-plaque,.desktop-case-status { display:none; }
+.room-plaque,.desktop-case-status,.case-action-label,.case-summary-tags { display:none; }
+.case-summary-body { display:contents; }
+.case-original-priority { display:contents; }
+.case-summary-priority { display:none; }
 
 /* V3.16.1: independent room issues, fixed readable type and natural card height. */
 #caseList { align-items:start; }
@@ -315,4 +318,62 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
   #caseList.manager-room-rows .has-room-plaque .case-collapsed { grid-template-columns:170px minmax(0,1fr) 28px; column-gap:14px; }
   #caseList.manager-room-rows .has-room-plaque .case-row-status { grid-column:3; }
   #caseList.manager-room-rows .has-room-plaque .case-open-chevron { width:26px; }
+}
+
+/* V3.16.6: compact summary; no timers, photo requests or entrance animation. */
+@media(min-width:701px) {
+  #caseList.manager-room-rows .case-original-priority { display:none; }
+  #caseList.manager-room-rows .case-summary-priority:not(:empty) { display:block; }
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed {
+    grid-template-columns:190px minmax(0,1fr) auto; grid-template-rows:auto;
+  }
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed > .case-summary-body {
+    display:flex; flex-direction:column; justify-content:center; gap:10px;
+    grid-column:2; grid-row:1 / -1 !important; min-width:0;
+  }
+  #caseList.manager-room-rows .case-summary-body .case-row-desc {
+    order:0; font-size:22px; line-height:1.5; font-weight:650;
+  }
+  #caseList.manager-room-rows .case-summary-body .case-row-meta {
+    order:1; font-size:13px; line-height:1.65;
+  }
+  #caseList.manager-room-rows .case-summary-tags {
+    display:flex; flex-wrap:wrap; gap:8px; order:2;
+  }
+  #caseList.manager-room-rows .case-summary-tags > span {
+    padding:4px 10px; border:1px solid #dce7ed; border-radius:6px;
+    background:#f0f5f8; color:#527083; font-size:13px; line-height:1.5; overflow-wrap:anywhere;
+  }
+  #caseList.manager-room-rows .case-summary-body > :not(.case-row-desc):not(.case-row-meta):not(.case-summary-tags) { order:3; }
+  #caseList.manager-room-rows .case-summary-body .case-row-note { order:4; }
+  #caseList.manager-room-rows .case-summary-body .photo-tag { display:none; }
+  #caseList.manager-room-rows .room-plaque-detail { flex-direction:row; gap:6px 8px; align-items:center; }
+  #caseList.manager-room-rows .room-group .room-group-header,
+  #caseList.manager-room-rows .has-room-plaque .case-row-title { padding:16px; }
+  #caseList.manager-room-rows .case-action-label { display:inline; font-size:13px; font-weight:600; }
+  #caseList.manager-room-rows .has-room-plaque .case-open-chevron {
+    display:inline-flex; width:auto; height:auto; min-height:36px; padding:6px 10px;
+    align-items:center; justify-content:center; gap:8px; white-space:nowrap;
+  }
+}
+@media(min-width:701px) and (max-width:1100px) {
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed { grid-template-columns:170px minmax(0,1fr); }
+  #caseList.manager-room-rows .has-room-plaque .case-row-status { grid-column:2; grid-row:2; justify-content:flex-end; }
+  #caseList.manager-room-rows .has-room-plaque .case-collapsed > .case-summary-body { grid-row:1 !important; }
+  #caseList.manager-room-rows .has-room-plaque .case-row-title { grid-row:1 / span 2; }
+}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  #caseList.manager-room-rows > .case-card { transition:transform .18s ease; }
+  #caseList.manager-room-rows > .case-card:hover { transform:translateY(-2px); }
+  #caseList.manager-room-rows .case-open-chevron,
+  #caseList.manager-room-rows .room-case-arrow { transition:transform .18s ease; }
+  #caseList.manager-room-rows .case-collapsed:hover .case-open-chevron,
+  #caseList.manager-room-rows .room-case-row:hover .room-case-arrow { transform:translateX(3px); }
+  #caseList.manager-room-rows .case-collapsed:active { transform:scale(.997); }
+}
+@media(prefers-reduced-motion:reduce) {
+  #caseList.manager-room-rows > .case-card,
+  #caseList.manager-room-rows .case-collapsed,
+  #caseList.manager-room-rows .case-open-chevron,
+  #caseList.manager-room-rows .room-case-arrow { transition:none!important; transform:none!important; }
 }

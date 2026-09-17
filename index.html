@@ -1952,7 +1952,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.5">
+<link rel="stylesheet" href="reporter.css?v=3.16.6">
 <script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
@@ -3648,14 +3648,18 @@ function renderManagerCaseList() {
         onclick="openCaseActionModal(${c.rowIndex})"
         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCaseActionModal(${c.rowIndex})}">
         ${stampHtml}
-        ${priorityBannerHtml(c)}
+        <div class="case-original-priority">${priorityBannerHtml(c)}</div>
         <div class="case-row-top">
           <div class="case-row-title">${titleHtml}${currentFilter==='待處理'?roomPlaqueHtml_(c,1,(syncLabel||isFlagged)?badgeHtml:''):''}</div>
-          <div class="case-row-status">${badgeHtml}<span class="case-open-chevron" aria-hidden="true">›</span></div>
+          <div class="case-row-status">${badgeHtml}<span class="case-open-chevron" aria-hidden="true"><span class="case-action-label">查看／處理</span>›</span></div>
         </div>
-        <div class="case-row-meta"><span class="meta-caseid">${c.caseId}</span><span class="meta-date">${dateLabelPrefix}${shortDate}</span><span class="meta-people"> · ${c.unit} · ${c.name}</span>${photoTag?` · <span class="photo-tag">${photoTag}</span>`:''}</div>
+        <div class="case-summary-body">
+        <div class="case-summary-priority">${priorityBannerHtml(c)}</div>
+        <div class="case-row-meta"><span class="meta-caseid">${c.caseId}</span><span class="meta-date">${dateLabelPrefix}${shortDate}</span><span class="meta-people"> · ${c.unit} · ${c.name}</span>${photoTag?`<span class="photo-tag"> · ${photoTag}</span>`:''}</div>
         <div class="case-row-desc">${c.description}</div>
+        ${currentFilter==='待處理'&&(c.caseType||photoTag)?`<div class="case-summary-tags">${c.caseType?`<span>${escapeHtml_(String(c.caseType))}</span>`:''}${photoTag?`<span>${escapeHtml_(photoTag)}</span>`:''}</div>`:''}
         ${c.repairNote?`<div class="case-row-note"><span class="note-icon">✅ </span>${c.repairNote}</div>`:''}
+        </div>
       </div>`;
 
     return `<div class="${cls}${currentFilter==='待處理'?' has-room-plaque':''}">${collapsedView}</div>`;
