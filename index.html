@@ -1952,7 +1952,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.8">
+<link rel="stylesheet" href="reporter.css?v=3.16.9">
 <script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
@@ -2515,13 +2515,14 @@ async function caseManifest_(cases) {
   }
   return entries;
 }
-async function readCaseSyncBase_() {
+async function readCaseSyncBase_(isCurrent = () => true) {
   if (caseSyncBase_) return caseSyncBase_;
   try {
     const b = JSON.parse(localStorage.getItem(CASE_SYNC_BASE_KEY_) || 'null');
     if (b?.protocol !== 1 || !b.version || !Array.isArray(b.cases) || !Array.isArray(b.manifest)) return null;
     const actual = await caseManifest_(b.cases);
     if (!actual || JSON.stringify(actual) !== JSON.stringify(b.manifest)) return null;
+    if (!isCurrent()) return null;
     if (!caseSyncBase_) caseSyncBase_ = b;
     return caseSyncBase_;
   } catch (_) { return null; }
@@ -3290,13 +3291,21 @@ function invalidateReportCaches_() {
 // ── 載入案件 ──
 let loadCasesRequestSeq = 0; // 請求序號:避免比較舊、比較慢的請求(不管成功或失敗)蓋掉後來更新的畫面結果
 
+function caseSyncStageWait_(work, ms) {
+  let timer;
+  return Promise.race([Promise.resolve().then(work),new Promise((_,reject)=>{
+    timer=setTimeout(()=>{const e=new Error('同步階段逾時');e.code='SYNC_STAGE_TIMEOUT';reject(e);},ms);
+  })]).finally(()=>clearTimeout(timer));
+}
+
 function loadCases(force, closedLimitOverride) {
   const targetClosedLimit=closedLimitOverride||casesClosedLimit, targetPendingLimit='all';
   const key=JSON.stringify([targetClosedLimit,targetPendingLimit,!!force]);
   if(loadCasesInFlightPromise_ && loadCasesInFlightKey_===key) return loadCasesInFlightPromise_;
   const promise=_loadCasesImpl(force,closedLimitOverride);
   loadCasesInFlightPromise_=promise; loadCasesInFlightKey_=key;
-  promise.finally(()=>{ if(loadCasesInFlightPromise_===promise){loadCasesInFlightPromise_=null;loadCasesInFlightKey_='';} if(currentPageId==='mgr')scheduleDashboardPrefetch_(); });
+  const release=()=>{ if(loadCasesInFlightPromise_===promise){loadCasesInFlightPromise_=null;loadCasesInFlightKey_='';} };
+  promise.then(release,release);
   return promise;
 }
 
@@ -3333,18 +3342,28 @@ async function _loadCasesImpl(force, closedLimitOverride) {
   const mySeq = ++loadCasesRequestSeq;
   const timeoutMs = isAllMode ? 45000 : 25000;
   const readParams = { action:'getAll', closedLimit:targetClosedLimit, pendingLimit:targetPendingLimit };
-  showCaseSync('正在連線同步…');
+  showCaseSync('正在檢查本機同步資料…');
   const started = performance.now();
-  const base = isAllMode ? null : await readCaseSyncBase_();
+  const deadline=Date.now()+(isAllMode?105000:65000);
+  let stage='本機資料校驗',attempts=0,baselineFallback=false,base=null,acceptBase=true;
+  const checkDeadline=()=>{if(Date.now()>deadline){const e=new Error('同步總時間逾時');e.code='SYNC_TOTAL_TIMEOUT';throw e;}};
+  try {
+  if(!isAllMode){
+    try {base=await caseSyncStageWait_(()=>readCaseSyncBase_(()=>acceptBase&&mySeq===loadCasesRequestSeq),5000);}
+    catch(_){baselineFallback=true;}
+    finally {acceptBase=false;}
+  }
   if (mySeq !== loadCasesRequestSeq) return;
+  checkDeadline();
   if (!isAllMode) readParams.sync = base && String(base.range) === String(targetClosedLimit)
     ? {protocol:1,range:base.range,version:base.version,manifest:base.manifest}
     : {protocol:1};
-  let attempts = 0;
   const attemptLoad = async () => {
     attempts++;
+    stage='連線／伺服器回應';
+    showCaseSync(baselineFallback?'本機校驗未完成，正在重新取得案件…':'正在連線同步…');
     const result = await callReadApi_(readParams, timeoutMs, text => {
-      if(mySeq === loadCasesRequestSeq) showCaseSync(text);
+      if(mySeq === loadCasesRequestSeq) {stage='接收案件資料';showCaseSync(text);}
     });
     if (!result.success) throw new Error(result.message || '案件載入失敗');
     // A malformed delta retries through the same existing retry budget, using a full snapshot.
@@ -3357,7 +3376,6 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     return result;
   };
 
-  try {
     let data;
     try {
       data = await attemptLoad();
@@ -3370,21 +3388,24 @@ async function _loadCasesImpl(force, closedLimitOverride) {
       data = await attemptLoad();
     }
     if (mySeq !== loadCasesRequestSeq) return;
+    checkDeadline();
     if (!data.success) throw new Error(data.message || '案件載入失敗');
 
+    stage='套用案件資料';
     showCaseSync('正在套用最新資料…');
     const nextCases = data.changed === false ? base.cases : assembleCaseSync_(data, base);
     if (!isAllMode && data.changed !== false) {
       const raw = JSON.parse(JSON.stringify(nextCases));
-      const manifest = await caseManifest_(raw).catch(() => null);
+      const manifest = await caseSyncStageWait_(()=>caseManifest_(raw),5000).catch(() => null);
       if (mySeq !== loadCasesRequestSeq) return;
+      checkDeadline();
       caseSyncBase_ = manifest && data.version ? {protocol:1,version:data.version,range:targetClosedLimit,cases:raw,manifest:manifest,hasMore:!!data.hasMore} : null;
       try {
         if (caseSyncBase_) localStorage.setItem(CASE_SYNC_BASE_KEY_,JSON.stringify(caseSyncBase_));
         else localStorage.removeItem(CASE_SYNC_BASE_KEY_);
       } catch (_) { /* Memory baseline remains usable when storage is full. */ }
     }
-    window.lastCaseSyncMetrics_ = {mode:data.syncMode || 'full',attempts:attempts,elapsedMs:Math.round(performance.now()-started),receivedCases:data.cases?.length || 0,totalCases:nextCases.length};
+    window.lastCaseSyncMetrics_ = {ok:true,stage:'完成',baselineFallback,mode:data.syncMode || 'full',attempts:attempts,elapsedMs:Math.round(performance.now()-started),receivedCases:data.cases?.length || 0,totalCases:nextCases.length};
     queueCaseVisualChanges_(nextCases);
     allCases = JSON.parse(JSON.stringify(nextCases));
     applyPendingCloseOverlays_();
@@ -3400,7 +3421,9 @@ async function _loadCasesImpl(force, closedLimitOverride) {
   } catch(e) {
     if (mySeq !== loadCasesRequestSeq) return;
     console.error('loadCases 失敗:', e);
-    showCaseSync(allCases.length ? '同步未完成・保留上次資料' : '同步未完成・請重試', {warn:true});
+    const elapsedMs=Math.round(performance.now()-started);
+    window.lastCaseSyncMetrics_={ok:false,stage,attempts,elapsedMs,baselineFallback,code:e.code||'SYNC_FAILED'};
+    showCaseSync(`同步未完成（${stage}・${Math.round(elapsedMs/1000)} 秒）・${allCases.length?'保留上次資料':'請重試'}`, {warn:true});
     if (allCases.length) { /* Keep the existing list available. */ }
     else if (currentPageId === 'dash') showToast('❌ 統計資料載入失敗，請點右上角重新整理再試一次');
     else document.getElementById('caseList').innerHTML='<div class="empty-state">載入失敗，請稍後再試（若持續發生可能是伺服器忙碌，非您的網路問題）</div>';
@@ -5090,14 +5113,8 @@ function seedLocationFirstPages_(params, pages) {
   });
 }
 function scheduleDashboardPrefetch_() {
-  clearTimeout(dashboardPrefetchTimer_);
-  if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0||closeQueueProcessing_||!navigator.onLine)return;
-  const run=()=>{
-    if(currentPageId!=='mgr'||document.visibilityState!=='visible'||activeWriteCount>0||closeQueueProcessing_)return;
-    prefetchDashboard_();
-  };
-  if('requestIdleCallback' in window) requestIdleCallback(run,{timeout:1800});
-  else dashboardPrefetchTimer_=setTimeout(run,1200);
+  // V3.16.9: statistics load only on explicit statistics access, never from manager idle work.
+  return;
 }
 async function requestDashboardBundle_(params, force=false) {
   const key=dashboardParamsKey_(params);
@@ -6319,7 +6336,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.1', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.9', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
