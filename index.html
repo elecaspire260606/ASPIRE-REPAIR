@@ -1952,7 +1952,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.9">
+<link rel="stylesheet" href="reporter.css?v=3.16.11">
 <script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
@@ -6336,7 +6336,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.9', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.11', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);

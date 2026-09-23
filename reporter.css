@@ -123,6 +123,15 @@ body.has-report-outbox { padding-bottom:calc(170px + env(safe-area-inset-bottom)
 @keyframes caseSyncTravel { to { transform:translateX(390%); } }
 @media(prefers-reduced-motion:reduce) { #caseSyncStrip[data-state="loading"]::after { animation:none; transform:none; width:100%; opacity:.45; } }
 
+/* V3.16.11: keep touch input text readable without iOS focus zoom.
+   Match before focus as well; never restrict the user's pinch zoom. */
+@media (max-width:700px), (any-pointer:coarse) {
+  input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not([type=button]):not([type=submit]):not([type=reset]),
+  textarea, select {
+    font-size:16px !important;
+  }
+}
+
 /* V3.16.0: compact closure receipt; details stay within the available viewport. */
 .close-sync-head { cursor:pointer; list-style:none; }
 .close-sync-head::after { content:'查看'; float:right; color:#527081; font-weight:500; }
