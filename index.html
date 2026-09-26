@@ -1952,7 +1952,7 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.16.11">
+<link rel="stylesheet" href="reporter.css?v=3.17.0">
 <script src="reporter.js?v=3.16.1"></script>
 </head>
 <body>
@@ -2500,9 +2500,22 @@ async function callReadApi_(params, timeoutMs = 15000, onStage) {
 }
 
 // Raw server snapshot is independent of UI patches and optimistic close overlays.
-const CASE_SYNC_BASE_KEY_ = 'aspire_case_sync_base_v2';
+const CASE_SYNC_BASE_KEY_ = 'aspire_case_sync_base_v317';
 try { localStorage.removeItem('aspire_case_sync_base_v1'); localStorage.removeItem('aspire_cases_cache_v33_all_pending'); } catch(e) {}
 let caseSyncBase_ = null;
+let reconcileCases317_=false;
+function sameCursor317_(a,b){return !!a&&!!b&&a.epoch===b.epoch&&a.seq===b.seq;}
+function validCaseBase317_(b){
+  if(!b||b.protocol!==2||!b.version||!b.cursor||typeof b.cursor.epoch!=='string'||!b.cursor.epoch||!Number.isSafeInteger(b.cursor.seq)||b.cursor.seq<0||!Array.isArray(b.cases))return false;
+  const ids=new Set();return b.cases.every(c=>{const id=String(c?.caseId||'');if(!id||ids.has(id))return false;ids.add(id);return true;});
+}
+// Local corruption check only, NOT an authentication/security hash. One synchronous
+// pass avoids N serial WebCrypto jobs on iOS. Raw baseline remains separate from UI.
+function caseChecksum317_(s){
+  let a=2166136261,b=5381;
+  for(let i=0;i<s.length;i++){const x=s.charCodeAt(i);a=Math.imul(a^x,16777619);b=(Math.imul(b,33)^x);}
+  return s.length+':'+(a>>>0).toString(16)+':'+(b>>>0).toString(16);
+}
 async function caseManifest_(cases) {
   if (!globalThis.crypto?.subtle || !Array.isArray(cases) || cases.length > 3000) return null;
   const ids = new Set(), entries = [];
@@ -2519,6 +2532,12 @@ async function readCaseSyncBase_(isCurrent = () => true) {
   if (caseSyncBase_) return caseSyncBase_;
   try {
     const b = JSON.parse(localStorage.getItem(CASE_SYNC_BASE_KEY_) || 'null');
+    if(b?.protocol===2){
+      if(typeof b.payload!=='string'||caseChecksum317_(b.payload)!==b.check)return null;
+      const parsed=JSON.parse(b.payload);
+      if(!validCaseBase317_(parsed)||!isCurrent())return null;
+      caseSyncBase_=parsed;return parsed;
+    }
     if (b?.protocol !== 1 || !b.version || !Array.isArray(b.cases) || !Array.isArray(b.manifest)) return null;
     const actual = await caseManifest_(b.cases);
     if (!actual || JSON.stringify(actual) !== JSON.stringify(b.manifest)) return null;
@@ -2533,6 +2552,7 @@ function assembleCaseSync_(data, base) {
     return data.cases;
   }
   if (!base || data.baseVersion !== base.version || !Array.isArray(data.cases) || !Array.isArray(data.order) || !Array.isArray(data.removed)) throw new Error('同步基準不符，請重新整理');
+  if(data.syncProtocol===2&&!sameCursor317_(data.baseCursor,base.cursor))throw new Error('同步游標不符');
   const byId = new Map(base.cases.map(c => [String(c.caseId), c]));
   data.removed.forEach(id => byId.delete(id));
   data.cases.forEach(c => byId.set(String(c.caseId), c));
@@ -2809,6 +2829,7 @@ function updateStatsBar() {}
 
 async function refreshStats() {
   const btn = document.getElementById('statsRefreshBtn');
+  if(currentPageId!=='dash')reconcileCases317_=true;
   btn.classList.add('spinning');
   // 依目前所在頁面強制重抓對應的資料來源：修繕管理用專用API，其餘頁面沿用完整歷史資料
   if (currentPageId === 'dash') await loadDashboardSnapshot(true);
@@ -3356,8 +3377,9 @@ async function _loadCasesImpl(force, closedLimitOverride) {
   if (mySeq !== loadCasesRequestSeq) return;
   checkDeadline();
   if (!isAllMode) readParams.sync = base && String(base.range) === String(targetClosedLimit)
-    ? {protocol:1,range:base.range,version:base.version,manifest:base.manifest}
-    : {protocol:1};
+    ? (base.protocol===2?{protocol:2,range:base.range,version:base.version,cursor:base.cursor,ids:base.cases.map(c=>String(c.caseId))}:{protocol:2,range:base.range,version:base.version})
+    : {protocol:2};
+  if(readParams.sync&&reconcileCases317_) {readParams.sync.reconcile=true;reconcileCases317_=false;}
   const attemptLoad = async () => {
     attempts++;
     stage='連線／伺服器回應';
@@ -3369,9 +3391,9 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     // A malformed delta retries through the same existing retry budget, using a full snapshot.
     if (result.changed !== false) {
       try { assembleCaseSync_(result, base); }
-      catch (e) { readParams.sync = {protocol:1}; throw e; }
-    } else if (!base || result.baseVersion !== base.version) {
-      readParams.sync = {protocol:1}; throw new Error('同步基準已失效');
+      catch (e) { readParams.sync = {protocol:2}; throw e; }
+    } else if (!base || result.baseVersion !== base.version || (result.syncProtocol===2 && !sameCursor317_(result.baseCursor,base.cursor))) {
+      readParams.sync = {protocol:2}; throw new Error('同步基準已失效');
     }
     return result;
   };
@@ -3394,7 +3416,13 @@ async function _loadCasesImpl(force, closedLimitOverride) {
     stage='套用案件資料';
     showCaseSync('正在套用最新資料…');
     const nextCases = data.changed === false ? base.cases : assembleCaseSync_(data, base);
-    if (!isAllMode && data.changed !== false) {
+    if (!isAllMode && data.syncProtocol===2) {
+      const raw=JSON.parse(JSON.stringify(nextCases));
+      const nextBase={protocol:2,version:data.version,cursor:data.cursor,range:targetClosedLimit,cases:raw,hasMore:!!data.hasMore};
+      if(!validCaseBase317_(nextBase))throw new Error('同步回應不完整');
+      caseSyncBase_=nextBase;
+      try{const payload=JSON.stringify(nextBase);localStorage.setItem(CASE_SYNC_BASE_KEY_,JSON.stringify({protocol:2,payload,check:caseChecksum317_(payload)}));}catch(_){}
+    } else if (!isAllMode && data.changed !== false) {
       const raw = JSON.parse(JSON.stringify(nextCases));
       const manifest = await caseSyncStageWait_(()=>caseManifest_(raw),5000).catch(() => null);
       if (mySeq !== loadCasesRequestSeq) return;
@@ -3405,12 +3433,14 @@ async function _loadCasesImpl(force, closedLimitOverride) {
         else localStorage.removeItem(CASE_SYNC_BASE_KEY_);
       } catch (_) { /* Memory baseline remains usable when storage is full. */ }
     }
-    window.lastCaseSyncMetrics_ = {ok:true,stage:'完成',baselineFallback,mode:data.syncMode || 'full',attempts:attempts,elapsedMs:Math.round(performance.now()-started),receivedCases:data.cases?.length || 0,totalCases:nextCases.length};
+    window.lastCaseSyncMetrics_ = {ok:true,stage:'完成',baselineFallback,mode:data.syncMode || 'full',attempts:attempts,elapsedMs:Math.round(performance.now()-started),receivedCases:data.cases?.length || 0,totalCases:nextCases.length,server:data.syncMetrics||null};
     queueCaseVisualChanges_(nextCases);
+    const previousPhotos=new Map(allCases.filter(c=>c.photoVersion&&Array.isArray(c.reportPhotos)&&Array.isArray(c.closePhotos)).map(c=>[String(c.caseId),c]));
     allCases = JSON.parse(JSON.stringify(nextCases));
+    allCases.forEach(c=>{const old=previousPhotos.get(String(c.caseId));if(old&&old.photoVersion===c.photoVersion){c.reportPhotos=old.reportPhotos;c.closePhotos=old.closePhotos;}});
     applyPendingCloseOverlays_();
     lastCasesServerVersion = data.version || lastCasesServerVersion;
-    casesHasMore = data.changed === false ? !!base.hasMore : !!data.hasMore;
+    casesHasMore = data.syncProtocol===2 ? !!data.hasMore : data.changed === false ? !!base.hasMore : !!data.hasMore;
     lastLoadedDays = targetClosedLimit;
     lastCasesLoadTime = Date.now();
     lastCasesSuccessfulSyncAt_=lastCasesLoadTime;
@@ -3479,6 +3509,8 @@ function filterCases(status, btn) {
 // 帶來的複雜度已經大於它們省下來的效能，反而增加彼此互動出bug的風險。
 function applyServerCasePatch_(serverCase, serverVersion, opts = {}) {
   if (!serverCase) return false;
+  // A list request started before this write must not overwrite its acknowledgement.
+  loadCasesRequestSeq++;loadCasesInFlightPromise_=null;loadCasesInFlightKey_='';
   const idx = allCases.findIndex(c => serverCase.caseId ? c.caseId === serverCase.caseId : c.rowIndex === serverCase.rowIndex);
   if (idx < 0) {
     // 手上的清單可能是較小範圍；不硬塞未知案件，下一次 version sync 會拿正式清單。
@@ -3941,20 +3973,60 @@ function photoDisplayBlock(c, kind, label) {
     return photos.length ? `<div style="margin-top:8px;font-size:11px;color:#aaa;">${label}：</div><div class="photo-preview-wrap">${photos.map(url=>`<img class="photo-preview-img" ${remotePhotoAttrs_(url)} onclick="window.open('${url}')">`).join('')}</div>` : '';
   }
   if (!count) return '';
-  return `<div class="photo-count-hint" style="cursor:pointer;" onclick="loadAndShowPhotos(${c.rowIndex},this,'${kind}')">📷 ${label} ${count} 張（點擊查看）</div>`;
+  scheduleVisiblePhotos317_();
+  return `<div class="photo-count-hint" data-photo317="${c.rowIndex}" data-kind317="${kind}" style="cursor:pointer;min-height:44px;" onclick="loadAndShowPhotos(${c.rowIndex},this,'${kind}')">📷 ${label} ${count} 張（載入中，可點擊重試）</div>`;
+}
+
+const casePhotoRequests317_=new Map();
+const casePhotoQueue317_=[];
+let casePhotoActive317_=0;
+function queuePhotoRead317_(params){
+  return new Promise((resolve,reject)=>{
+    const run=()=>{
+      casePhotoActive317_++;
+      const finish=()=>{casePhotoActive317_--;const next=casePhotoQueue317_.shift();if(next)next();};
+      Promise.resolve().then(()=>callReadApi_(params,15000)).then(resolve,reject).then(finish,finish);
+    };
+    if(casePhotoActive317_<2)run();else casePhotoQueue317_.push(run);
+  });
+}
+let visiblePhotoTimer317_=null,visiblePhotoObserver317_=null;
+function scheduleVisiblePhotos317_(){
+  clearTimeout(visiblePhotoTimer317_);
+  visiblePhotoTimer317_=setTimeout(()=>{
+    if(!('IntersectionObserver' in window))return; // Older browsers retain click-to-load.
+    if(!visiblePhotoObserver317_)visiblePhotoObserver317_=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{if(entry.isIntersecting){visiblePhotoObserver317_.unobserve(entry.target);loadAndShowPhotos(Number(entry.target.dataset.photo317),entry.target,entry.target.dataset.kind317);}});
+    },{rootMargin:'100px'});
+    visiblePhotoObserver317_.disconnect();
+    document.querySelectorAll('[data-photo317]').forEach(el=>visiblePhotoObserver317_.observe(el));
+  },0);
+}
+// Separate detail data never mutates the persisted sync baseline. Both photo kinds
+// share one request; slow replies cannot attach another case's photos after a sync.
+async function loadCasePhotos317_(c){
+  if(Array.isArray(c.reportPhotos)&&Array.isArray(c.closePhotos))return;
+  const key=String(c.caseId)+':'+String(c.photoVersion||'');
+  let request=casePhotoRequests317_.get(key);
+  if(!request){
+    request=queuePhotoRead317_({action:'getCasePhotos',caseId:String(c.caseId),rowIndex:c.rowIndex});
+    casePhotoRequests317_.set(key,request);
+    const release=()=>{if(casePhotoRequests317_.get(key)===request)casePhotoRequests317_.delete(key);};request.then(release,release);
+  }
+  const data=await request;
+  if(!data.success||String(data.caseId)!==String(c.caseId)||!Array.isArray(data.reportPhotos)||!Array.isArray(data.closePhotos))throw Error(data.message||'照片資料不完整');
+  const current=findCaseByRowIndex_(c.rowIndex);
+  if(current&&current!==c){
+    if(!c.photoVersion||current.photoVersion!==c.photoVersion||String(current.caseId)!==String(c.caseId))throw Error('案件已更新，請重新開啟');
+    current.reportPhotos=data.reportPhotos;current.closePhotos=data.closePhotos;
+  }
+  c.reportPhotos=data.reportPhotos;c.closePhotos=data.closePhotos;
 }
 
 // V3.1：主表照片網址已隨 getAll 一次帶回。只有封存/歷史案件（負 rowIndex）仍可能需要低頻照片查詢。
 async function loadAndShowPhotos(rowIndex, hintEl, kind) {
   const c = findCaseByRowIndex_(rowIndex) || (window.__panelArchiveCase && window.__panelArchiveCase.rowIndex === rowIndex ? window.__panelArchiveCase : null);
   if (!c) return;
-  if (rowIndex > 0) {
-    // 正常主表案件不應再走照片 API；若碰到舊記憶體資料，直接要求重新同步而不是再堆 fallback。
-    hintEl.textContent = '照片資料更新中…';
-    lastCasesLoadTime = 0;
-    loadCases(true).catch(()=>{});
-    return;
-  }
   const label = kind === 'report' ? '報修照片' : '結案照片';
 
   // 另一種類型可能已經被點過、資料已經在記憶體裡了，這種情況不用再打API，直接渲染
@@ -3968,15 +4040,11 @@ async function loadAndShowPhotos(rowIndex, hintEl, kind) {
 
   hintEl.textContent = '載入中…';
   try {
-    const data = await callReadApi_({ action:'getPhotos', rowIndex }, 15000);
-    if (data.success) {
-      c.reportPhotos = data.reportPhotos;
-      c.closePhotos = data.closePhotos;
+    await loadCasePhotos317_(c);
+    if (hintEl.isConnected) {
       const wrap = document.createElement('div');
       wrap.innerHTML = photoDisplayBlock(c, kind, label); // 只換掉被點擊的這一種，不動另一種的提示
       hintEl.replaceWith(...wrap.childNodes);
-    } else {
-      hintEl.textContent = '⚠️ 載入失敗（點擊重試）：' + (data.message||'未知錯誤');
     }
   } catch(e) {
     console.error('loadAndShowPhotos 失敗:', e);
@@ -4003,6 +4071,17 @@ function toggleCardEdit(rowIndex) { openCaseActionModal(rowIndex); }
 
 // 把目前案件的照片網址填入單一處理視窗；不在案件清單裡建立多份照片表單。
 function renderCasePhotoSlots(c) {
+  if((c.reportPhotoCount||c.closePhotoCount)&&(!Array.isArray(c.reportPhotos)||!Array.isArray(c.closePhotos))){
+    const target=document.getElementById(`reportPhotosWrap-${c.rowIndex}`);
+    if(target)target.innerHTML='<div class="case-photo-empty">照片載入中…</div>';
+    renderPhotoLibraryPicker_(`close-${c.rowIndex}`);
+    loadCasePhotos317_(c).then(()=>{
+      if(caseActionRowIndex_===c.rowIndex&&findCaseByRowIndex_(c.rowIndex)===c)renderCasePhotoSlots(c);
+    }).catch(()=>{
+      if(target?.isConnected&&caseActionRowIndex_===c.rowIndex)target.innerHTML=`<button type="button" onclick="renderCasePhotoSlots(findCaseByRowIndex_(${Number(c.rowIndex)}))">照片載入失敗，點擊重試</button>`;
+    });
+    return;
+  }
   const reportPhotos = Array.isArray(c.reportPhotos) ? c.reportPhotos : [];
   renderPhotoLibraryPicker_(`close-${c.rowIndex}`);
   const wrap = document.getElementById(`reportPhotosWrap-${c.rowIndex}`);
@@ -6336,7 +6415,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Service Worker 不攔截 fetch；query 版本號 + updateViaCache:none 可強制瀏覽器取得新版本，
       // 避免舊的 cache-first SW 繼續控制 Apps Script redirect 請求。
-      const reg = await navigator.serviceWorker.register('sw.js?v=3.16.11', { updateViaCache: 'none' });
+      const reg = await navigator.serviceWorker.register('sw.js?v=3.17.0', { updateViaCache: 'none' });
       await reg.update();
     } catch (e) {
       console.log('SW update error:', e);
