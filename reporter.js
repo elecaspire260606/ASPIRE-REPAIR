@@ -111,13 +111,17 @@ function continueReporter_(same){
 
 // Durable outbox: only clear the form after the IndexedDB transaction commits.
 let reportDbPromise_,reportInitPromise_,reportJobsBusy_=false;
+let reportWakeTimer_,reportRerun_=false;
 const reportJobs_=new Map();
 function openReportDb_(){
   if(!reportDbPromise_)reportDbPromise_=new Promise((resolve,reject)=>{
     const r=indexedDB.open('aspire-report-outbox-v1',1);
+    let expired=false;
+    const timeout=setTimeout(()=>{expired=true;reject(new Error('手機暫存開啟逾時，請重新開啟頁面'));},15000);
     r.onupgradeneeded=()=>r.result.createObjectStore('jobs',{keyPath:'id'});
-    r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
-    r.onblocked=()=>reject(new Error('請關閉其他報修頁面後重試'));
+    r.onsuccess=()=>{clearTimeout(timeout);if(expired){r.result.close();return;}r.result.onversionchange=()=>{r.result.close();reportDbPromise_=null;};resolve(r.result);};
+    r.onerror=()=>{clearTimeout(timeout);reject(r.error);};
+    r.onblocked=()=>{expired=true;clearTimeout(timeout);reject(new Error('請關閉其他報修頁面後重試'));};
   }).catch(e=>{reportDbPromise_=null;throw e;});
   return reportDbPromise_;
 }
@@ -125,9 +129,10 @@ async function reportStore_(action,value){
   const db=await openReportDb_();
   return new Promise((resolve,reject)=>{
     const tx=db.transaction('jobs',action==='getAll'?'readonly':'readwrite');
+    const timeout=setTimeout(()=>{try{tx.abort();}catch(e){}db.close();reportDbPromise_=null;reject(new Error('手機暫存讀寫逾時'));},15000);
     const r=tx.objectStore('jobs')[action](value);
-    tx.oncomplete=()=>resolve(r.result);
-    tx.onerror=()=>reject(tx.error||r.error);tx.onabort=()=>reject(tx.error||new Error('暫存失敗'));
+    tx.oncomplete=()=>{clearTimeout(timeout);resolve(r.result);};
+    tx.onerror=()=>{clearTimeout(timeout);reject(tx.error||r.error);};tx.onabort=()=>{clearTimeout(timeout);reject(tx.error||new Error('暫存失敗'));};
   });
 }
 async function initReportJobs_(){
@@ -137,12 +142,12 @@ async function initReportJobs_(){
     for(const raw of rows){
       const job=withoutDeviceData_(raw);
       if(JSON.stringify(raw)!==JSON.stringify(job))await reportStore_('put',job);
-      if(job.state==='sending'){job.state='uncertain';job.message='上次送出結果待確認';}
       reportJobs_.set(job.id,job);
     }
     renderReportJobs_();
     window.addEventListener('online',()=>void processReportJobs_());
     window.addEventListener('pageshow',()=>void processReportJobs_());
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)void processReportJobs_();});
     void processReportJobs_();
   })().catch(e=>{reportInitPromise_=null;throw e;});
   return reportInitPromise_;
@@ -160,6 +165,7 @@ async function enqueueReportJob_(payload){
   const job={id:payload.operationId,state:'queued',payload:JSON.parse(JSON.stringify(payload)),label:payload.area+' · '+payload.location,created:Date.now()};
   try {await reportStore_('put',job);}catch(e){throw new Error('暫存空間不足或無法寫入，內容與照片仍保留，尚未開始送出');}
   reportJobs_.set(job.id,job);renderReportJobs_();
+  if(reportJobsBusy_)reportRerun_=true;
 }
 async function sendReportJob_(payload){
   const controller=new AbortController();let timer;
@@ -171,42 +177,116 @@ async function sendReportJob_(payload){
         const text=await r.text();
         if(!r.ok)throw new Error('連線暫時異常');
         const data=JSON.parse(text);
-        if(data.success && !data.caseId)throw new Error('案件編號尚未確認');
+        if(data.success && payload.action!=='getReportReceipts' && !data.caseId)throw new Error('案件編號尚未確認');
         return data;
       })()
     ]);
   }finally{clearTimeout(timer);}
 }
 async function processReportJobs_(){
-  if(reportJobsBusy_ || !navigator.onLine)return;
+  if(reportJobsBusy_ || !navigator.onLine || document.hidden)return;
   reportJobsBusy_=true;
+  clearTimeout(reportWakeTimer_);
   try {
-    for(const job of reportJobs_.values()){
-      if(job.state!=='queued')continue;
-      job.state='sending';job.message='';renderReportJobs_();
-      try {await reportStore_('put',job);}catch(e){job.state='failed';job.message='無法更新暫存，尚未傳送';renderReportJobs_();continue;}
-      activeWriteCount++;
-      try {
-        const data=await sendReportJob_(job.payload);
-        if(!data.success){job.state='failed';job.message=data.message||'未完成送出';}
-        else {
-          job.state='done';job.caseId=data.caseId;job.message=data.warning||'';
-          delete job.payload; // Successful jobs retain only their receipt, not identity/photos.
-          try { invalidateReportCaches_(); showToast('✓ 報修已送出 · '+data.caseId); } catch(e) { console.error(e); }
+    // Read durable state again on every wake; another tab may have completed a job.
+    const rows=await reportStore_('getAll');
+    reportJobs_.clear();
+    rows.forEach(job=>reportJobs_.set(job.id,job));
+    const pending=rows.filter(job=>job.state!=='done');
+    for(let offset=0;offset<pending.length;offset+=50){
+      const batch=pending.slice(offset,offset+50);
+      let reply;
+      try{
+        reply=await sendReportJob_({action:'getReportReceipts',operationIds:batch.map(j=>j.id)});
+        if(!reply.success||reply.receiptProtocol!==1||!reply.receipts||typeof reply.receipts!=='object')throw new Error('未取得收件確認');
+      }catch(e){
+        batch.forEach(job=>{job.message='暫時無法核對收件，稍後再確認';});
+        renderReportJobs_();
+        break; // Do not resend blindly when receipt lookup is unavailable.
+      }
+      for(const original of batch){
+        const receipt=reply.receipts[original.id];
+        if(receipt && typeof receipt.caseId==='string' && receipt.caseId){
+          const done={...original,state:'done',caseId:receipt.caseId,message:''};
+          delete done.payload;
+          reportJobs_.set(done.id,await saveReportState_(done));
+          try{invalidateReportCaches_();}catch(e){console.error(e);}
+          continue;
         }
-      }catch(e){job.state='uncertain';job.message='連線中斷或逾時，送出結果待確認';}
-      finally{activeWriteCount=Math.max(0,activeWriteCount-1);}
-      try{await reportStore_('put',job);}catch(e){job.message+='（暫存更新失敗）';}
-      renderReportJobs_();
+        if(original.state!=='queued'){
+          if(original.state==='sending' && !(original.leaseUntil>Date.now())){
+            original.state='uncertain';original.message='上次送出結果待確認，請按確認／重試';
+            reportJobs_.set(original.id,await saveReportState_(original));
+          }
+          continue;
+        }
+        const job=await claimReportJob_(original.id);
+        if(!job)continue;
+        reportJobs_.set(job.id,job);renderReportJobs_();
+        activeWriteCount++;
+        try {
+          const data=await sendReportJob_(job.payload);
+          if(!data.success){job.state='failed';job.message=data.message||'未完成送出';}
+          else {
+            job.state='done';job.caseId=data.caseId;job.message=data.warning||'';
+            delete job.payload;
+            try {invalidateReportCaches_();showToast('✓ 報修已送出 · '+data.caseId);}catch(e){console.error(e);}
+          }
+        }catch(e){job.state='uncertain';job.message='送出結果待確認，稍後自動核對';}
+        finally{activeWriteCount=Math.max(0,activeWriteCount-1);}
+        reportJobs_.set(job.id,await saveReportState_(job));
+        renderReportJobs_();
+      }
     }
-  }finally{reportJobsBusy_=false;}
+    renderReportJobs_();
+  }catch(e){
+    console.error('Report queue recovery failed',e);
+    showToast('送出進度暫時無法更新，資料仍保留，請稍後再開啟');
+  }finally{
+    reportJobsBusy_=false;
+    if(reportRerun_||[...reportJobs_.values()].some(j=>j.state!=='done'))
+      reportWakeTimer_=setTimeout(()=>void processReportJobs_(),reportRerun_?0:60000);
+    reportRerun_=false;
+  }
+}
+// Atomic IDB operations coordinate tabs. A confirmed receipt cannot regress.
+async function changeReportState_(id,change){
+  const db=await openReportDb_();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('jobs','readwrite'),store=tx.objectStore('jobs');
+    const timeout=setTimeout(()=>{try{tx.abort();}catch(e){}db.close();reportDbPromise_=null;reject(new Error('手機暫存更新逾時'));},15000);
+    let result=null;
+    const request=store.get(id);
+    request.onsuccess=()=>{
+      result=change(request.result);
+      if(result)store.put(result);
+    };
+    tx.oncomplete=()=>{clearTimeout(timeout);resolve(result);};
+    tx.onerror=()=>{clearTimeout(timeout);reject(tx.error||request.error);};
+    tx.onabort=()=>{clearTimeout(timeout);reject(tx.error||new Error('暫存更新失敗'));};
+  });
+}
+function claimReportJob_(id){
+  return changeReportState_(id,current=>{
+    if(!current||current.state!=='queued'||current.leaseUntil>Date.now())return null;
+    return {...current,state:'sending',message:'',leaseUntil:Date.now()+120000};
+  });
+}
+function saveReportState_(job){
+  return changeReportState_(job.id,current=>{
+    if(!current)return null;
+    if(current.state==='done')return current;
+    // Another active sender owns its pending state; receipts may always finish it.
+    if(job.state!=='done' && current.leaseUntil>Date.now() && current.leaseUntil!==job.leaseUntil)return current;
+    return {...job,leaseUntil:job.state==='sending'?job.leaseUntil:0};
+  }).then(saved=>saved||job);
 }
 async function retryReportJob_(id){
   const job=reportJobs_.get(id);
   if(!job || !['failed','uncertain'].includes(job.state))return;
   // Same operationId: backend looks for the existing case before attempting creation.
   const queued={...job,state:'queued',message:''};
-  try{await reportStore_('put',queued);reportJobs_.set(id,queued);renderReportJobs_();void processReportJobs_();}
+  try{reportJobs_.set(id,await saveReportState_(queued));renderReportJobs_();void processReportJobs_();}
   catch(e){showToast('暫存無法更新，請稍後重試');}
 }
 async function dismissReportJob_(id){
