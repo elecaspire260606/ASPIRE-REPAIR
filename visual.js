@@ -1,6 +1,6 @@
 /* V3.19 — additive, on-demand tools. No background history or photo polling. */
 'use strict';
-const visual319_={floor:3,mode:'pending',days:'90',section:'cross',selected:'',history:new Map(),historySeq:0,historyBusy:false,historyError:'',detailSeq:0,workSeq:0,photoCache:new Map(),photoActive:0,photoQueue:[],objectUrls:[]};
+const visual319_={floor:3,mode:'pending',days:'90',selected:'',history:new Map(),historySeq:0,historyBusy:false,historyError:'',detailSeq:0,workSeq:0,photoCache:new Map(),photoActive:0,photoQueue:[],objectUrls:[]};
 const roomNorth319_=[1,3,5,7,9,11,15,17,19,21,23,25,27,29];
 const roomSouth319_=[2,6,8,10,12,16,18],roomLeft319_=[36,38,40,42,46],roomRight319_=[35,37,39,41,43,45];
 const roomSuffixes319_=[...roomNorth319_,...roomSouth319_,31,...roomLeft319_,...roomRight319_];
@@ -68,14 +68,12 @@ function renderRooms319_(){
     <div class="room-legend319">${['0','1','2–3','4–6','7+'].map((v,i)=>`<span><i class="heat-${i}"></i>${v} 件</span>`).join('')}${!isHistory?'<span class="priority-legend319">! 今日優先</span>':''}</div>
     ${isHistory?`<p class="v-muted" role="status">${s.historyBusy?'正在讀取完整歷史…':s.historyError?vEsc319_(s.historyError)+(history?'；目前顯示上次結果':''):history?`含主表與封存 · ${vEsc319_(history.range.from||'最早紀錄')} ～ ${vEsc319_(history.range.to)}${history.undatedCount?' · '+history.undatedCount+' 件缺少日期未計入':''}`:'尚未取得歷史資料'}</p>`:''}
   </div><div class="v-panel room-map-panel319"><div class="v-row spread"><h3>房號配置</h3><p class="v-muted">位置示意，非等比例平面圖</p></div>
-    <div class="room-section-switch319 v-segment"><button type="button" data-section="cross" aria-pressed="${s.section==='cross'}">橫向走道</button><button type="button" data-section="wing" aria-pressed="${s.section==='wing'}">轉角走道</button></div>
-    <div class="room-map-scroll319" tabindex="0" aria-label="房間配置，可左右捲動"><div class="room-diagram319 section-${s.section}"><div class="room-cross319">${roomNorth319_.map((n,i)=>tile(n,`style="grid-column:${i+1};grid-row:1"`)).join('')}<div class="room-corridor319 cross">走道 <span>→ 轉角</span></div>${roomSouth319_.map((n,i)=>tile(n,`style="grid-column:${i+2};grid-row:3"`)).join('')}${tile(31,'style="grid-column:14;grid-row:3"')}</div>
-    <div class="room-wing319"><div class="room-corridor319 vertical">走<br>道</div>${roomLeft319_.map((n,i)=>tile(n,`style="grid-column:1;grid-row:${[1,2,3,5,6][i]}${n===40?' / span 2':''}"`)).join('')}${roomRight319_.map((n,i)=>tile(n,`style="grid-column:3;grid-row:${i+1}"`)).join('')}</div></div></div>
-    <p class="v-muted room-mobile-hint319">橫向走道可左右滑動；轉角走道保留兩側房號位置。</p>
+    <div class="room-map-scroll319" tabindex="0" aria-label="${s.floor} 樓完整房號配置，點選房號查看案件"><div class="room-diagram319"><div class="room-cross319">${roomNorth319_.map((n,i)=>tile(n,`style="--room-column:${i+1};--room-row:1;--phone-column:9;--phone-row:${i+1}"`)).join('')}<div class="room-corridor319 cross">走道 <span>→ 轉角</span></div>${roomSouth319_.map((n,i)=>tile(n,`style="--room-column:${i+2};--room-row:3;--phone-column:7;--phone-row:${i+2}"`)).join('')}${tile(31,'style="--room-column:14;--room-row:3;--phone-column:7;--phone-row:14"')}</div>
+    <div class="room-wing319"><div class="room-corridor319 vertical"><span>走道</span></div>${roomLeft319_.map((n,i)=>tile(n,`style="--room-column:1;--room-row:${[1,2,3,5,6][i]}${n===40?' / span 2':''};--phone-column:${[6,5,3,2,1][i]}${n===40?' / span 2':''};--phone-row:12"`)).join('')}${roomRight319_.map((n,i)=>tile(n,`style="--room-column:3;--room-row:${i+1};--phone-column:${6-i};--phone-row:14"`)).join('')}</div></div></div>
+    <p class="v-muted room-mobile-hint319">平面圖轉向 90° 顯示，點房號查看案件。</p>
     <div class="room-foot319"><p class="v-muted">無待處理僅代表沒有待處理報修，與住宿或可售狀態無關。</p><button type="button" id="roomOther319" class="v-button">公共區域／其他位置 <b>${known?otherCount:'—'}</b></button></div></div><div id="roomDetail319" class="v-panel" ${s.selected?'':'hidden'}></div>`;
   root.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{s.mode=b.dataset.mode;s.selected='';s.historySeq++;s.historyBusy=false;renderRooms319_();if(s.mode==='history')void loadHeat319_();else void loadCases();refreshSyncStatusView316_();});
   root.querySelectorAll('[data-floor]').forEach(b=>b.onclick=()=>{s.floor=Number(b.dataset.floor);s.selected='';renderRooms319_();});
-  root.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{s.section=b.dataset.section;renderRooms319_();});
   root.querySelectorAll('[data-room]').forEach(b=>b.onclick=()=>selectRoom319_(b.dataset.room));
   root.querySelector('#roomOther319').disabled=!known;root.querySelector('#roomOther319').onclick=()=>selectRoom319_('other');
   root.querySelector('#roomDays319')?.addEventListener('change',e=>{s.days=e.target.value;s.selected='';s.historySeq++;s.historyBusy=false;void loadHeat319_();});
