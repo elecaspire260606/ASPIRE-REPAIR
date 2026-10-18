@@ -1045,7 +1045,7 @@
   .page-desc { margin-top:5px; color:rgba(255,255,255,.56); font-size:10.5px; font-weight:650; letter-spacing:.08em; }
   .page-eyebrow,.page-hero-tag { display:none!important; }
 
-  /* 報修：一張長表單改成三個獨立工作模組 */
+  /* 報修：照片先選，再依序填寫基本資料、地點與故障情形。 */
   #page-form { max-width:920px; }
   #page-form > .card { overflow:visible; margin:0; background:transparent; border:0; border-radius:0; box-shadow:none; }
   #page-form > .card > .card-header { display:none; }
@@ -1952,10 +1952,12 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.18.0">
-<link rel="stylesheet" href="app.css?v=3.18.0">
-<script src="reporter.js?v=3.18.0"></script>
-<script src="app.js?v=3.18.0"></script>
+<link rel="stylesheet" href="reporter.css?v=3.19.1">
+<link rel="stylesheet" href="app.css?v=3.19.1">
+<script src="reporter.js?v=3.19.1"></script>
+<script src="app.js?v=3.19.1"></script>
+<link rel="stylesheet" href="visual.css?v=3.19.1">
+<script src="visual.js?v=3.19.1"></script>
 </head>
 <body>
 
@@ -1971,6 +1973,7 @@
     <div class="nav-tab" onclick="switchPage(&#39;query&#39;)"><span class="nav-glyph"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 5 5"/></svg></span><span class="nav-long">案件查詢</span><span class="nav-short">查詢</span></div>
     <div class="nav-tab" onclick="requireAuth(&#39;mgr&#39;)"><span class="nav-glyph"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg></span><span class="nav-long">修繕管理</span><span class="nav-short">修繕</span></div>
     <div class="nav-tab" onclick="requireAuth(&#39;dash&#39;)"><span class="nav-glyph"><svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7M3 19h18"/></svg></span><span class="nav-long">後台統計</span><span class="nav-short">統計</span></div>
+    <div class="nav-tab" onclick="requireAuth(&#39;rooms&#39;)"><span class="nav-glyph"><svg viewBox="0 0 24 24"><path d="M3 4h7v7H3zM14 4h7v7h-7zM3 15h7v6H3zM14 15h7v6h-7z"/></svg></span><span class="nav-long">會館房況</span><span class="nav-short">房況</span></div>
   </div>
   <div class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()"><span class="logout-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4v16h6M13 8l4 4-4 4M8 12h12"/></svg></span><span class="logout-text">登出</span></div>
 </nav>
@@ -2003,6 +2006,15 @@
   <div class="card">
     <div class="card-header"><span id="today-label" style="font-size:12px;font-weight:400;opacity:0.85;"></span></div>
     <div class="card-body">
+      <div class="form-module form-module-photos">
+      <div class="section-label">報修照片</div>
+      <div class="field">
+        <button type="button" id="report-photo-picker" class="photo-library-pick" aria-describedby="report-photo-hint" onclick="openPhotoLibraryPicker_('report')">＋ 從相簿選擇照片</button>
+        <input type="file" id="report-photo-input" accept="image/*" multiple style="display:none" onchange="handlePhotoLibrarySelection_('report',this)">
+        <div class="hint" id="report-photo-hint">選填，最多 2 張。可先選照片，再填寫下方資料。</div>
+        <div id="report-photo-preview" class="photo-library-preview"></div>
+      </div>
+      </div>
       <div class="form-module form-module-basic">
       <div class="section-label">基本資料</div>
       <div class="field">
@@ -2097,12 +2109,6 @@
             <input type="text" id="priorityReasonOther" placeholder="請簡短說明今日需要優先的原因" style="display:none;margin-top:8px;" maxlength="40">
           </div>
         </div>
-      </div>
-      <div class="field">
-        <label>報修照片 <span style="font-size:11px;color:#bbb;font-weight:400;">選填，從相簿一次選擇最多 2 張</span></label>
-        <button type="button" id="report-photo-picker" class="photo-library-pick" onclick="openPhotoLibraryPicker_('report')">＋ 從相簿選擇照片</button>
-        <input type="file" id="report-photo-input" accept="image/*" multiple style="display:none" onchange="handlePhotoLibrarySelection_('report',this)">
-        <div id="report-photo-preview" class="photo-library-preview"></div>
       </div>
       <div class="field">
         <label>結案通知 Email <span style="font-size:11px;color:#bbb;font-weight:400;">選填，結案時將自動通知</span></label>
@@ -2213,6 +2219,10 @@
 </div>
 
 <!-- ══ 後台統計 ══ -->
+<div id="page-rooms" class="page">
+  <div class="page-hero"><div><h1 class="page-title">會館房況</h1><p class="page-desc">房號位置與報修熱力圖</p></div></div>
+  <div id="roomBoard319" class="visual319"></div>
+</div>
 <div id="page-dash" class="page">
   <div class="page-hero hero-dashboard">
     <div class="page-hero-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="m3 7 6-4 6 5 6-5"/></svg></div>
@@ -2677,7 +2687,7 @@ function syncAge316_(at,now=Date.now()){
 }
 function refreshSyncStatusView316_(){
   const el=document.getElementById('syncStatus'),strip=document.getElementById('caseSyncStrip');if(!el||!strip)return;
-  if(!['mgr','query','dash'].includes(currentPageId)){strip.hidden=true;return;}
+  if(!['mgr','query','dash','rooms'].includes(currentPageId)||(currentPageId==='rooms'&&visual319_.mode==='history')){strip.hidden=true;return;}
   const scope=syncScope316_(),item=syncDisplay316_[scope];
   const at=scope==='dashboard'?lastDashboardSuccessfulSyncAt_:lastCasesSuccessfulSyncAt_;
   el.textContent=syncAge316_(at)+(item.text?' ｜ '+item.text:'');
@@ -2780,6 +2790,7 @@ window.onload = () => {
   initTimeFilterBtn();
   initReporter_();
   initApp318_();
+  initVisual319_();
   mountHeroTools_('form');
   clearInterval(syncClock316_);
   syncClock316_=setInterval(()=>{if(document.visibilityState==='visible')refreshSyncStatusView316_();},60000);
@@ -2818,6 +2829,7 @@ document.addEventListener('visibilitychange', () => {
   foregroundResumeTimer_ = setTimeout(() => {
     if (document.visibilityState !== 'visible' || activeWriteCount > 0) return;
     if (currentPageId === 'dash') { loadDashboardSnapshot(); return; }
+    if(currentPageId==='rooms'){enterRooms319_();return;}
     if (currentPageId === 'mgr' || currentPageId === 'query') {
       if (Date.now() - lastCasesLoadTime >= CASES_AUTO_REFRESH_INTERVAL) loadCases();
       else if (currentPageId === 'mgr') scheduleDashboardPrefetch_();
@@ -2835,7 +2847,8 @@ async function refreshStats() {
   if(currentPageId!=='dash')reconcileCases317_=true;
   btn.classList.add('spinning');
   // 依目前所在頁面強制重抓對應的資料來源：修繕管理用專用API，其餘頁面沿用完整歷史資料
-  if (currentPageId === 'dash') await loadDashboardSnapshot(true);
+  if (currentPageId === 'rooms') await refreshRooms319_();
+  else if (currentPageId === 'dash') await loadDashboardSnapshot(true);
   else if (currentPageId === 'mgr') await refreshManagerCases();
   else await loadCases(true);
   setTimeout(()=>btn.classList.remove('spinning'), 700);
@@ -3051,6 +3064,7 @@ async function checkPassword() {
   }
 }
 function logout() {
+  resetVisual319_();
   clearStoredAuth(); // 清除localStorage的token/到期時間/角色，以及舊版sessionStorage殘留
   document.getElementById('logoutBtn').style.display='none';
   switchPage('form'); showToast('已登出後台');
@@ -3096,7 +3110,7 @@ function setupRepairDraftAutosave_() {
 }
 function updateSubmitStickyState_() {
   const btn=document.getElementById('submitBtn'); if(!btn)return;
-  // Keep submit below the photo picker, even after draft input or restoration.
+  // Keep submit after all form fields, even after draft input or restoration.
   btn.classList.remove('sticky-ready');
 }
 function updateStickyOffsets_() {
@@ -3132,6 +3146,7 @@ function renderCurrentPage() {
   if (currentPageId === 'mgr') renderCases();
   else if (currentPageId === 'query') renderQuery();
   else if (currentPageId === 'dash') renderDashboard();
+  else if (currentPageId === 'rooms') renderRooms319_();
   updateStatsBar(); // 目前是空函式(頂部統計文字已移除)，保留呼叫點以便未來需要時擴充
   caseVisualEffects_.clear(); // 特效只屬於這次資料異動，不因搜尋、篩選或換頁再次播放
 }
@@ -3165,10 +3180,11 @@ function switchPage(id) {
   document.getElementById('page-lock').style.display='none';
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx = ['form','query','mgr','dash'].indexOf(id);
+  const idx = ['form','query','mgr','dash','rooms'].indexOf(id);
   if (idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   currentPageId = id;
   mountHeroTools_(id);
+  if(id==='rooms'){enterRooms319_();return;}
   if (id === 'dash') {
     // Dashboard 核心 Snapshot 已經瘦身；不再同時打第二支 Quick Counts API，減少 GAS 冷啟動/並發請求。
     loadDashboardSnapshot();
@@ -3304,6 +3320,7 @@ async function submitForm() {
 }
 
 function invalidateReportCaches_() {
+      invalidateVisual319_();
       lastCasesLoadTime = 0;
       dashboardSnapshot = null;
       dashboardCube = null;
@@ -3516,6 +3533,7 @@ function filterCases(status, btn) {
 // 帶來的複雜度已經大於它們省下來的效能，反而增加彼此互動出bug的風險。
 function applyServerCasePatch_(serverCase, serverVersion, opts = {}) {
   if (!serverCase) return false;
+  invalidateVisual319_();
   // A list request started before this write must not overwrite its acknowledgement.
   loadCasesRequestSeq++;loadCasesInFlightPromise_=null;loadCasesInFlightKey_='';
   const idx = allCases.findIndex(c => serverCase.caseId ? c.caseId === serverCase.caseId : c.rowIndex === serverCase.rowIndex);
@@ -6140,7 +6158,7 @@ function renderPhotoLibraryPicker_(prefix) {
   const localItems=selectedPhotoLibraryItems_(prefix);
   const storedItems=localItems.length?[]:existingClosePhotoItems_(prefix);
   preview.innerHTML=localItems.length
-    ? localItems.map((src,idx)=>`<div class="photo-library-thumb"><img src="${src}" alt="已選照片 ${idx+1}"><button type="button" class="photo-library-remove" onclick="removePhotoLibraryItem_('${prefix}',${idx})" aria-label="移除第 ${idx+1} 張照片">×</button></div>`).join('')
+    ? localItems.map((src,idx)=>`<div class="photo-library-thumb"><img src="${src}" alt="已選照片 ${idx+1}"><button type="button" class="photo-library-remove" onclick="removePhotoLibraryItem_('${prefix}',${idx})" aria-label="移除第 ${idx+1} 張照片">×</button><button type="button" class="photo-library-annotate319" onclick="openAnnotation319_('${prefix}',${idx})">標註</button></div>`).join('')
     : storedItems.map((src,idx)=>`<div class="photo-library-thumb"><img ${remotePhotoAttrs_(src)} alt="既有結案照片 ${idx+1}"></div>`).join('');
   if(!picker)return;
   picker.disabled=localItems.length>=2;

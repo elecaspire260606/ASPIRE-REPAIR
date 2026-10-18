@@ -44,6 +44,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible,[role=button]:focus-v
 #caseList .case-row-note .note-icon::after { content:'處理：'; font-size:13px; }
 #page-form > .card { border:0; background:transparent; box-shadow:none; }
 #page-form .form-module { border:1px solid var(--app-line); border-radius:14px; background:#fff; box-shadow:none; }
+#page-form .form-module-photos { grid-column:1/-1; }
+#page-form .form-module-photos .field { margin-bottom:0; }
+#page-form #report-photo-hint { color:var(--app-muted); font-size:12px; line-height:1.6; }
+#page-form .form-module-issue > .field { grid-column:1/-1; }
 #page-form .section-label { color:var(--app-ink); }
 #page-form .loc-type-btn { background:#f8fafc; box-shadow:none; }
 #page-form #submitBtn { background:var(--app-orange); box-shadow:0 4px 10px #ed791b24; border-radius:11px; }
