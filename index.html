@@ -1952,8 +1952,10 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.17.1">
-<script src="reporter.js?v=3.17.1"></script>
+<link rel="stylesheet" href="reporter.css?v=3.18.0">
+<link rel="stylesheet" href="app.css?v=3.18.0">
+<script src="reporter.js?v=3.18.0"></script>
+<script src="app.js?v=3.18.0"></script>
 </head>
 <body>
 
@@ -2777,6 +2779,7 @@ window.onload = () => {
   document.getElementById('today-hero-label').textContent = `${m}/${d}`;
   initTimeFilterBtn();
   initReporter_();
+  initApp318_();
   mountHeroTools_('form');
   clearInterval(syncClock316_);
   syncClock316_=setInterval(()=>{if(document.visibilityState==='visible')refreshSyncStatusView316_();},60000);
@@ -3261,9 +3264,12 @@ async function submitForm() {
     const reportPhotos = (photoData.report||[]).filter(Boolean);
     // 不再送datetime，報修時間一律由後端記錄伺服器時間(手機時間可能不準，伺服器時間比較可靠)
     const operationId=ensureReportSubmitOperationId_();
-    const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, todayPriority, priorityReason };
+    const reportPhotoRefs=collectPhotoRefs318_('report',reportPhotos);
+    const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, reportPhotoRefs, todayPriority, priorityReason };
 
     await enqueueReportJob_(payload);
+      releasePhotoGroup318_('report',reportPhotoRefs);
+      saveRecentPlace318_(submittedDraft);
       ['f-unit','f-name','f-area','f-location','f-desc','f-email'].forEach(id=>document.getElementById(id).value='');
       resetPriorityForm_();
       photoData.report = [];
@@ -3287,6 +3293,7 @@ async function submitForm() {
       locType='';
       clearRepairDraft_();
       reporterQueued_(submittedDraft,submittedRemember);
+      tidyIcons318_();
   } catch(e) { showToast('❌ ' + (e.message || '無法暫存，內容仍保留')); }
   finally {
     document.querySelector('#page-form > .card').inert=false;
@@ -3644,6 +3651,7 @@ function renderCases() {
     filtered = [...filtered].sort((a,b)=> (Number(!!b.todayPriority)-Number(!!a.todayPriority)) || (toTs(b.datetime||b.date)-toTs(a.datetime||a.date)));
   }
   managerCasesTotal = filtered.length;
+  managerFilteredIds318_=filtered.map(c=>c.caseId);
   updateMgrResultSummary_(managerCasesTotal);
   const groups=groupManagerCases_(filtered,currentFilter==='待處理');
   managerGroupTotal_=groups.length;
@@ -3684,8 +3692,8 @@ function renderManagerCaseList() {
       ? `<span class="badge sync-badge${c.closeSyncState==='failed'?' failed':''}">${syncLabel}</span>`
       : `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?escapeHtml_(({寫錯:'填寫錯誤',測試:'測試案件'})[c.flagReason]||c.flagReason):c.status}</span>`;
     const photoTag = [
-      (c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length)) ? `📷報修${c.reportPhotoCount||c.reportPhotos.length}` : '',
-      (c.closePhotoCount||(c.closePhotos&&c.closePhotos.length)) ? `📷結案${c.closePhotoCount||c.closePhotos.length}` : '',
+      (c.reportPhotoCount||(c.reportPhotos&&c.reportPhotos.length)) ? `報修照片 ${c.reportPhotoCount||c.reportPhotos.length}` : '',
+      (c.closePhotoCount||(c.closePhotos&&c.closePhotos.length)) ? `結案照片 ${c.closePhotoCount||c.closePhotos.length}` : '',
     ].filter(Boolean).join(' ');
     // 已結案分頁改顯示「結案時間」(含時分)而不是報修日期，不然卡片上看到的日期跟排序依據(結案時間)對不起來，容易誤會排序跑掉
     const shortDate = currentFilter==='已結案'
@@ -3884,12 +3892,15 @@ function openCaseActionModal(rowIndex) {
   const content=document.getElementById('caseActionContent');
   const footer=document.getElementById('caseActionFooter');
   if(!modal||!content||!footer)return;
+  if(modal.classList.contains('open'))closeCaseActionModal();
+  captureCaseContext318_(c);
   caseActionRowIndex_=rowIndex;
   delete photoData['close-'+rowIndex];
-  document.getElementById('caseActionTitle').textContent=c.status==='待處理'?'案件處理':'案件詳情';
+  document.getElementById('caseActionTitle').textContent=effArea(c)+' · '+(c.normalizedLocation||c.location||'—');
   document.getElementById('caseActionSummary').textContent=`${c.caseId} · ${c.status}`;
   content.innerHTML=renderExpandedInner(c,true);
   footer.innerHTML=renderCaseActionFooter_(c);
+  installCaseTools318_(c);
   renderCasePhotoSlots(c);
   modal.classList.add('open');
   modal.setAttribute('aria-hidden','false');
@@ -3907,8 +3918,9 @@ function closeCaseActionModal() {
   document.getElementById('caseActionContent').innerHTML='';
   document.getElementById('caseActionFooter').innerHTML='';
   document.body.style.overflow=caseActionBodyOverflow_;
+  releasePhotoGroup318_('close-'+rowIndex);
   caseActionRowIndex_=0;
-  requestAnimationFrame(()=>document.getElementById('collapsed-'+rowIndex)?.focus());
+  restoreCaseContext318_();
 }
 
 function setCaseActionNote(rowIndex,text) {
@@ -4353,6 +4365,7 @@ function renderCloseSyncTray_() {
   const tray=document.getElementById('closeSyncTray'),wrap=document.getElementById('closeSyncItems');if(!tray||!wrap)return;
   const jobs=[...closeSyncJobs_.values()].sort((a,b)=>a.createdAt-b.createdAt);
   tray.classList.toggle('show',!!jobs.length);
+  if(typeof mountActivityDock318_==='function')mountActivityDock318_();
   tray.querySelector('summary').textContent='結案進度 · '+jobs.filter(j=>j.state!=='done').length+' 件';
   const errors=jobs.filter(j=>['failed','uncertain','blocked','auth'].includes(j.state));
   const signature=errors.map(j=>j.id+':'+j.state).join('|');
@@ -4403,7 +4416,7 @@ async function enqueueCloseJob_(c, payload) {
 async function sendCloseJob_(job){
   for(let attempt=0;attempt<2;attempt++){
     try{
-      const data=await callApi(job.payload,60000);
+      const data=await sendWithPreparedPhotos318_(job.payload,p=>callApi(p,60000));
       if(!data?.success){const e=new Error(data?.message||'送出結果待確認');e.code=data?.code||'RESULT_UNKNOWN';e.serverCase=data?.case;e.version=data?.version;throw e;}
       if(!data.case||data.case.caseId!==job.caseId||data.operationId!==job.id){const e=new Error('未收到完整結案確認');e.code='RESULT_UNKNOWN';throw e;}
       return data;
@@ -4441,7 +4454,7 @@ async function processCloseQueue_() {
       closeSyncJobs_.set(job.id,receipt);
       try{await closeJobPut_(receipt);await closeJobDelete_(job.id);closeSyncJobs_.delete(job.id);}catch(e){receipt.lastError='案件已結案，稍後可清除本機暫存';}
       if(photoData['close-'+job.rowHint])delete photoData['close-'+job.rowHint];
-      try{applyServerCasePatch_(data.case,data.version,{clearCloseSync:true});}catch(e){console.error('結案已完成，畫面更新待重新整理',e);lastCasesLoadTime=0;}
+      try{await animateCaseReceipt318_(job.caseId);applyServerCasePatch_(data.case,data.version,{clearCloseSync:true});}catch(e){console.error('結案已完成，畫面更新待重新整理',e);lastCasesLoadTime=0;}
       showToast(data.alreadyClosed?'✓ 已確認伺服器的結案紀錄':'✓ 案件已完成結案');
       if(data.warning)showToast('⚠ '+data.warning);
       try{playRepairSuccessBurst_();}catch(e){}
@@ -4493,6 +4506,7 @@ function openQuickClose(rowIndex) {
 }
 
 function closeQuickClose() {
+  releasePhotoGroup318_('quick');
   document.getElementById('quickCloseBackdrop').classList.remove('open');
   document.body.style.overflow='';
 }
@@ -4526,6 +4540,7 @@ async function handleQuickClosePhotos(input) {
   try {
     const prepared=await Promise.all(files.map(file=>compressImage(file,600,.65)));
     quickCloseState_.photos=(quickCloseState_.photos||[]).concat(prepared).slice(0,2);
+    preparePhotos318_('quick',quickCloseState_.photos);
     renderQuickClosePhotos_();
   } catch(e) { showToast('照片處理失敗，請重新選擇較小的照片'); }
   finally { pickBtn.disabled=false; pickBtn.textContent='＋ 從相簿選擇照片'; input.value=''; }
@@ -4536,7 +4551,7 @@ function renderQuickClosePhotos_() {
   wrap.innerHTML=(quickCloseState_.photos||[]).map((src,idx)=>`<div class="quick-photo-thumb"><img src="${src}" alt="結案照片${idx+1}"><button type="button" class="quick-photo-remove" onclick="removeQuickClosePhoto(${idx})">×</button></div>`).join('');
 }
 
-function removeQuickClosePhoto(idx) { quickCloseState_.photos.splice(idx,1); renderQuickClosePhotos_(); }
+function removeQuickClosePhoto(idx) { quickCloseState_.photos.splice(idx,1); renderQuickClosePhotos_();preparePhotos318_('quick',quickCloseState_.photos); }
 
 async function submitQuickClose() {
   const c=findCaseByRowIndex_(quickCloseState_.rowIndex); if(!c){showToast('案件資料已更新，請重新整理');closeQuickClose();return;}
@@ -4560,8 +4575,9 @@ async function submitQuickClose() {
     correctedLocType:c.correctedLocType||'',correctedArea:c.correctedArea||'',closerName:closer,
     closePhotos:[...(quickCloseState_.photos||[])],operationId:makeCloseOperationId_()
   };
+  payload.closePhotoRefs=collectPhotoRefs318_('quick',payload.closePhotos);
   try {
-    await enqueueCloseJob_(c,payload);closeQuickClose();showToast('結案內容已保存，正在背景送出');
+    await enqueueCloseJob_(c,payload);releasePhotoGroup318_('quick',payload.closePhotoRefs);closeQuickClose();showToast('結案內容已保存，正在背景送出');
   }catch(e){showToast(e.message||'結案尚未送出，內容仍保留');}
   finally{btn.disabled=false;btn.textContent='完成結案';}
 
@@ -4620,7 +4636,7 @@ async function handoffQuickCloseToGeneralAffairs() {
 }
 
 async function handoffCaseToGeneralAffairs(rowIndex) {
-  const c=findCaseByRowIndex_(rowIndex);
+  const c=findCaseForAction318_(rowIndex);
   if(!c){showToast('案件資料已更新，請重新整理');return;}
   if(c.closeSyncState){showToast('請先完成目前的結案背景同步');return;}
   const closerName=getSelectedCloser(rowIndex);
@@ -4636,7 +4652,7 @@ async function handoffCaseToGeneralAffairs(rowIndex) {
 
 
 async function updateCase(rowIndex) {
-  const c=findCaseByRowIndex_(rowIndex); if(!c){showToast('案件資料已更新，請重新整理');return;}
+  const c=findCaseForAction318_(rowIndex); if(!c){showToast('案件已變更，請重新開啟案件確認');return;}
   if(c.closeSyncState){showToast('請先完成結案背景同步，再更新案件');return;}
   const note=document.getElementById('note-'+rowIndex).value, norm=document.getElementById('norm-'+rowIndex).value;
   const flag=getSelectedFlag(rowIndex),caseType=getSelectedCaseType(rowIndex),correctedLocType=getSelectedLocType(rowIndex),correctedArea=getSelectedArea(rowIndex);
@@ -4651,23 +4667,26 @@ async function updateCase(rowIndex) {
 }
 
 async function closeCase(rowIndex) {
-  const c=findCaseByRowIndex_(rowIndex); if(!c){showToast('案件資料已更新，請重新整理');return;}
+  const c=findCaseForAction318_(rowIndex); if(!c){showToast('案件已變更，請重新開啟案件確認');return;}
   const note=document.getElementById('note-'+rowIndex).value,norm=document.getElementById('norm-'+rowIndex).value,flag=getSelectedFlag(rowIndex);
   const caseType=getSelectedCaseType(rowIndex); if(!caseType){showToast('請選擇案件類型');return;}
   const correctedLocType=getSelectedLocType(rowIndex),correctedArea=getSelectedArea(rowIndex),closerName=getSelectedCloser(rowIndex);
   if(!closerName){showToast('請選擇結案人');return;}
   const closePhotos=getClosePhotos(rowIndex),btn=document.querySelector(`[onclick="closeCase(${rowIndex})"]`);
+  const closePhotoRefs=collectPhotoRefs318_('close-'+rowIndex,closePhotos);
   if(btn){btn.disabled=true;btn.textContent='建立結案中…';}
   try {
-    await enqueueCloseJob_(c,{action:'close',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos,operationId:makeCloseOperationId_()});
-    closeCaseActionModal();showToast('結案內容已保存，正在背景送出');
+    await enqueueCloseJob_(c,{action:'close',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos,closePhotoRefs,operationId:makeCloseOperationId_()});
+    const next=nextCaseAfterQueue318_(c);
+    releasePhotoGroup318_('close-'+rowIndex,closePhotoRefs);
+    closeCaseActionModal();showToast('結案內容已保存，正在背景送出');openNextCase318_(next);
   }catch(e){showToast(e.message||'結案尚未送出，內容仍保留');}
   finally{if(btn){btn.disabled=false;btn.textContent='完成結案';}}
 
 }
 
 async function reopenCase(rowIndex) {
-  const c=findCaseByRowIndex_(rowIndex); if(!c){showToast('案件資料已更新，請重新整理');return;}
+  const c=findCaseForAction318_(rowIndex); if(!c){showToast('案件已變更，請重新開啟案件確認');return;}
   if(c.closeSyncState){showToast('請先完成結案背景同步，再取消結案');return;}
   const btn=document.querySelector(`[onclick="reopenCase(${rowIndex})"]`); if(btn){btn.disabled=true;btn.textContent='處理中…';}
   try {
@@ -6104,6 +6123,7 @@ async function handlePhotoLibrarySelection_(prefix,input) {
   try {
     const prepared=await Promise.all(files.map(file=>compressImage(file,600,.65)));
     photoData[prefix]=current.concat(prepared).slice(0,2);
+    preparePhotos318_(prefix,photoData[prefix]);
     renderPhotoLibraryPicker_(prefix);
     if(chosen.length>remaining)showToast('照片最多 2 張');
   } catch(e) {
@@ -6132,15 +6152,15 @@ function removePhotoLibraryItem_(prefix,idx) {
   items.splice(idx,1);
   photoData[prefix]=items;
   renderPhotoLibraryPicker_(prefix);
+  preparePhotos318_(prefix,items);
 }
 
 const pptRequests_=new Set();
 async function requestPptReport_(params) {
   const controller=new AbortController();let timer;
-  activeWriteCount++;
   try {
     return await Promise.race([
-      new Promise((_,reject)=>{timer=setTimeout(()=>{reject(new Error('報告可能仍在製作，稍後再按生成報告可取回結果'));controller.abort();},150000);}),
+      new Promise((_,reject)=>{timer=setTimeout(()=>{reject(new Error('正在確認報告製作結果'));controller.abort();},150000);}),
       (async()=>{
         const response=await fetch(API_URL,{method:'POST',body:JSON.stringify({...params,token:localStorage.getItem('adminToken')}),signal:controller.signal});
         const text=await response.text();
@@ -6153,41 +6173,15 @@ async function requestPptReport_(params) {
         return data;
       })()
     ]);
-  }finally{clearTimeout(timer);activeWriteCount=Math.max(0,activeWriteCount-1);}
-}
-function showPptDownload_(data) {
-  let panel=document.getElementById('pptDownloadResult');
-  if(!panel){panel=document.createElement('div');panel.id='pptDownloadResult';panel.setAttribute('role','status');document.querySelector('#page-mgr .page-hero').after(panel);}
-  panel.replaceChildren();
-  const label=document.createElement('span');label.textContent='報告已完成：'+data.fileName;
-  const link=document.createElement('a');link.href=data.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';link.download=data.fileName;
-  panel.append(label,link);
-  return panel;
+  }finally{clearTimeout(timer);}
 }
 async function generateReport(rowIndex, btn) {
-  const c=findCaseByRowIndex_(rowIndex);
-  if(!c || !c.caseId){showToast('案件資料已變更，請重新整理');return;}
-  if(pptRequests_.has(c.caseId)){showToast('此案件報告正在製作，可繼續操作其他案件');return;}
-  pptRequests_.add(c.caseId);
-  const originalText=btn.textContent;btn.disabled=true;btn.textContent='製作中…';
-  showToast('正在製作報告，可繼續操作其他案件');
-  try {
-    const data=await requestPptReport_({action:'generateReport',caseId:c.caseId,rowHint:rowIndex});
-    if(data.success){
-      showPptDownload_(data);
-      const link=document.createElement('a');link.href=data.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';link.className='ppt-inline-download';
-      btn.parentElement?.querySelector('.ppt-inline-download')?.remove();
-      btn.after(link);
-      showToast('✓ 報告已完成，請點「下載 PPT」');
-    }else showToast(data.message||'報告未完成，請稍後再試');
-  }catch(e){showToast(e.message||'連線中斷，稍後再按生成報告可確認結果');}
-  finally{pptRequests_.delete(c.caseId);btn.disabled=false;btn.textContent=originalText;}
+  return generateReport318_(rowIndex,btn);
 }
-
 
 async function deleteReportPhoto(rowIndex, idx) {
   if(!confirm('確定要刪除這張報修照片嗎？此操作無法復原。'))return;
-  const c=findCaseByRowIndex_(rowIndex); if(!c){showToast('案件資料已更新，請重新整理');return;}
+  const c=findCaseForAction318_(rowIndex); if(!c){showToast('案件已變更，請重新開啟案件確認');return;}
   try {
     const data=await callApi({action:'deletePhoto',caseId:c.caseId,rowHint:rowIndex,photoType:'report',index:idx});
     if(data.success){showToast('✓ 照片已刪除');applyServerCasePatch_(data.case,data.version);closeCaseActionModal();}

@@ -113,6 +113,8 @@ function continueReporter_(same){
 let reportDbPromise_,reportInitPromise_,reportJobsBusy_=false;
 let reportWakeTimer_,reportRerun_=false;
 const reportJobs_=new Map();
+// Only jobs created in this live page qualify; recovered jobs always verify receipts.
+const freshReportIds318_=new Set();
 function openReportDb_(){
   if(!reportDbPromise_)reportDbPromise_=new Promise((resolve,reject)=>{
     const r=indexedDB.open('aspire-report-outbox-v1',1);
@@ -162,8 +164,9 @@ async function enqueueReportJob_(payload){
     if(existing.payload && JSON.stringify(existing.payload)!==JSON.stringify(payload))throw new Error('此草稿已有背景送出紀錄，請先查看底部進度；目前輸入仍保留');
     return;
   }
-  const job={id:payload.operationId,state:'queued',payload:JSON.parse(JSON.stringify(payload)),label:payload.area+' · '+payload.location,created:Date.now()};
+  const job={id:payload.operationId,state:'queued',attempts:0,payload:JSON.parse(JSON.stringify(payload)),label:payload.area+' · '+payload.location,created:Date.now()};
   try {await reportStore_('put',job);}catch(e){throw new Error('暫存空間不足或無法寫入，內容與照片仍保留，尚未開始送出');}
+  freshReportIds318_.add(job.id);
   reportJobs_.set(job.id,job);renderReportJobs_();
   if(reportJobsBusy_)reportRerun_=true;
 }
@@ -195,16 +198,21 @@ async function processReportJobs_(){
     const pending=rows.filter(job=>job.state!=='done');
     for(let offset=0;offset<pending.length;offset+=50){
       const batch=pending.slice(offset,offset+50);
-      let reply;
+      let reply={receipts:{}},lookupFailed=false;
+      const needsReceipt=batch.filter(j=>!(freshReportIds318_.has(j.id)&&j.state==='queued'&&j.attempts===0));
       try{
-        reply=await sendReportJob_({action:'getReportReceipts',operationIds:batch.map(j=>j.id)});
+        if(needsReceipt.length){
+        reply=await sendReportJob_({action:'getReportReceipts',operationIds:needsReceipt.map(j=>j.id)});
         if(!reply.success||reply.receiptProtocol!==1||!reply.receipts||typeof reply.receipts!=='object')throw new Error('未取得收件確認');
+        }
       }catch(e){
-        batch.forEach(job=>{job.message='暫時無法核對收件，稍後再確認';});
+        needsReceipt.forEach(job=>{job.message='暫時無法核對收件，稍後再確認';});
         renderReportJobs_();
-        break; // Do not resend blindly when receipt lookup is unavailable.
+        lookupFailed=true; // Never resend recovered jobs without receipt lookup.
       }
       for(const original of batch){
+        const fresh=freshReportIds318_.has(original.id)&&original.state==='queued'&&original.attempts===0;
+        if(lookupFailed&&!fresh)continue;
         const receipt=reply.receipts[original.id];
         if(receipt && typeof receipt.caseId==='string' && receipt.caseId){
           const done={...original,state:'done',caseId:receipt.caseId,message:''};
@@ -220,12 +228,13 @@ async function processReportJobs_(){
           }
           continue;
         }
-        const job=await claimReportJob_(original.id);
+        const job=await claimReportJob_(original.id,fresh);
         if(!job)continue;
+        freshReportIds318_.delete(job.id);
         reportJobs_.set(job.id,job);renderReportJobs_();
         activeWriteCount++;
         try {
-          const data=await sendReportJob_(job.payload);
+          const data=typeof sendWithPreparedPhotos318_==='function'?await sendWithPreparedPhotos318_(job.payload,sendReportJob_):await sendReportJob_(job.payload);
           if(!data.success){job.state='failed';job.message=data.message||'未完成送出';}
           else {
             job.state='done';job.caseId=data.caseId;job.message=data.warning||'';
@@ -266,10 +275,11 @@ async function changeReportState_(id,change){
     tx.onabort=()=>{clearTimeout(timeout);reject(tx.error||new Error('暫存更新失敗'));};
   });
 }
-function claimReportJob_(id){
+function claimReportJob_(id,fresh=false){
   return changeReportState_(id,current=>{
     if(!current||current.state!=='queued'||current.leaseUntil>Date.now())return null;
-    return {...current,state:'sending',message:'',leaseUntil:Date.now()+120000};
+    if(fresh&&current.attempts!==0)return null;
+    return {...current,state:'sending',attempts:(current.attempts||0)+1,message:'',leaseUntil:Date.now()+120000};
   });
 }
 function saveReportState_(job){
@@ -296,9 +306,13 @@ async function dismissReportJob_(id){
 function renderReportJobs_(){
   let box=document.getElementById('reportOutbox');
   if(!box){box=document.createElement('details');box.id='reportOutbox';document.body.append(box);}
+  if(typeof mountActivityDock318_==='function')mountActivityDock318_();
   const jobs=[...reportJobs_.values()].sort((a,b)=>a.created-b.created);
   box.hidden=!jobs.length;document.body.classList.toggle('has-report-outbox',!!jobs.length);
   const pending=jobs.filter(j=>j.state!=='done').length,failed=jobs.filter(j=>['failed','uncertain'].includes(j.state)).length;
+  const errorSignature=jobs.filter(j=>['failed','uncertain'].includes(j.state)).map(j=>j.id+':'+j.state).join('|');
+  if(errorSignature&&box.dataset.errors!==errorSignature)box.open=true;
+  box.dataset.errors=errorSignature;
   box.innerHTML='<summary aria-live="polite">'+(failed?'報修待確認 '+failed+' 件':pending?'報修背景送出中 '+pending+' 件':'報修已送出')+'<span>查看進度</span></summary>';
   const list=document.createElement('div');list.className='report-outbox-list';
   for(const job of jobs){
