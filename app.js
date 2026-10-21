@@ -76,6 +76,7 @@ function findCaseForAction318_(rowIndex){
 function installCaseTools318_(c){
   installNoteFavorites318_(document.getElementById('note-'+c.rowIndex));tidyIcons318_(document.getElementById('caseActionContent'));
   if(typeof installVisualCaseTools319_==='function')installVisualCaseTools319_(c);
+  if(c.status==='已結案'&&!c.flagReason&&!c.closeSyncState)mountPptResult3193_(document.getElementById('caseActionFooter'),c.caseId);
   if(c.status!=='待處理'||c.closeSyncState)return;
   const label=document.createElement('label');label.className='next-case-choice';
   const input=document.createElement('input');input.type='checkbox';input.id='nextCase318';
@@ -189,23 +190,69 @@ async function sendWithPreparedPhotos318_(payload,send){
 // on return and reads status only; it cannot create duplicate presentations.
 const pptJobs318_=new Map();let pptTimer318_,pptPolling318_=false;
 function persistPptJobs318_(){writeLocal318_(appPrefs318_.ppt,[...pptJobs318_.values()].slice(-12));}
+function pptJobText3193_(job){
+  return job.state==='done'?'PPT 已完成 · '+(job.result?.fileName||job.caseId):job.caseId+' · '+({building:'報告製作中',exporting:'正在轉成 PPT',checking:'正在確認製作進度',waiting:'等待連線確認',paused:'進度暫時無法確認',failed:'報告未完成',auth:'請登入後繼續確認'}[job.state]||'報告製作中');
+}
+function retryPptJob3193_(job,button){
+  if(pptJobs318_.get(job.caseId)!==job)return;
+  if(!getStoredAuthToken()){pendingPage='mgr';showLock();return;}
+  if(job.state==='failed'){
+    const c=allCases.find(x=>x.caseId===job.caseId);
+    if(!c){showToast('請先載入此案件');return;}
+    if(job.code==='REPORT_CONTENT_CHANGED'&&typeof openPptEditor319_==='function')void openPptEditor319_(c);
+    else void generateReport318_(c.rowIndex,button,job.reportOptions);
+  }else {job.state='checking';job.started=Date.now();persistPptJobs318_();schedulePptPoll318_(0);renderPptJobs318_();}
+}
+function pptJobRow3193_(job,dismiss=false){
+  const row=document.createElement('div');row.className='ppt-job';row.dataset.state=job.state;
+  const text=document.createElement('span');text.textContent=pptJobText3193_(job);text.title=text.textContent;row.append(text);
+  if(job.state==='done'&&job.result?.url){
+    const actions=document.createElement('div');actions.className='ppt-result-actions';
+    const link=document.createElement('a');link.className='ppt-inline-download';link.href=job.result.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';actions.append(link);
+    // A separate user-initiated link opens the existing file if direct download is unavailable.
+    if(/^[\w-]+$/.test(job.result.fileId||'')){
+      const open=document.createElement('a');open.className='ppt-open-file';open.href='https://drive.google.com/file/d/'+encodeURIComponent(job.result.fileId)+'/view';open.target='_blank';open.rel='noopener';open.textContent='開啟檔案';actions.append(open);
+    }
+    row.append(actions);
+  }else if(['failed','paused','auth'].includes(job.state)){
+    const retry=document.createElement('button');retry.type='button';retry.textContent=job.code==='REPORT_CONTENT_CHANGED'?'重新編排':job.state==='failed'?'重試':'確認進度';retry.onclick=()=>retryPptJob3193_(job,retry);row.append(retry);
+  }
+  if(dismiss&&['done','failed'].includes(job.state)){
+    const close=document.createElement('button');close.type='button';close.className='ppt-dismiss';close.textContent='×';close.setAttribute('aria-label','關閉報告進度');close.onclick=()=>{pptJobs318_.delete(job.caseId);persistPptJobs318_();renderPptJobs318_();};row.append(close);
+  }
+  return row;
+}
+function mountPptResult3193_(container,caseId){
+  if(!container)return;
+  const box=document.createElement('div');box.className='ppt-inline-result';box.dataset.pptResultCase=caseId;box.setAttribute('aria-live','polite');box.hidden=true;container.prepend(box);renderInlinePptResults3193_();
+}
+function renderInlinePptResults3193_(){
+  document.querySelectorAll('[data-ppt-result-case]').forEach(box=>{
+    const job=pptJobs318_.get(box.dataset.pptResultCase);
+    const key=job?JSON.stringify([job.requestId,job.state,job.code,job.result?.url,job.result?.fileName,job.result?.fileId]):'';
+    // Preserve a focused download link while an unrelated job is being polled.
+    if(box.dataset.renderKey===key)return;
+    box.dataset.renderKey=key;box.hidden=!job;box.replaceChildren();if(job)box.append(pptJobRow3193_(job));
+  });
+}
 function renderPptJobs318_(){
+  renderInlinePptResults3193_();document.dispatchEvent(new Event('aspire:ppt-jobs-changed'));
   if(!pptJobs318_.size){document.getElementById('pptDownloadResult')?.remove();return;}
   let box=document.getElementById('pptDownloadResult');if(!box){box=document.createElement('div');box.id='pptDownloadResult';box.setAttribute('aria-live','polite');document.querySelector('#page-mgr .page-hero')?.after(box);}box.replaceChildren();
-  for(const job of pptJobs318_.values()){
-    const row=document.createElement('div');row.className='ppt-job';row.dataset.state=job.state;
-    const text=document.createElement('span');text.textContent=job.state==='done'?'報告已完成 · '+job.result.fileName:job.caseId+' · '+({building:'報告製作中',exporting:'正在轉成 PPT',checking:'正在確認製作進度',waiting:'等待連線確認',paused:'進度暫時無法確認',failed:'報告未完成',auth:'請登入後繼續確認'}[job.state]||'報告製作中');row.append(text);
-    if(job.state==='done'){
-      const link=document.createElement('a');link.href=job.result.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';row.append(link);
-    }else if(['failed','paused','auth'].includes(job.state)){
-      const retry=document.createElement('button');retry.type='button';retry.textContent=job.code==='REPORT_CONTENT_CHANGED'?'重新編排':job.state==='failed'?'重試':'確認進度';retry.onclick=()=>{if(!getStoredAuthToken()){pendingPage='mgr';showLock();return;}if(job.state==='failed'){const c=allCases.find(x=>x.caseId===job.caseId);if(c){if(job.code==='REPORT_CONTENT_CHANGED'&&typeof openPptEditor319_==='function')void openPptEditor319_(c);else void generateReport318_(c.rowIndex,retry,job.reportOptions);}else showToast('請先載入此案件');}else {job.state='checking';job.started=Date.now();schedulePptPoll318_(0);renderPptJobs318_();}};row.append(retry);
-    }
-    if(['done','failed'].includes(job.state)){const dismiss=document.createElement('button');dismiss.type='button';dismiss.className='ppt-dismiss';dismiss.textContent='×';dismiss.setAttribute('aria-label','關閉報告進度');dismiss.onclick=()=>{pptJobs318_.delete(job.caseId);persistPptJobs318_();renderPptJobs318_();};row.append(dismiss);}
-    box.append(row);
-  }
+  for(const job of pptJobs318_.values())box.append(pptJobRow3193_(job,true));
 }
 function schedulePptPoll318_(delay=10000){clearTimeout(pptTimer318_);if(document.hidden||!navigator.onLine)return;if([...pptJobs318_.values()].some(j=>['building','exporting','checking','waiting'].includes(j.state)))pptTimer318_=setTimeout(()=>void pollPptJobs318_(),delay);}
-function completePpt318_(job,result){job.state='done';job.result=result;pptRequests_.delete(job.caseId);persistPptJobs318_();renderPptJobs318_();}
+function restorePptButton3193_(btn,requestId){
+  if(!btn||btn.dataset.pptRequestId!==requestId)return;
+  btn.disabled=false;btn.innerHTML=btn.pptLabel3193_;delete btn.dataset.pptRequestId;delete btn.pptLabel3193_;
+}
+function completePpt318_(job,result){
+  if(pptJobs318_.get(job.caseId)!==job)return;
+  const notify=job.state!=='done';job.state='done';job.result=result;pptRequests_.delete(job.caseId);
+  document.querySelectorAll('[data-ppt-request-id]').forEach(btn=>restorePptButton3193_(btn,job.requestId));
+  persistPptJobs318_();renderPptJobs318_();
+  if(notify)showToast('PPT 已完成，下載連結已保留');
+}
 async function pollPptJobs318_(){
   if(pptPolling318_||document.hidden||!navigator.onLine)return;pptPolling318_=true;
   try{
@@ -215,14 +262,14 @@ async function pollPptJobs318_(){
       if(Date.now()-job.started>480000){job.state='paused';pptRequests_.delete(job.caseId);continue;}
       try{
         const data=await callReadApi_({action:'getReportStatus',caseId:job.caseId,requestId:job.requestId||'',token:getStoredAuthToken()},20000);
-        if(job.state==='done')continue; // A late poll must not regress a direct receipt.
+        if(pptJobs318_.get(job.caseId)!==job||job.state==='done')continue; // A late poll must not regress a direct receipt or a newer request.
         if(data.code==='UNAUTHORIZED'){job.state='auth';continue;}
         if(data.success&&data.state==='done'&&data.result?.url)completePpt318_(job,data.result);
         else if(data.success&&['failed','missing','expired'].includes(data.state)){job.state='failed';pptRequests_.delete(job.caseId);}
         else if(data.success&&['building','exporting'].includes(data.state))job.state=data.state;
         else if(data.success&&data.state==='unknown'&&!pptRequests_.has(job.caseId))job.state='failed';
         else job.state='checking';
-      }catch(e){if(job.state!=='done')job.state='waiting';}
+      }catch(e){if(pptJobs318_.get(job.caseId)===job&&job.state!=='done')job.state='waiting';}
     }
   }finally{pptPolling318_=false;persistPptJobs318_();renderPptJobs318_();schedulePptPoll318_(20000);}
 }
@@ -232,14 +279,15 @@ async function generateReport318_(rowIndex,btn,reportOptions){
   if(old&&['building','exporting','checking','waiting'].includes(old.state)){renderPptJobs318_();schedulePptPoll318_(0);showToast('報告製作中，完成後會顯示下載連結');return;}
   if(pptRequests_.has(c.caseId))return;
   const job={caseId:c.caseId,state:'building',started:Date.now(),requestId:randomToken318_(),reportOptions:reportOptions||undefined};pptJobs318_.set(c.caseId,job);pptRequests_.add(c.caseId);persistPptJobs318_();renderPptJobs318_();schedulePptPoll318_(6000);
-  const label=btn?.innerHTML;if(btn){btn.disabled=true;btn.textContent='製作中…';}
+  if(btn){if(!btn.dataset.pptRequestId)btn.pptLabel3193_=btn.innerHTML;btn.dataset.pptRequestId=job.requestId;btn.disabled=true;btn.textContent='製作中…';}
   try{
     const data=await requestPptReport_({action:'generateReport',caseId:c.caseId,rowHint:rowIndex,requestId:job.requestId,reportOptions:job.reportOptions});
+    if(pptJobs318_.get(c.caseId)!==job)return;
     if(data.success&&data.url)completePpt318_(job,data);
     else if(data.code==='REPORT_BUSY'&&job.state!=='done')job.state='checking';
     else if(job.state!=='done'){job.state='failed';job.code=data.code||'';showToast(data.message||'報告未完成，可在進度列重試');}
-  }catch(e){if(job.state!=='done'){job.state=getStoredAuthToken()?'checking':'auth';showToast('正在確認報告結果，可繼續操作');}}
-  finally{pptRequests_.delete(c.caseId);if(btn?.isConnected){btn.disabled=false;btn.innerHTML=label;}persistPptJobs318_();renderPptJobs318_();schedulePptPoll318_();}
+  }catch(e){if(pptJobs318_.get(c.caseId)===job&&job.state!=='done'){job.state=getStoredAuthToken()?'checking':'auth';showToast('正在確認報告結果，可繼續操作');}}
+  finally{if(pptJobs318_.get(c.caseId)===job)pptRequests_.delete(c.caseId);restorePptButton3193_(btn,job.requestId);persistPptJobs318_();renderPptJobs318_();schedulePptPoll318_();}
 }
 function initApp318_(){
   renderRecentPlaces318_();tidyIcons318_();mountActivityDock318_();

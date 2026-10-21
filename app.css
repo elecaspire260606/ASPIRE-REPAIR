@@ -94,7 +94,15 @@ button:focus-visible,a:focus-visible,summary:focus-visible,[role=button]:focus-v
 #pptDownloadResult { display:flex; flex-direction:column; align-items:stretch; padding:0; gap:0; background:#fff; border-color:var(--app-line); border-radius:12px; }
 .ppt-job { display:flex; align-items:center; gap:10px; min-width:0; padding:12px 14px; }
 .ppt-job+.ppt-job { border-top:1px solid var(--app-line); }
-#pptDownloadResult .ppt-job>span { min-width:0; flex:1; font-size:13px; line-height:1.6; }
+.ppt-job>span,#pptDownloadResult .ppt-job>span { min-width:0; flex:1; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.ppt-inline-result { flex:0 0 100%; width:100%; min-width:0; margin-bottom:10px; background:#f1f7fa; border:1px solid #cedee9; border-radius:10px; }
+.ppt-inline-result[hidden] { display:none; }
+.ppt-inline-result .ppt-job { flex-wrap:wrap; padding:10px 12px; }
+.ppt-inline-result .ppt-job>span { flex-basis:100%; color:#294f69; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ppt-result-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.ppt-result-actions a { white-space:nowrap; }
+.ppt-result-actions .ppt-open-file,#pptDownloadResult .ppt-open-file { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid #b8cedc; background:#fff; color:#315a75; font-size:13px; font-weight:700; text-decoration:none; }
+.ppt-result-actions a:focus-visible { outline:3px solid #f58220; outline-offset:2px; }
 .ppt-job button { min-height:40px; padding:7px 12px; color:#315a75; background:#f1f6fa; border:1px solid #cedee9; border-radius:8px; cursor:pointer; }
 .ppt-job .ppt-dismiss { padding:4px 10px; font-size:18px; background:transparent; border:0; }
 .ppt-job[data-state=building]::before,.ppt-job[data-state=exporting]::before,.ppt-job[data-state=checking]::before { content:''; width:13px; height:13px; flex:none; border:2px solid #d9e7ef; border-top-color:#ed791b; border-radius:50%; animation:appSpin318 .9s linear infinite; }

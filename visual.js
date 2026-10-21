@@ -228,10 +228,18 @@ async function openPptEditor319_(initial){
       if(!ready)return;if(!model.title.trim()){showToast('請填寫報告標題');return;}
       const current=allCases.find(x=>x.caseId===c.caseId);if(!current){showToast('案件已移動，請重新整理後再試');return;}
       const options={baseKey:data.baseKey,title:model.title,description:model.description,repairNote:model.repairNote,photos:photos.map(p=>({fileId:p.fileId,label:p.label}))};
-      generate.disabled=true;status.textContent='正在製作，可關閉編排視窗；完成後管理頁會顯示下載連結。';await generateReport318_(current.rowIndex,generate,options);
-      if(w.alive()){generate.disabled=false;const job=pptJobs318_.get(c.caseId);status.textContent=job?.state==='done'?'PPT 已完成':'製作進度已顯示於管理頁';if(job?.state==='done'){const a=document.createElement('a');a.className='v-button primary';a.href=job.result.url;a.target='_blank';a.rel='noopener';a.textContent='下載 PPT';w.footer.querySelector('a')?.remove();w.footer.append(a);}}
-    },'primary');generate.disabled=!ready;w.footer.append(vButton319_('關閉',closeWorkbench319_),generate);renderPhotoList();redraw();
-    const loadPhotos=async()=>{generate.disabled=true;status.textContent='照片讀取中…';try{await Promise.all(photos.map(async p=>{if(p.img)return;p.img=await image319_(await photoData319_(c,p));if(w.alive())redraw();}));if(!w.alive())return;ready=true;generate.disabled=false;status.textContent='預覽已準備好';}catch(e){if(w.alive()){status.textContent=e.message;status.append(vButton319_('重新載入照片',()=>void loadPhotos()));}}};await loadPhotos();
+      generate.disabled=true;await generateReport318_(current.rowIndex,generate,options);syncPptResult();
+    },'primary');generate.disabled=!ready;w.footer.append(vButton319_('關閉',closeWorkbench319_),generate);
+    mountPptResult3193_(w.footer,c.caseId);
+    function syncPptResult(){
+      if(!w.alive())return;const job=pptJobs318_.get(c.caseId);
+      generate.disabled=!ready||!!(job&&['building','exporting','checking','waiting'].includes(job.state));
+      if(ready)status.textContent=job?(job.state==='done'?'PPT 已完成':pptJobText3193_(job)):'預覽已準備好';
+    }
+    document.addEventListener('aspire:ppt-jobs-changed',syncPptResult);
+    w.cleanup=()=>document.removeEventListener('aspire:ppt-jobs-changed',syncPptResult);
+    renderPhotoList();redraw();
+    const loadPhotos=async()=>{generate.disabled=true;status.textContent='照片讀取中…';try{await Promise.all(photos.map(async p=>{if(p.img)return;p.img=await image319_(await photoData319_(c,p));if(w.alive())redraw();}));if(!w.alive())return;ready=true;syncPptResult();}catch(e){if(w.alive()){status.textContent=e.message;status.append(vButton319_('重新載入照片',()=>void loadPhotos()));}}};await loadPhotos();
   }catch(e){if(w.alive())workError319_(w,e,()=>void openPptEditor319_(initial));}
 }
 
