@@ -1952,12 +1952,12 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.19.3">
-<link rel="stylesheet" href="app.css?v=3.19.3">
-<script src="reporter.js?v=3.19.3"></script>
-<script src="app.js?v=3.19.3"></script>
-<link rel="stylesheet" href="visual.css?v=3.19.3">
-<script src="visual.js?v=3.19.3"></script>
+<link rel="stylesheet" href="reporter.css?v=3.19.4">
+<link rel="stylesheet" href="app.css?v=3.19.4">
+<script src="reporter.js?v=3.19.4"></script>
+<script src="app.js?v=3.19.4"></script>
+<link rel="stylesheet" href="visual.css?v=3.19.4">
+<script src="visual.js?v=3.19.4"></script>
 </head>
 <body>
 
@@ -3842,6 +3842,10 @@ function renderExpandedInner(c, modalMode=false) {
       ${c.status==='待處理'?`<button type="button" class="btn-handoff-affairs" onclick="handoffCaseToGeneralAffairs(${c.rowIndex})">↗ 轉總務處理</button>`:''}`}
       <div class="mgr-advanced-toggle" onclick="toggleAdvancedFields(${c.rowIndex},this)">更多修正選項（區域/位置/標準化/標記） ▾</div>
       <div class="mgr-advanced-fields" id="advanced-${c.rowIndex}" style="display:none">
+        ${c.status==='待處理'&&c.todayPriority&&!isCloseSyncing?`<div class="priority-setting">
+          <span>優先處理</span><button type="button" class="priority-cancel" onclick="cancelPriority3194_(${c.rowIndex},this)">取消優先</button>
+          <span class="priority-setting-result" role="status"></span>
+        </div>`:''}
         <div class="mgr-field">
           <div class="mgr-label">更正區域 <span class="opt-tag">選填</span></div>
           <div class="flag-row" id="carea-${c.rowIndex}">

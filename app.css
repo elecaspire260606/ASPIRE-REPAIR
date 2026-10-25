@@ -160,3 +160,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible,[role=button]:focus-v
   .nav-tab,.nav-glyph,button { transition:none!important; }
 }
 @media print { #activityDock318,.note-favorites,.next-case-choice,.photo-prep-status { display:none!important; } }
+.priority-setting{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #dbe6ed;color:#607b8d;font-size:14px;}
+.priority-cancel{min-height:44px;padding:8px 12px;border:1px solid #d0dee7;border-radius:9px;background:#f6f9fb;color:#496577;font:inherit;font-weight:600;cursor:pointer;}
+.priority-cancel:hover:not(:disabled){background:#eaf1f6;border-color:#9bb4c4;}
+.priority-cancel:focus-visible{outline:2px solid #245d7b;outline-offset:3px;}
+.priority-cancel:disabled{cursor:default;opacity:.65;}
+.priority-setting-result{font-size:13px;}

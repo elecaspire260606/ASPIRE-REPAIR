@@ -90,6 +90,26 @@ function nextCaseAfterQueue318_(c){
   const candidates=at<0?ids:ids.slice(at+1).concat(ids.slice(0,at));
   return candidates.find(id=>{const row=allCases.find(x=>x.caseId===id);return row?.status==='待處理'&&!row.closeSyncState&&!closeEnqueueCases_.has(id);})||null;
 }
+async function cancelPriority3194_(rowIndex,button){
+  if(!button||button.disabled)return;
+  const c=findCaseForAction318_(rowIndex),context=panelContext318_;
+  if(!c||c.status!=='待處理'||c.closeSyncState||closeEnqueueCases_.has(c.caseId)){showToast('案件狀態已變更，請重新開啟後再試');return;}
+  button.disabled=true;button.textContent='處理中…';
+  try{
+    const data=await callApi({action:'cancelPriority',caseId:c.caseId,rowHint:c.rowIndex,expectedCloseRevision:Number(c.closeRevision)||0,expectedPriorityReason:String(c.priorityReason||'')});
+    if(!data?.success||data.case?.caseId!==c.caseId||data.case.todayPriority!==false){showToast(data?.message||'尚未確認取消結果，請稍後再試');return;}
+    // A close/update may have completed during this request. Patch only the
+    // acknowledged priority fields so its newer status and photos survive.
+    applyServerCasePatch_({caseId:c.caseId,todayPriority:false,priorityReason:''},data.version);
+    if(button.isConnected&&panelContext318_===context){
+      document.getElementById('caseActionContent')?.querySelectorAll('.priority-strip').forEach(el=>el.remove());
+      button.dataset.cancelled='1';button.textContent='已取消優先';
+      const hint=button.parentElement.querySelector('[role="status"]');if(hint)hint.textContent='已回到一般排序';
+    }
+    showToast('已取消優先');
+  }catch(e){showToast(e.code==='RESULT_UNKNOWN'?'取消結果待確認，可再按一次確認':(e.message||'取消未完成，請稍後再試'));}
+  finally{if(button.isConnected&&!button.dataset.cancelled){button.disabled=false;button.textContent='取消優先';}}
+}
 function openNextCase318_(id){
   if(!id)return;
   requestAnimationFrame(()=>{const c=allCases.find(x=>x.caseId===id);if(c?.status==='待處理'&&!c.closeSyncState)openCaseActionModal(c.rowIndex);});
@@ -191,6 +211,7 @@ async function sendWithPreparedPhotos318_(payload,send){
 const pptJobs318_=new Map();let pptTimer318_,pptPolling318_=false;
 function persistPptJobs318_(){writeLocal318_(appPrefs318_.ppt,[...pptJobs318_.values()].slice(-12));}
 function pptJobText3193_(job){
+  if(job.code==='REPORT_EXPIRED'&&job.state==='failed')return 'PPT 已到期，可重新產生';
   return job.state==='done'?'PPT 已完成 · '+(job.result?.fileName||job.caseId):job.caseId+' · '+({building:'報告製作中',exporting:'正在轉成 PPT',checking:'正在確認製作進度',waiting:'等待連線確認',paused:'進度暫時無法確認',failed:'報告未完成',auth:'請登入後繼續確認'}[job.state]||'報告製作中');
 }
 function retryPptJob3193_(job,button){
@@ -209,13 +230,16 @@ function pptJobRow3193_(job,dismiss=false){
   if(job.state==='done'&&job.result?.url){
     const actions=document.createElement('div');actions.className='ppt-result-actions';
     const link=document.createElement('a');link.className='ppt-inline-download';link.href=job.result.url;link.target='_blank';link.rel='noopener';link.textContent='下載 PPT';actions.append(link);
+    const guard=event=>{if(expirePptJob3194_(job)){event.preventDefault();persistPptJobs318_();renderPptJobs318_();showToast('PPT 已到期，請重新產生');}};
+    link.onclick=guard;
     // A separate user-initiated link opens the existing file if direct download is unavailable.
     if(/^[\w-]+$/.test(job.result.fileId||'')){
       const open=document.createElement('a');open.className='ppt-open-file';open.href='https://drive.google.com/file/d/'+encodeURIComponent(job.result.fileId)+'/view';open.target='_blank';open.rel='noopener';open.textContent='開啟檔案';actions.append(open);
+      open.onclick=guard;
     }
     row.append(actions);
   }else if(['failed','paused','auth'].includes(job.state)){
-    const retry=document.createElement('button');retry.type='button';retry.textContent=job.code==='REPORT_CONTENT_CHANGED'?'重新編排':job.state==='failed'?'重試':'確認進度';retry.onclick=()=>retryPptJob3193_(job,retry);row.append(retry);
+    const retry=document.createElement('button');retry.type='button';retry.textContent=job.code==='REPORT_CONTENT_CHANGED'?'重新編排':job.code==='REPORT_EXPIRED'?'重新產生':job.state==='failed'?'重試':'確認進度';retry.onclick=()=>retryPptJob3193_(job,retry);row.append(retry);
   }
   if(dismiss&&['done','failed'].includes(job.state)){
     const close=document.createElement('button');close.type='button';close.className='ppt-dismiss';close.textContent='×';close.setAttribute('aria-label','關閉報告進度');close.onclick=()=>{pptJobs318_.delete(job.caseId);persistPptJobs318_();renderPptJobs318_();};row.append(close);
@@ -227,6 +251,7 @@ function mountPptResult3193_(container,caseId){
   const box=document.createElement('div');box.className='ppt-inline-result';box.dataset.pptResultCase=caseId;box.setAttribute('aria-live','polite');box.hidden=true;container.prepend(box);renderInlinePptResults3193_();
 }
 function renderInlinePptResults3193_(){
+  pptJobs318_.forEach(expirePptJob3194_);
   document.querySelectorAll('[data-ppt-result-case]').forEach(box=>{
     const job=pptJobs318_.get(box.dataset.pptResultCase);
     const key=job?JSON.stringify([job.requestId,job.state,job.code,job.result?.url,job.result?.fileName,job.result?.fileId]):'';
@@ -234,6 +259,10 @@ function renderInlinePptResults3193_(){
     if(box.dataset.renderKey===key)return;
     box.dataset.renderKey=key;box.hidden=!job;box.replaceChildren();if(job)box.append(pptJobRow3193_(job));
   });
+}
+function expirePptJob3194_(job){
+  if(job?.state!=='done'||!Number.isFinite(job.result?.expiresAt)||job.result.expiresAt>Date.now())return false;
+  job.state='failed';job.code='REPORT_EXPIRED';delete job.result;return true;
 }
 function renderPptJobs318_(){
   renderInlinePptResults3193_();document.dispatchEvent(new Event('aspire:ppt-jobs-changed'));
@@ -265,7 +294,7 @@ async function pollPptJobs318_(){
         if(pptJobs318_.get(job.caseId)!==job||job.state==='done')continue; // A late poll must not regress a direct receipt or a newer request.
         if(data.code==='UNAUTHORIZED'){job.state='auth';continue;}
         if(data.success&&data.state==='done'&&data.result?.url)completePpt318_(job,data.result);
-        else if(data.success&&['failed','missing','expired'].includes(data.state)){job.state='failed';pptRequests_.delete(job.caseId);}
+        else if(data.success&&['failed','missing','expired'].includes(data.state)){job.state='failed';job.code=data.code||'';pptRequests_.delete(job.caseId);}
         else if(data.success&&['building','exporting'].includes(data.state))job.state=data.state;
         else if(data.success&&data.state==='unknown'&&!pptRequests_.has(job.caseId))job.state='failed';
         else job.state='checking';
