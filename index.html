@@ -1952,12 +1952,14 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.19.4">
-<link rel="stylesheet" href="app.css?v=3.19.4">
-<script src="reporter.js?v=3.19.4"></script>
-<script src="app.js?v=3.19.4"></script>
-<link rel="stylesheet" href="visual.css?v=3.19.4">
-<script src="visual.js?v=3.19.4"></script>
+<link rel="stylesheet" href="reporter.css?v=3.21.1">
+<link rel="stylesheet" href="app.css?v=3.21.1">
+<link rel="stylesheet" href="classification.css?v=3.21.1">
+<script src="classification-core.js?v=3.21.1"></script>
+<script src="reporter.js?v=3.21.1"></script>
+<script src="app.js?v=3.21.1"></script>
+<link rel="stylesheet" href="visual.css?v=3.21.1">
+<script src="visual.js?v=3.21.1"></script>
 </head>
 <body>
 
@@ -2287,7 +2289,7 @@
   </div>
   <div class="chart-wrap case-type-card">
     <div class="chart-title case-type-title">
-      <div class="case-type-title-main">維修類別分布 <span class="case-type-title-chip">15 大類</span></div>
+      <div class="case-type-title-main">工作分布 <span class="case-type-title-chip">13 大類 · 已結案</span></div>
       <div class="case-type-title-note">點擊類別可查看案件</div>
     </div>
     <div id="caseTypeChart" class="case-type-chart-shell"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
@@ -2590,7 +2592,7 @@ function caseVisualSignature_(c) {
   const text=v=>v===null||v===undefined?'':String(v);
   return JSON.stringify([
     text(c?.status),text(c?.area),text(c?.normalizedLocation),text(c?.location),text(c?.locationType),text(c?.description),text(c?.unit),text(c?.name),
-    text(c?.repairNote),text(c?.caseType),text(c?.closer),text(c?.closeDatetime),text(c?.flagReason),c?.todayPriority?1:0,text(c?.priorityReason),
+    text(c?.workRevision),text(c?.workCategory),text(c?.workTags),text(c?.repairNote),text(c?.caseType),text(c?.closer),text(c?.closeDatetime),text(c?.flagReason),c?.todayPriority?1:0,text(c?.priorityReason),
     Number(c?.reportPhotoCount||(c?.reportPhotos?.length)||0),Number(c?.closePhotoCount||(c?.closePhotos?.length)||0),text(c?.closeSyncState)
   ]);
 }
@@ -2613,9 +2615,9 @@ function caseVisualClass_(c) {
 // 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
 // 不然修繕管理可能會不小心吃到統計頁抓回來、含封存舊案件的那份資料。
 // V3.10.3：更換快取鍵，避免舊版「最新N筆待處理」的不完整快取在版本相同時被繼續沿用。
-const CASES_CACHE_KEY = 'aspire_cases_cache_v3151';
+const CASES_CACHE_KEY = 'aspire_cases_cache_v321';
 try { localStorage.removeItem('aspire_cases_cache_v2'); } catch(e) {} // V3.1格式已含照片網址，舊快照不再沿用
-const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_area_cube_v4'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
+const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_area_cube_v321'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
 function loadCacheByKey_(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -3077,6 +3079,7 @@ function collectRepairDraft_() {
     unit:document.getElementById('f-unit')?.value||'', name:document.getElementById('f-name')?.value||'',
     area:document.getElementById('f-area')?.value||'', location:document.getElementById('f-location')?.value||'',
     description:document.getElementById('f-desc')?.value||'', email:document.getElementById('f-email')?.value||'',
+    facilityDetail:locType==='facility'&&typeof facilityForm320_==='function'?facilityForm320_():'',
     locType:locType||'', selectedBuilding:selectedBuilding||'', todayPriority:!!todayPriority,
     selectedPriorityReason:selectedPriorityReason||'', priorityReasonOther:document.getElementById('priorityReasonOther')?.value||'',
     operationId:reportSubmitOperationId_||'', savedAt:Date.now()
@@ -3127,6 +3130,7 @@ function restoreRepairDraft_() {
   if(d.area&&areaBtn)setArea(d.area,areaBtn);
   if(d.selectedBuilding){const bb=[...document.querySelectorAll('#yashe-building-row .loc-type-btn')].find(b=>b.textContent.trim()===d.selectedBuilding);if(bb)setBuilding(d.selectedBuilding,bb);}
   if(d.locType){const lb=[...document.querySelectorAll('#loctype-btn-row .loc-type-btn')].find(b=>(b.getAttribute('onclick')||'').includes("setLocType('"+d.locType+"'"));if(lb)setLocType(d.locType,lb);}
+  if(d.locType==='facility'&&d.facilityDetail&&typeof WorkUI320!=='undefined')WorkUI320.restoreFacility(d.facilityDetail,d.location);
   if(document.getElementById('f-location'))document.getElementById('f-location').value=d.location||'';
   if(typeof d.name==='string')document.getElementById('f-name').value=d.name;
   if(document.getElementById('f-desc'))document.getElementById('f-desc').value=d.description||'';
@@ -3262,7 +3266,8 @@ async function submitForm() {
   const locVal = document.getElementById('f-location').value.trim();
   if (!locVal) { formValidationFail_('請填寫詳細地點後再送出','f-location'); return; }
   if (locType === 'restaurant' || locType === 'facility') {
-    // 快速按鈕帶入的也算，上面已確認 locVal 有值
+    // 具體設施必須由選項確認；其他設施需具名。
+    if(locType==='facility'&&!facilityForm320_()){formValidationFail_('請選擇具體設施；其他設施請填寫名稱','facility-quick-row');return;}
   }
   if(document.getElementById('report-photo-picker').disabled && photoData.report.length<2){showToast('照片正在準備，請稍候再送出');return;}
   const btn = document.getElementById('submitBtn');
@@ -3281,7 +3286,7 @@ async function submitForm() {
     // 不再送datetime，報修時間一律由後端記錄伺服器時間(手機時間可能不準，伺服器時間比較可靠)
     const operationId=ensureReportSubmitOperationId_();
     const reportPhotoRefs=collectPhotoRefs318_('report',reportPhotos);
-    const payload = { action:'submit', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, reportPhotoRefs, todayPriority, priorityReason };
+    const payload = { action:'submit', facilityDetail:locType==='facility'?facilityForm320_():'', operationId, unit, name, area: submitArea, locationType:locTypeLabel, location, description:desc, email, reportPhotos, reportPhotoRefs, todayPriority, priorityReason };
 
     await enqueueReportJob_(payload);
       releasePhotoGroup318_('report',reportPhotoRefs);
@@ -3738,7 +3743,7 @@ function renderManagerCaseList() {
         <div class="case-summary-priority">${priorityBannerHtml(c)}</div>
         <div class="case-row-meta"><span class="meta-caseid">${c.caseId}</span><span class="meta-date">${dateLabelPrefix}${shortDate}</span><span class="meta-people"> · ${c.unit} · ${c.name}</span>${photoTag?`<span class="photo-tag"> · ${photoTag}</span>`:''}</div>
         <div class="case-row-desc">${c.description}</div>
-        ${currentFilter==='待處理'&&(c.caseType||photoTag)?`<div class="case-summary-tags">${c.caseType?`<span>${escapeHtml_(String(c.caseType))}</span>`:''}${photoTag?`<span>${escapeHtml_(photoTag)}</span>`:''}</div>`:''}
+        ${currentFilter==='待處理'&&(c.caseType||photoTag)?`<div class="case-summary-tags">${c.caseType?`<span>${escapeHtml_(Work320.base(c).category)}</span>`:''}${photoTag?`<span>${escapeHtml_(photoTag)}</span>`:''}</div>`:''}
         ${c.repairNote?`<div class="case-row-note"><span class="note-icon">✅ </span>${c.repairNote}</div>`:''}
         </div>
       </div>`;
@@ -3801,7 +3806,7 @@ function renderExpandedInner(c, modalMode=false) {
         <div id="close-photo-preview-${c.rowIndex}" class="photo-library-preview"></div>
       </div>
       <div class="mgr-field">
-        <div class="mgr-label">案件類型 <span style="font-size:10px;color:#e05252;background:#fdecea;padding:1px 6px;border-radius:4px;">一般結案必填</span></div>
+        <div class="mgr-label">主分類與工作項目 <span class="opt-tag">可稍後補分類</span></div>
         ${caseTypePickerHtml_(c.rowIndex,c.caseType)}
         <input type="text" id="ctype-other-${c.rowIndex}" list="caseTypeOtherSuggestions" placeholder="請描述類型（選填）" oninput="updateCustomCaseTypeLabel_(${c.rowIndex},this.value)"
           style="display:${normalizeCaseType(c.caseType).startsWith('其他')&&normalizeCaseType(c.caseType).length>2?'block':'none'};margin-top:6px;width:100%;padding:7px 11px;border:1.5px solid #e8e8e8;border-radius:9px;font-size:13px;font-family:inherit;outline:none;"
@@ -4423,6 +4428,7 @@ async function dismissCloseJob_(id){
   catch(e){showToast('暫存尚未清除，請稍後再試');}
 }
 async function enqueueCloseJob_(c, payload) {
+  attachWorkPayload320_(c,payload);
   if(closeEnqueueCases_.has(c.caseId))throw new Error('這筆案件正在建立結案，請稍候');
   closeEnqueueCases_.add(c.caseId);
   try {
@@ -4681,7 +4687,7 @@ async function updateCase(rowIndex) {
   const closerName=getSelectedCloser(rowIndex),closePhotos=getClosePhotos(rowIndex),btn=document.querySelector(`[onclick="updateCase(${rowIndex})"]`);
   if(btn){btn.disabled=true;btn.textContent='更新中…';}
   try {
-    const data=await callApi({action:'update',caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos});
+    const data=await callApi({action:'update',...workPayload320_(c),caseId:c.caseId,rowHint:rowIndex,repairNote:note,normalizedLocation:norm,flagReason:flag,caseType,correctedLocType,correctedArea,closerName,closePhotos});
     if(data&&data.success){showToast('✓ 已更新案件狀況');applyServerCasePatch_(data.case,data.version);closeCaseActionModal();}
     else showToast('❌ '+((data&&data.message)||'更新失敗，請重試'));
   } catch(e){showToast('❌ '+(e.message||'連線失敗，請檢查網路'));}
@@ -5085,16 +5091,16 @@ function renderPieChart(containerId, counts, colors, total, clickHandler) {
     const ix2=cx+innerR*Math.cos(endAngle), iy2=cy+innerR*Math.sin(endAngle);
     const largeArc = angle > Math.PI ? 1 : 0;
     const color = colors[label]||'#bbb';
-    const clickAttr = clickHandler ? ` style="cursor:pointer;" onclick="${clickHandler}('${label}')"` : '';
+    const clickAttr = clickHandler ? ` style="cursor:pointer;" data-pie-label="${escapeHtml_(String(label))}"` : '';
     slices += `<path d="M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1} Z" fill="${color}" stroke="white" stroke-width="2"${clickAttr}/>`;
     startAngle = endAngle;
   });
   const legend = entries.map(([label,val])=>{
     const clickable=Boolean(clickHandler&&Number(val)>0);
     return `
-    <div class="pie-legend-item${Number(val)>0?'':' is-zero'}"${clickable?` style="cursor:pointer;" onclick="${clickHandler}('${label}')"`:''}>
+    <div class="pie-legend-item${Number(val)>0?'':' is-zero'}"${clickable?` style="cursor:pointer;" data-pie-label="${escapeHtml_(String(label))}"`:''}>
       <div class="pie-legend-dot" style="background:${colors[label]||'#bbb'}"></div>
-      <span class="pie-legend-label">${label}</span>
+      <span class="pie-legend-label">${escapeHtml_(String(label))}</span>
       <span class="pie-legend-val">${val}件 ${sum?Math.round(val/sum*100):0}%</span>
     </div>`;
   }).join('');
@@ -5107,6 +5113,7 @@ function renderPieChart(containerId, counts, colors, total, clickHandler) {
     </div>
     <div class="pie-legend">${legend}</div>
   </div>`;
+  if(clickHandler&&typeof window[clickHandler]==='function')el.querySelectorAll('[data-pie-label]').forEach(node=>node.onclick=()=>window[clickHandler](node.dataset.pieLabel));
 }
 
 // ── 備份下載／匯入 ──
@@ -5562,7 +5569,7 @@ function renderDashboard() {
 
   renderPieChart('areaChart', snap.areaCounts, AREA_COLORS, snap.total, 'drillByArea');
 
-  const locTypeColors = {'客房':'#E8761A','辦公室':'#E8761A','餐廳':'#3B82F6','設施':'#8B5CF6','公共區域／其他':'#aaa'};
+  const locTypeColors = {'客房':'#E8761A','辦公室':'#E8761A','餐廳':'#3B82F6','設施':'#8B5CF6','泳池':'#06B6D4','教室':'#8B5CF6','休閒中心':'#10B981','體育館':'#F59E0B','設施／未細分':'#94A3B8','公共區域／其他':'#aaa'};
   renderPieChart('locTypeChart', snap.locTypeCounts, locTypeColors, snap.total, 'drillByLocType');
 
   const typeColors = {'給排水':'#06B6D4','電力':'#F59E0B','消防':'#EF4444','空調':'#3B82F6','弱電':'#8B5CF6','電梯':'#EC4899','建物':'#10B981','木工':'#A0522D','鐵工':'#6B7280','照明':'#F97316','衛浴':'#14B8A6','庶務':'#A78BFA','防水':'#0EA5E9','油漆':'#D946EF','泥作':'#B45309','其他':'#aaa'};
@@ -5651,7 +5658,7 @@ function openCasePanel(c) {
     </div>
     <div class="panel-section">
       <div class="panel-label">位置類型</div>
-      <div class="panel-value">${c.locationType||'—'}</div>
+      <div class="panel-value">${escapeHtml_(Work320.locationLabel(c))}</div>
     </div>
     <hr class="panel-divider">
     <div class="panel-section">
@@ -5663,11 +5670,10 @@ function openCasePanel(c) {
       <div class="panel-label">${c.status==='已結案'?'結案紀錄':'處理進度'}</div>
       <div class="panel-value" style="line-height:1.6;">${c.repairNote}</div>
     </div>`:''}
-    ${c.caseType?`
     <div class="panel-section">
-      <div class="panel-label">案件類型</div>
-      <div class="panel-value">${normalizeCaseType(c.caseType)}</div>
-    </div>`:''}
+      <div class="panel-label">主分類／工作項目</div>
+      <div class="panel-value">${escapeHtml_(Work320.base(c).category)}${Work320.base(c).tags.length?' · '+escapeHtml_(Work320.base(c).tags.join('、')):''}</div>
+    </div>
     ${c.closerName?`
     <div class="panel-section">
       <div class="panel-label">結案人</div>
@@ -6045,7 +6051,7 @@ async function exportExcel() {
   // 維修類別（已結案）
   const typeCounts = {};
   cases.filter(c=>c.status==='已結案').forEach(c => {
-    const ct = normalizeCaseType(c.caseType);
+    const ct = Work320.base(c).category;
     if (ct) typeCounts[ct] = (typeCounts[ct]||0)+1;
   });
   const types = Object.entries(typeCounts)
@@ -6074,9 +6080,9 @@ async function exportExcel() {
   // 案件明細
   const detail = includeDetail ? cases.map(c => ({
     caseId: c.caseId, datetime: c.datetime, unit: c.unit, name: c.name,
-    area: effArea(c), locationType: c.locationType, location: c.location||'',
+    area: effArea(c), locationType: Work320.locationLabel(c), location: c.normalizedLocation||c.location||'',
     description: c.description, status: c.status, repairNote: c.repairNote||'',
-    caseType: normalizeCaseType(c.caseType)||'', closerName: c.closerName||''
+    caseType: Work320.base(c).category, workTags:Work320.base(c).tags.join('、'), closerName: c.closerName||''
   })) : [];
 
   const stats = { rangeLabel, total, pending, done, rate, areas, types, pendingTop, detail };
@@ -6477,4 +6483,5 @@ if ('serviceWorker' in navigator) {
 </div>
 <div id="panelBackdrop" style="display:none;position:fixed;inset:0;z-index:399;" onclick="closeCasePanel()"></div>
 
+<script src="classification.js?v=3.21.1"></script>
 </body></html>
