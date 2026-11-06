@@ -130,7 +130,7 @@ function workError319_(w,error,retry){w.body.replaceChildren();const p=document.
 function installVisualCaseTools319_(c){
   const box=document.createElement('div');box.className='visual-case-tools319';
   box.append(vButton319_('照片比較',()=>void openCompare319_(c)));
-  if(c.status==='已結案'&&!c.flagReason&&!c.closeSyncState)box.append(vButton319_('編排 PPT',()=>void openPptEditor319_(c)));
+  if(Work320.isRepairDone(c)&&!c.flagReason&&!c.closeSyncState)box.append(vButton319_('編排 PPT',()=>void openPptEditor319_(c)));
   document.getElementById('caseActionContent')?.prepend(box);
 }
 function vFileId319_(url){return String(url).match(/[?&]id=([\w-]+)/)?.[1]||String(url).match(/\/d\/([\w-]+)/)?.[1]||'';}
@@ -212,7 +212,7 @@ async function openPptEditor319_(initial){
   const w=openWorkbench319_('PPT 編排');w.body.textContent='讀取案件與照片…';
   try{
     const data=await visualApi319_({action:'getVisualCase',caseId:initial.caseId});if(!w.alive())return;const c=data.case;
-    if(c.status!=='已結案'||c.flagReason||c.archived)throw Error('請從主表的正常已結案案件開啟編排');
+    if(!Work320.isRepairDone(c)||c.flagReason||c.archived)throw Error('請從主表的正常已結案案件開啟編排');
     const photos=vPhotos319_(c),model={title:(vPlace319_(c)+' '+(c.description||'修繕紀錄')).slice(0,120),description:String(c.description||'').slice(0,400),repairNote:String(c.repairNote||'').slice(0,400),date:String(c.closeDatetime||'（未記錄）').split(' ')[0].replaceAll('/','.'),caseId:c.caseId,closerName:c.closerName||'—'};
     w.body.innerHTML=`<div class="ppt-editor319"><div class="ppt-fields319"><label>報告標題<input id="pptTitle319" maxlength="120" value="${vEsc319_(model.title)}"></label><label>處理原因<textarea id="pptCause319" maxlength="400" rows="2">${vEsc319_(model.description)}</textarea></label><label>處理內容<textarea id="pptNote319" maxlength="400" rows="2">${vEsc319_(model.repairNote)}</textarea></label><p class="v-muted">編排僅影響本次 PPT；照片保留完整比例。長文字會在版面內截短，不加文字續頁。</p><h3>照片順序與說明</h3><div id="pptPhotos319"></div></div><div class="ppt-preview319"><canvas id="pptCanvas319" aria-label="PPT 版面預覽"></canvas><div id="pptPageNav319" class="v-row"></div><p class="v-muted">版面預覽；實際字型以 PowerPoint 顯示為準。</p><p id="pptPreviewStatus319" role="status" class="v-muted">照片讀取中…</p></div></div>`;
     let page=0,ready=photos.length===0,dragIndex=-1;const canvas=w.body.querySelector('canvas'),status=w.body.querySelector('#pptPreviewStatus319');
@@ -272,7 +272,7 @@ async function openAccomplishment319_(){
     });};
   const syncChecked=()=>list.querySelectorAll('input[type=checkbox]').forEach(box=>box.checked=selected.has(box.value));
   const loadItem=async(item,id)=>{item.loading=true;item.error='';renderSelected();try{const d=await visualApi319_({action:'getVisualCase',caseId:id});if(!w.alive()||selected.get(id)!==item)return;
-      if(d.case.status!=='已結案'||d.case.flagReason)throw Error('案件狀態已變更，請移除後重新選擇');item.c=d.case;item.baseKey=d.baseKey;item.photos=vPhotos319_(d.case);const close=item.photos.findIndex(p=>p.group==='close');item.photoIndex=close>=0?close:item.photos.length?0:-1;item.loading=false;renderSelected();
+      if(!Work320.isRepairDone(d.case)||d.case.flagReason)throw Error('案件狀態已變更，請移除後重新選擇');item.c=d.case;item.baseKey=d.baseKey;item.photos=vPhotos319_(d.case);const close=item.photos.findIndex(p=>p.group==='close');item.photoIndex=close>=0?close:item.photos.length?0:-1;item.loading=false;renderSelected();
     }catch(e){if(w.alive()&&selected.get(id)===item){item.loading=false;item.error=e.message;renderSelected();}}};
   const loadCases=async()=>{const mine=++seq;list.textContent='讀取已結案案件…';w.body.querySelector('#cardCasePages319').replaceChildren();try{const d=await visualApi319_({action:'getVisualCases',scope:'completed',days,page});if(!w.alive()||mine!==seq)return;
       if(d.coverage!=='main+archive')throw Error('後端尚未更新，請先部署本版 code.gs');list.replaceChildren();
@@ -283,7 +283,7 @@ async function openAccomplishment319_(){
   const exportBtn=vButton319_('產生圖卡',async()=>{
     const mine=++exportSeq;exportBtn.disabled=true;status.textContent='正在準備圖卡照片…';result.replaceChildren();
     try{const items=[...selected.values()].map(x=>({...x}));const title=w.body.querySelector('#cardTitle319').value.trim()||'修繕成果';
-      await Promise.all(items.map(async item=>{const fresh=await visualApi319_({action:'getVisualCase',caseId:item.c.caseId});if(fresh.baseKey!==item.baseKey||fresh.case.status!=='已結案'||fresh.case.flagReason)throw Error('案件內容已更新，請移除後重新選取：'+item.c.caseId);if(item.photoIndex>=0)item.img=await image319_(await photoData319_(item.c,item.photos[item.photoIndex]));}));
+      await Promise.all(items.map(async item=>{const fresh=await visualApi319_({action:'getVisualCase',caseId:item.c.caseId});if(fresh.baseKey!==item.baseKey||!Work320.isRepairDone(fresh.case)||fresh.case.flagReason)throw Error('案件內容已更新，請移除後重新選取：'+item.c.caseId);if(item.photoIndex>=0)item.img=await image319_(await photoData319_(item.c,item.photos[item.photoIndex]));}));
       if(!w.alive()||mine!==exportSeq)return;const canvas=document.createElement('canvas');canvas.className='card-export319';drawAccomplishment319_(canvas,title,items);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!w.alive()||mine!==exportSeq)return;if(!blob)throw Error('無法產生圖卡，請稍後重試');
       const url=URL.createObjectURL(blob);visual319_.objectUrls.push(url);const link=document.createElement('a');link.href=url;link.download='修繕成果_'+new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'})+'.png';link.className='v-button primary';link.textContent='下載圖卡 PNG';result.append(canvas,link);status.textContent='圖卡已完成，可下載保存。';result.scrollIntoView({block:'start',behavior:'instant'});
     }catch(e){if(w.alive()&&mine===exportSeq)status.textContent=e.message+'；可重試或選擇不使用照片。';}finally{if(w.alive())exportBtn.disabled=!selected.size||[...selected.values()].some(x=>x.loading||x.error);}

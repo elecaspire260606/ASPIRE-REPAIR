@@ -26,6 +26,7 @@ function renderCaseEditor3213_(){
     <label>位置類型<select id="ce-type" onchange="toggleCaseFacility3213_()">${caseEditorOptions3213_(['客房','餐廳','辦公室','設施','公共區域／其他'],type)}</select></label>
     <label id="ce-facility-wrap">設施細項<input id="ce-facility" maxlength="40" list="ce-facilities" value="${escapeHtml_(facility||'')}" placeholder="選擇或輸入，例如：球池"><datalist id="ce-facilities">${[...Work320.facilities,'健身房','球池','撞球區','KTV'].map(x=>`<option value="${escapeHtml_(x)}">`).join('')}</datalist></label>
     <label>維修主分類<select id="ce-category">${caseEditorOptions3213_([...Work320.categories,'待分類'],b.category)}</select></label>
+    <label><span><input type="checkbox" id="ce-transferred" ${Work320.isTransferred(c)?'checked':''}> 轉總務</span></label><p class="case-edit-note">標記後不計入修繕完成件數及結案率。這裡只更正紀錄，不寄信、不變更結案狀態。</p>
     <fieldset><legend>工作項目（可複選）</legend><div class="case-edit-tags">${Work320.tags.map(t=>`<label><input type="checkbox" name="workTag" value="${escapeHtml_(t)}" ${b.tags.includes(t)?'checked':''}>${escapeHtml_(t)}</label>`).join('')}</div></fieldset>
     <p class="case-edit-note">儲存後更新統計，保留原結案狀態、紀錄與照片。</p><p id="ce-message" role="status" aria-live="polite"></p>
     <div class="case-edit-actions"><button type="button" onclick="cancelCaseEditor3213_()">取消</button><button type="submit" id="ce-save">儲存修改</button></div></form>`;
@@ -38,7 +39,7 @@ async function saveCaseEditor3213_(){
   if(!state.pending){
     if(!form.reportValidity())return;
     const val=id=>document.getElementById(id).value.trim();
-    const edit={area:val('ce-area'),location:val('ce-location'),locationType:val('ce-type'),facility:val('ce-type')==='設施'?val('ce-facility'):'',category:val('ce-category'),tags:[...form.querySelectorAll('[name=workTag]:checked')].map(x=>x.value)};
+    const edit={transferredToGeneralAffairs:document.getElementById('ce-transferred').checked,area:val('ce-area'),location:val('ce-location'),locationType:val('ce-type'),facility:val('ce-type')==='設施'?val('ce-facility'):'',category:val('ce-category'),tags:[...form.querySelectorAll('[name=workTag]:checked')].map(x=>x.value)};
     if(edit.locationType==='設施'&&!Work320.validFacility(edit.facility)){message.textContent='請填寫具體設施名稱，例如球池或泳池';return;}
     state.pending={action:'patchCaseDetails3213',caseId:state.c.caseId,expectedToken:state.c.workToken,operationId:makeCloseOperationId_(),edit};
   }

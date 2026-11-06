@@ -1,14 +1,23 @@
 /* V3.20: shared pure rules. The same source is bundled into code.gs. */
 var Work320 = (function () {
   'use strict';
-  const categories=['門窗與五金','建物與裝修','衛浴設備','給排水與熱水','照明設備','電力設備','空調與通風','弱電與資訊','消防設備','電梯與升降','家具與配備','專用設備','一般支援／庶務'];
+  const categories=['門窗與五金','建物與裝修','衛浴設備','給排水與熱水','照明設備','電力設備','空調與通風','弱電與門禁','消防設備','電梯與升降','家具與配備','專用設備','一般支援／庶務'];
   const tags=['油漆','防水','鐵工','木工','泥作','疏通','零件更換','清潔保養','調整修復','搬運布置'];
   const facilities=['休閒中心','泳池','教室','體育館'];
-  const legacy={'弱電':'弱電與資訊','空調':'空調與通風','照明':'照明設備','電力':'電力設備','消防':'消防設備','電梯':'電梯與升降','衛浴':'衛浴設備','給排水':'給排水與熱水','建物':'建物與裝修','建物土木':'建物與裝修','庶務':'一般支援／庶務'};
+  const legacy={'弱電與資訊':'弱電與門禁','弱電':'弱電與門禁','空調':'空調與通風','照明':'照明設備','電力':'電力設備','消防':'消防設備','電梯':'電梯與升降','衛浴':'衛浴設備','給排水':'給排水與熱水','建物':'建物與裝修','建物土木':'建物與裝修','庶務':'一般支援／庶務'};
+  function normalizeCategory(v){return v==='弱電與資訊'?'弱電與門禁':v;}
+  function isTransferred(c){
+    if(typeof c.transferredToGeneralAffairs==='boolean')return c.transferredToGeneralAffairs;
+    const m=parse(c.workMetadata);
+    if(typeof m.transferredToGeneralAffairs==='boolean')return m.transferredToGeneralAffairs;
+    if(['轉總務','其他：轉總務處理'].includes(String(c.caseType||'')))return true;
+    return String(c.repairNote||'').split(/\r?\n/).some(line=>/^轉交總務處處理(?:（|$)/.test(line.trim()));
+  }
+  function isRepairDone(c){return c.status==='已結案'&&!isTransferred(c);}
   function parse(raw){try{return String(raw||'').startsWith('WC320:')?JSON.parse(String(raw).slice(6)):{};}catch(e){return {};}}
   function encode(m){return 'WC320:'+JSON.stringify(m);}
   function base(c){
-    if(c.workCategory!==undefined)return {category:c.workCategory||'待分類',tags:c.workTags||[],source:c.workSource||'pending'};
+    if(c.workCategory!==undefined)return {category:normalizeCategory(c.workCategory)||'待分類',tags:c.workTags||[],source:c.workSource||'pending'};
     const old=String(c.caseType||'').trim();
     const category=categories.includes(old)?old:legacy[old]||'待分類';
     return {category,tags:tags.filter(t=>old===t),source:category==='待分類'?'pending':'legacy'};
@@ -44,7 +53,7 @@ var Work320 = (function () {
     add('照明設備',/燈泡|燈管|燈具|照明|崁燈|坎燈|日光燈|吸頂燈|電燈|筒燈|壁燈|玄關燈|門廳燈|路燈|軌道燈|防爆燈|燈軌|燈不亮|燈閃|燈色衰|燈壞|盞燈|燈亮度|燈光|燈.{0,6}(故障|閃爍|不會亮|不亮|壞|沒亮|熄滅|關不掉)/.test(t));
     add('電力設備',/插座|插孔|插頭|配電|斷路器|無熔絲|漏電開關|漏電箱|電盤|節能|電箱|電線拆除|供電異常|供電線路|該區跳電|房間.*跳電/.test(t));
     add('空調與通風',/冷氣|空調|排風|抽風|送風|風管|室內機|室外機|回風|出風口|通風口|浴室風扇|冰水|冰機|除濕機|集水盤|積水盤|冷凝水/.test(t));
-    add('弱電與資訊',/安全門.*刷卡|電視|電話|網路|監視|監控|CCTV|MOD|機上盒|數據機|HDMI|wifi|路由器|讀卡|刷卡機|門禁|磁力鎖|感應警鈴|車牌辨識|車位數|感應線圈|柵欄機|PLC|能資源|麥克風|投影機|對講機|電視架|遙控器/i.test(t));
+    add('弱電與門禁',/安全門.*刷卡|電視|電話|網路|監視|監控|CCTV|MOD|機上盒|數據機|HDMI|wifi|路由器|讀卡|刷卡機|門禁|磁力鎖|感應警鈴|車牌辨識|車位數|感應線圈|柵欄機|PLC|能資源|麥克風|投影機|對講機|電視架|遙控器/i.test(t));
     add('消防設備',/火警|火災|偵煙|探測器|消防儲水|消防採水|消防.*漏|滅火器.*(故障|掉落|檢查)|安全警示燈|緊急照明/.test(t));
     add('電梯與升降',/電梯|客梯|貨梯|升降台|升降平台/.test(t));
     add('專用設備',/空壓機|冰球桌|烤箱|洗碗機|保溫櫃|保溫臺|飲水機|咖啡機|RO\s*水|淨水|濾芯|濾心|冰箱|籃球架|跑步機|溜滑梯|撞球桿|高壓水槍|瓦斯|高溫池|中溫池|(?:戲水|泳池).*過濾桶|CL值|CL異常/.test(t));
@@ -54,21 +63,21 @@ var Work320 = (function () {
     if(/插座.*(脫落|落陷|外蓋)|插座蓋子|插座孔遺失/.test(t)){out.delete('建物與裝修');out.delete('家具與配備');out.delete('專用設備');}
     if(/磁力鎖|門禁|安全門.*刷卡/.test(t))out.delete('門窗與五金');
     if(/(?:鏡頭|監視|監控|網路|電話|電視|數據機)/.test(t)&&/更換電池/.test(t))out.delete('電力設備');
-    if(/(?:門鎖|電子鎖|房卡|房間門)/.test(t)&&!/門禁|刷卡機|磁力鎖/.test(t))out.delete('弱電與資訊');
+    if(/(?:門鎖|電子鎖|房卡|房間門)/.test(t)&&!/門禁|刷卡機|磁力鎖/.test(t))out.delete('弱電與門禁');
     if(/(?:水管|排水管|存水彎|清潔口)/.test(t)&&!/蓮蓬頭|另.*水龍頭/.test(t)){out.delete('衛浴設備');if(/烤箱旁/.test(t))out.delete('專用設備');}
     if(/鍋爐|回水/.test(t))out.delete('衛浴設備');
     if(/(?:白水泥|矽酸鈣板|結構漏水|鐵皮鏽蝕|油漆脫落|油漆發霉|發霉油漆)/.test(t)&&out.has('建物與裝修')){for(const cat of ['門窗與五金','衛浴設備','空調與通風','照明設備','電梯與升降','給排水與熱水','電力設備'])out.delete(cat);}
     if(out.has('專用設備')&&/冰球桌/.test(t))out.delete('空調與通風');
     if(/水槽/.test(t)&&out.has('家具與配備')&&/櫃子門/.test(t))out.delete('衛浴設備');
     // Integral parts stay with the asset, not the material or electrical component.
-    if(out.has('空調與通風')){out.delete('弱電與資訊');if(/排水|冰水|集水盤|積水盤/.test(t))out.delete('給排水與熱水');}
+    if(out.has('空調與通風')){out.delete('弱電與門禁');if(/排水|冰水|集水盤|積水盤/.test(t))out.delete('給排水與熱水');}
     if(out.has('衛浴設備')&&!/水管|排水管|存水彎|清潔口|排水孔|排水溝|鍋爐|沒熱水|熱水阻塞/.test(t))out.delete('給排水與熱水');
     if(/電話插座|網路.*插座|插座.*網路/.test(t))out.delete('電力設備');
     if(/(?:燈具|檯燈).*插頭/.test(t)){out.delete('電力設備');out.add('照明設備');}
     if(out.has('電梯與升降')&&/電梯.*門|貨梯.*門|客梯.*門/.test(t))out.delete('門窗與五金');
     if(/(?:給水|供水|下水池|上水池).*過濾桶/.test(t)){out.delete('專用設備');out.add('給排水與熱水');}
     if(/(?:烤箱旁|烤箱).*水龍頭/.test(t))out.delete('專用設備');
-    if(/冷氣|空調/.test(t)&&/遙控器/.test(t))out.delete('弱電與資訊');
+    if(/冷氣|空調/.test(t)&&/遙控器/.test(t))out.delete('弱電與門禁');
     return [...out];
   }
   const tagRules=[['油漆',/補漆|粉刷|油漆|塗漆/],['防水',/防水處理|防水施工|施作防水|重做防水|防水修補|防水施做|填補矽利康|塗抹.*矽利康/],['鐵工',/焊接|電焊/],['木工',/木作|木工|新木料|加固木頭/],['泥作',/泥作|泥水|貼磚|補磚|補水泥|白水泥|補土/],['疏通',/疏通|清通|通管|清除樹葉|挖到.*頭髮/],['零件更換',/更換|換新|已換|換電池/],['清潔保養',/清洗|清潔|拆洗|清除淤泥|黃油潤滑|上油|wd40|回風網.*髒/],['調整修復',/調整|校正|矯正|修復|固定|黏|鎖回|鎖緊|設定|配對|復歸|復原|重開機|重置/],['搬運布置',/搬運|搬桌椅|活動布置|場地復原|拆搬/]];
@@ -97,7 +106,7 @@ var Work320 = (function () {
     }else if(/油漆/.test(desc)&&/窗.{0,12}(周圍|周邊|旁|邊)|天花板|滅火器附近/.test(desc)){
       category='建物與裝修';reason='設備旁牆面／天花裝修油漆';
     }else if(/拆電視(?:架)?、壓條/.test(desc)){
-      category='弱電與資訊';reason='電視線路拆除為主要工作；牆面補修另列工作項目';
+      category='弱電與門禁';reason='電視線路拆除為主要工作；牆面補修另列工作項目';
     }else if(/熱泵/.test(scope)&&!/熱水|鍋爐|空調供冷/.test(scope)){
       reason='熱泵用途未明：需確認供熱水或空調';
     }else{
@@ -142,16 +151,17 @@ var Work320 = (function () {
       if(!match||!c.workToken){skipped.push(r.caseId);continue;}
       const patch={category:r.suggestedCategory==null?c.workCategory:r.suggestedCategory,tags:r.suggestedTags==null?c.workTags:r.suggestedTags};
       if(r.suggestedFacility!=null){if((c.correctedLocType||c.locationType)!=='設施')throw Error(r.caseId+' 不是設施案件');patch.facility=r.suggestedFacility;}
-      validate(patch);items.push({c,patch,expectedToken:c.workToken,reason:String(r.reason||'').slice(0,300)});
+      Object.assign(patch,validate(patch));items.push({c,patch,expectedToken:c.workToken,reason:String(r.reason||'').slice(0,300)});
     }
     return {items,skipped};
   }
   function validate(p){
+    if(p)p={...p,category:normalizeCategory(p.category)};
     if(!p||!categories.concat('待分類').includes(p.category))throw Error('請使用固定的主分類');
     if(!Array.isArray(p.tags)||p.tags.length>tags.length||p.tags.some(t=>!tags.includes(t))||new Set(p.tags).size!==p.tags.length)throw Error('工作項目不在選項清單內');
     if(p.facility!==undefined&&p.facility!==''&&!validFacility(p.facility))throw Error('設施名稱不完整或過長');
     return {category:p.category,tags:[...p.tags].sort(),...(p.facility!==undefined?{facility:p.facility.trim()}:{})};
   }
-  return {categories,tags,facilities,parse,encode,base,inferFacility,validFacility,locationLabel,recommend,validate,backupBaseline,importSuggestions,baselineFields};
+  return {normalizeCategory,isTransferred,isRepairDone,categories,tags,facilities,parse,encode,base,inferFacility,validFacility,locationLabel,recommend,validate,backupBaseline,importSuggestions,baselineFields};
 })();
 if(typeof module!=='undefined'&&module.exports)module.exports=Work320;

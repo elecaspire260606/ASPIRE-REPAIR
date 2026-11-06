@@ -77,9 +77,10 @@ var WorkUI320=(function(){
     const b=document.createElement('button');b.type='button';b.className='loc-type-btn';b.textContent='其他設施';b.onclick=()=>setRestaurant('其他設施',b);row.appendChild(b);
     const name=document.createElement('input');name.id='facility-name-320';name.placeholder='請填寫設施名稱，例如：會議室';name.maxLength=40;name.hidden=true;name.setAttribute('aria-label','其他設施名稱');row.after(name);
     const chart=document.getElementById('caseTypeChart');
-    const toolbar=document.createElement('div');toolbar.className='work-toolbar';toolbar.innerHTML='<button type="button" id="work-category-mode">主分類</button><button type="button" id="work-tag-mode">工作項目</button><button type="button" id="work-review-open">整理分類／設施</button>';chart.before(toolbar);
+    const toolbar=document.createElement('div');toolbar.className='work-toolbar';toolbar.innerHTML='<button type="button" id="work-category-mode">主分類</button><button type="button" id="work-tag-mode">工作項目</button><button type="button" id="work-transfer-mode">轉總務</button><button type="button" id="work-review-open">整理分類／設施</button>';chart.before(toolbar);
     toolbar.querySelector('#work-category-mode').onclick=()=>{chartMode='category';renderDashboard();};
     toolbar.querySelector('#work-tag-mode').onclick=()=>{chartMode='tags';renderDashboard();};
+    toolbar.querySelector('#work-transfer-mode').onclick=()=>drillByFilter('transferred','true','轉總務');
     toolbar.querySelector('#work-review-open').onclick=()=>openReview();
     // Also reachable from management, without another main tab.
     const mgr=document.querySelector('#page-mgr .filter-row')||document.getElementById('page-mgr');
@@ -89,8 +90,9 @@ var WorkUI320=(function(){
     const root=document.getElementById('caseTypeChart'),counts=chartMode==='category'?snap.typeCounts||{}:snap.workCounts||{};
     document.getElementById('caseTypeOtherPanel').innerHTML='';
     if(!snap.workCounts){root.innerHTML='<p class="work-hint">請先部署 V3.21 後端，再重新整理統計。</p>';return;}
+    const transferButton=document.getElementById('work-transfer-mode');if(transferButton)transferButton.textContent='轉總務 '+(snap.transferredTotal||0)+' 件';
     const total=snap.closedTotal||0,entries=Object.entries(counts).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-    root.innerHTML=`<p class="work-hint">${chartMode==='category'?'已結案 '+total+' 件；含舊分類對應與系統初分。':'同案可有多個工作項目，比例以已結案件數為分母，不可相加為總件數。'}</p><div class="work-bars">${entries.map(([label,n],i)=>`<button type="button" class="work-bar" data-work-drill="${i}"><span>${esc(label)}</span><span>${n} 件 · ${total?Math.round(n/total*100):0}%</span><i style="width:${total?Math.min(100,n/total*100):0}%"></i></button>`).join('')||'<p>目前沒有已記錄的工作項目。</p>'}</div>`;
+    root.innerHTML=`<p class="work-hint">${chartMode==='category'?'修繕完成 '+total+' 件；不含轉總務 '+(snap.transferredTotal||0)+' 件。':'同案可有多個工作項目，比例以已結案件數為分母，不可相加為總件數。'}</p><div class="work-bars">${entries.map(([label,n],i)=>`<button type="button" class="work-bar" data-work-drill="${i}"><span>${esc(label)}</span><span>${n} 件 · ${total?Math.round(n/total*100):0}%</span><i style="width:${total?Math.min(100,n/total*100):0}%"></i></button>`).join('')||'<p>目前沒有已記錄的工作項目。</p>'}</div>`;
     root.querySelectorAll('[data-work-drill]').forEach(b=>{b.onclick=()=>drillByFilter(chartMode==='category'?'caseType':'workTag',entries[Number(b.dataset.workDrill)][0],entries[Number(b.dataset.workDrill)][0]);});
     document.getElementById('work-category-mode')?.setAttribute('aria-pressed',String(chartMode==='category'));
     document.getElementById('work-tag-mode')?.setAttribute('aria-pressed',String(chartMode==='tags'));

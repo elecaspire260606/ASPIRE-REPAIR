@@ -1952,14 +1952,14 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.21.3">
-<link rel="stylesheet" href="app.css?v=3.21.3">
-<link rel="stylesheet" href="classification.css?v=3.21.3">
-<script src="classification-core.js?v=3.21.3"></script>
-<script src="reporter.js?v=3.21.3"></script>
-<script src="app.js?v=3.21.3"></script>
-<link rel="stylesheet" href="visual.css?v=3.21.3">
-<script src="visual.js?v=3.21.3"></script>
+<link rel="stylesheet" href="reporter.css?v=3.21.4">
+<link rel="stylesheet" href="app.css?v=3.21.4">
+<link rel="stylesheet" href="classification.css?v=3.21.4">
+<script src="classification-core.js?v=3.21.4"></script>
+<script src="reporter.js?v=3.21.4"></script>
+<script src="app.js?v=3.21.4"></script>
+<link rel="stylesheet" href="visual.css?v=3.21.4">
+<script src="visual.js?v=3.21.4"></script>
 </head>
 <body>
 
@@ -2274,8 +2274,8 @@
   <div class="stats-grid">
     <div class="stat-card tint-red"><div class="stat-num red" id="d-pending">—</div><div class="stat-label">待處理</div></div>
     <div class="stat-card tint-navy"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
-    <div class="stat-card rate-card"><div class="stat-num" id="d-rate">—</div><div class="stat-label">結案率</div></div>
-    <div class="stat-card tint-green"><div class="stat-num green" id="d-done">—</div><div class="stat-label">已結案</div></div>
+    <div class="stat-card rate-card"><div class="stat-num" id="d-rate">—</div><div class="stat-label">修繕結案率（不含轉總務）</div></div>
+    <div class="stat-card tint-green"><div class="stat-num green" id="d-done">—</div><div class="stat-label">修繕完成</div></div>
   </div>
   <div class="pie-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
     <div class="chart-wrap" style="margin-bottom:0;">
@@ -2309,6 +2309,12 @@
         <button id="locNextBtn" onclick="locPagerGo(1)" style="border:none;background:#E8761A;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(232,118,26,0.35);">›</button>
       </div>
     </div>
+    <form onsubmit="event.preventDefault();searchLocations3214_()" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+      <input id="locationSearch" type="search" maxlength="100" aria-label="搜尋位置病歷" placeholder="搜尋棟別、房號或地點，例如：雅舍三棟 3316" oninput="scheduleLocationSearch3214_()" style="flex:1;min-width:180px;border:1px solid #cbd9e3;border-radius:8px;padding:10px 12px;font-size:16px;">
+      <button type="submit" class="btn-outline" style="padding:9px 16px;">搜尋</button>
+      <button type="button" class="btn-outline" onclick="clearLocationSearch3214_()" style="padding:9px 16px;">清除</button>
+    </form>
+    <div id="locationSearchSummary" role="status" aria-live="polite" style="margin-top:8px;font-size:12px;color:#668196;">依目前日期與區域篩選，搜尋主表及封存位置</div>
     <div style="margin-top:14px;" id="locationTable"><div class="empty-state" style="padding:20px 0;">暫無資料</div></div>
   </div>
   <div class="chart-wrap">
@@ -2615,9 +2621,9 @@ function caseVisualClass_(c) {
 // 一般案件(修繕管理/姓名查詢/GM模式，只有主表近期資料)跟統計頁(主表+封存表全量資料)用不同的key，不能共用，
 // 不然修繕管理可能會不小心吃到統計頁抓回來、含封存舊案件的那份資料。
 // V3.10.3：更換快取鍵，避免舊版「最新N筆待處理」的不完整快取在版本相同時被繼續沿用。
-const CASES_CACHE_KEY = 'aspire_cases_cache_v321';
+const CASES_CACHE_KEY = 'aspire_cases_cache_v3214';
 try { localStorage.removeItem('aspire_cases_cache_v2'); } catch(e) {} // V3.1格式已含照片網址，舊快照不再沿用
-const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_area_cube_v321'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
+const DASHBOARD_SNAPSHOT_CACHE_KEY = 'aspire_dashboard_area_cube_v3214'; // 給統計頁loadDashboardSnapshot()的統計數字快取，形狀不同，不能共用同一個key
 function loadCacheByKey_(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -3776,8 +3782,8 @@ function renderExpandedInner(c, modalMode=false) {
   const locDisplay = c.normalizedLocation || c.location || '—';
   const titleHtml = `${area} · ${locDisplay}${c.locationType ? ' <span style="font-size:11px;background:#FEF0E3;color:#C05E0A;padding:2px 8px;border-radius:20px;font-weight:600;">'+c.locationType+'</span>' : ''}`;
   const badgeHtml = `<span class="badge ${isFlagged?'flagged':c.status==='待處理'?'pending':'done'}">${isFlagged?escapeHtml_(({寫錯:'填寫錯誤',測試:'測試案件'})[c.flagReason]||c.flagReason):c.status}</span>`;
-  const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
-  const reportBtnHtml = (c.status==='已結案' && !isFlagged && !isCloseSyncing) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
+  const timeBadges = `${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}${c.status==='已結案'?dateBadge(Work320.isTransferred(c)?'↗轉總務':'✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}`;
+  const reportBtnHtml = (Work320.isRepairDone(c) && !isFlagged && !isCloseSyncing) ? `<button class="ppt-btn" onclick="event.stopPropagation();generateReport(${c.rowIndex},this)">📊 生成報告</button>` : '';
 
   return `
         ${priorityBannerHtml(c)}
@@ -5199,6 +5205,8 @@ let locPagerMultiArea = false;
 let locPagerMaxL = 1;
 let locationStatsSeq = 0;
 let locationStatsInFlightKey = '';
+let locationSearchText3214_ = '';
+let locationSearchTimer3214_ = null;
 const locationStatsMemoryCache = new Map(); // key=時間條件+棟別+頁碼；同一使用階段切回棟別直接秒開
 const CASE_TYPE_MAIN_LABELS_ = ['給排水','電力','消防','空調','弱電','電梯','建物','木工','鐵工','照明','衛浴','庶務','防水','油漆','泥作'];
 let caseTypeOtherRows_ = [];
@@ -5230,8 +5238,8 @@ function dashboardDatasetParams() {
 // 統計頁資料載入：先讀本機快取立即顯示上次的統計結果，背景向後端要最新的(getDashboardSnapshot)。
 // 全部時間+全部區域(最常見的預設檢視)後端會走快速路徑(主表即時算+封存表預先算好的快照)，其餘情況即時掃描。
 
-function dashboardLocationReqKey_(params, area, page) {
-  return JSON.stringify([params.year,params.month,params.dateFrom,params.dateTo,area,page]);
+function dashboardLocationReqKey_(params, area, page, search='') {
+  return JSON.stringify([params.year,params.month,params.dateFrom,params.dateTo,area,page,search]);
 }
 function seedLocationFirstPages_(params, pages) {
   if(!pages)return;
@@ -5333,9 +5341,9 @@ function renderLocEntries(entries, idOffset, multiArea, maxL) {
     return `
     <div class="loc-entry">
       <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
-        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1+idOffset}</span><span class="loc-name">${e.loc}</span>${multiArea?`<span class="loc-area-tag">${e.area}</span>`:''}</div>
+        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1+idOffset}</span><span class="loc-name">${escapeHtml(String(e.loc))}</span>${multiArea?`<span class="loc-area-tag">${escapeHtml(String(e.area))}</span>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <div class="loc-badges">${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 已結案</span>`:''}</div>
+          <div class="loc-badges">${e.transferred?`<span class="lb-d">${e.transferred} 轉總務</span>`:''}${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 修繕完成</span>`:''}</div>
           <span id="arrow-${entryId}" style="font-size:12px;color:#ccc;transition:transform 0.2s;">▼</span>
         </div>
       </div>
@@ -5351,8 +5359,10 @@ function renderLocEntries(entries, idOffset, multiArea, maxL) {
 function renderLocPage() {
   const el = document.getElementById('locationTable');
   const nav = document.getElementById('locPagerNav');
+  const summary=document.getElementById('locationSearchSummary');
+  if(summary)summary.textContent=(locationSearchText3214_?'搜尋「'+locationSearchText3214_+'」：':'')+'共 '+locPagerTotalEntries+' 個位置（依目前日期與區域，含封存）';
   if (!locPagerEntries.length) {
-    el.innerHTML = '<div class="empty-state" style="padding:20px 0;">暫無資料</div>';
+    el.innerHTML = '<div class="empty-state" style="padding:20px 0;">'+(locationSearchText3214_?'找不到符合的位置，請調整關鍵字或篩選條件':'暫無資料')+'</div>';
     nav.style.display = 'none';
     return;
   }
@@ -5372,18 +5382,33 @@ function renderLocPage() {
 }
 
 
+function scheduleLocationSearch3214_() {
+  clearTimeout(locationSearchTimer3214_);
+  locationSearchText3214_=(document.getElementById('locationSearch')?.value||'').trim().slice(0,100);
+  locationStatsSeq++;locationStatsInFlightKey='';
+  locationSearchTimer3214_=setTimeout(searchLocations3214_,350);
+}
+function searchLocations3214_() {
+  clearTimeout(locationSearchTimer3214_);
+  locationSearchText3214_=(document.getElementById('locationSearch')?.value||'').trim().slice(0,100);
+  loadDashboardLocationStats(0);
+}
+function clearLocationSearch3214_() {
+  document.getElementById('locationSearch').value='';searchLocations3214_();
+}
 async function loadDashboardLocationStats(page=0, force=false) {
-  const p=dashboardQueryParams(), reqKey=JSON.stringify([p.year,p.month,p.dateFrom,p.dateTo,p.area,page]);
+  const p=dashboardQueryParams(), search=locationSearchText3214_,reqKey=dashboardLocationReqKey_(p,p.area,page,search);
+  if(!force&&reqKey===locationStatsInFlightKey)return;
+  const mySeq=++locationStatsSeq;locationStatsInFlightKey='';
   if(!force&&locationStatsMemoryCache.has(reqKey)){
     const loc=locationStatsMemoryCache.get(reqKey);
     locPagerEntries=loc.entries||[]; locPagerPage=loc.page||0; locPagerTotalPages=loc.totalPages||1; locPagerTotalEntries=loc.totalEntries||0;
     locPagerMultiArea=!!loc.multiArea; locPagerMaxL=Math.max(loc.maxTotal||1,1); window.locEntryMeta={}; renderLocPage(); return;
   }
-  if(!force&&reqKey===locationStatsInFlightKey)return;
-  const mySeq=++locationStatsSeq; locationStatsInFlightKey=reqKey;
+  locationStatsInFlightKey=reqKey;
   const el=document.getElementById('locationTable'); if(el&&page===0)el.innerHTML='<div class="empty-state" style="padding:20px 0;">位置統計載入中…</div>';
   try {
-    const data=await callReadApi_({action:'getDashboardLocationStats',year:p.year,month:p.month,dateFrom:p.dateFrom,dateTo:p.dateTo,area:p.area,page,pageSize:LOC_PAGE_SIZE},45000);
+    const data=await callReadApi_({action:'getDashboardLocationStats',year:p.year,month:p.month,dateFrom:p.dateFrom,dateTo:p.dateTo,area:p.area,page,pageSize:LOC_PAGE_SIZE,search},45000);
     if(mySeq!==locationStatsSeq)return;
     if(!data.success||!data.locations)throw new Error(data.message||'位置統計載入失敗');
     const loc=data.locations; locationStatsMemoryCache.set(reqKey,loc);
@@ -5541,7 +5566,7 @@ function updateDashboardStatValues_(snap) {
     'd-total':{number:Number(snap.total)||0,suffix:''},
     'd-pending':{number:Number(snap.pending)||0,suffix:''},
     'd-done':{number:Number(snap.done)||0,suffix:''},
-    'd-rate':snap.total>0 ? {number:Math.round(snap.done/snap.total*100),suffix:'%'} : {number:null,suffix:'',text:'—'}
+    'd-rate':(snap.maintenanceTotal??snap.total)>0 ? {number:Math.round(snap.done/(snap.maintenanceTotal??snap.total)*100),suffix:'%'} : {number:null,suffix:'',text:'—'}
   };
   const changed=[];
   const animated=[];
@@ -5593,7 +5618,7 @@ function renderDashboard() {
         <div style="font-weight:600;color:#1a1a1a;">${effArea(c)} · ${c.normalizedLocation||normalizeLocation(c.location)||'—'}</div>
         <div style="font-size:11px;color:#bbb;margin-top:2px;">${c.unit} · ${formatDatetime(c.datetime||c.date)}</div>
       </div>
-      <span class="badge ${c.status==='待處理'?'pending':'done'}">${c.status}</span>
+      <span class="badge ${c.status==='待處理'?'pending':'done'}">${Work320.isTransferred(c)?'轉總務':c.status}</span>
     </div>`).join('')||'<div class="empty-state">暫無資料</div>';
 }
 
@@ -5607,7 +5632,7 @@ function renderCaseRows(cases, sourceKey) {
     <div class="drill-row-clickable" onclick="openCasePanel(window.caseListSources['${sourceKey}'][${i}])" style="padding:10px 10px;border-bottom:1px solid #f5f0eb;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
         <div style="font-size:11px;color:#bbb;">${c.caseId} · ${c.datetime||c.date}</div>
-        <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${c.status}</span>
+        <span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:10px;padding:2px 8px;">${Work320.isTransferred(c)?'轉總務':c.status}</span>
       </div>
       <div style="font-size:12px;color:#999;margin-bottom:2px;">${effArea(c)} · ${c.normalizedLocation||normalizeLocation(c.location)||c.location||'—'}</div>
       <div style="font-size:13px;color:#333;margin-bottom:4px;">${c.description}</div>
@@ -5622,10 +5647,10 @@ function openCasePanel(c) {
   document.getElementById('panelCaseId').textContent = c.caseId;
   document.getElementById('panelTitle').textContent = effArea(c) + ' · ' + (c.normalizedLocation||normalizeLocation(c.location)||c.location||'—');
 
-  const badge = `<span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:11px;padding:3px 10px;">${c.status}</span>`;
+  const badge = `<span class="badge ${c.status==='待處理'?'pending':'done'}" style="font-size:11px;padding:3px 10px;">${Work320.isTransferred(c)?'轉總務':c.status}</span>`;
   const timeBadges = `
     ${dateBadge('📝報修', c.datetime||c.date, '#FEF0E3', '#C05E0A')}
-    ${c.status==='已結案'?dateBadge('✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}
+    ${c.status==='已結案'?dateBadge(Work320.isTransferred(c)?'↗轉總務':'✅結案', c.closeDatetime, '#E6F4EA', '#1E7A3E'):''}
   `;
   const photos = (arr, label, kind) => {
     const count = kind === 'report' ? (c.reportPhotoCount||0) : (c.closePhotoCount||0);
@@ -6020,7 +6045,7 @@ async function exportExcel() {
     return;
   }
 
-  const cases = getExportCases(exportSourceCases);
+  const cases = getExportCases(exportSourceCases).filter(c=>!Work320.isTransferred(c));
   const includeDetail = document.getElementById('exportIncludeDetail').checked;
   const now = new Date();
   const rangeLabel = {month:'本月', '3month':'近三個月', all:'全部'}[exportRange] || (() => {
@@ -6063,7 +6088,7 @@ async function exportExcel() {
   // 前10名未結案件（依等待天數）
   const exportNow = new Date();
   const pendingTop = exportSourceCases
-    .filter(c => c.status === '待處理' && !c.flagReason)
+    .filter(c => c.status === '待處理' && !c.flagReason && !Work320.isTransferred(c))
     .map(c => {
       const d = parseDate(c.datetime || c.date);
       const daysWait = d ? Math.floor((exportNow - d) / 86400000) : 0;
@@ -6485,7 +6510,7 @@ if ('serviceWorker' in navigator) {
 </div>
 <div id="panelBackdrop" style="display:none;position:fixed;inset:0;z-index:399;" onclick="closeCasePanel()"></div>
 
-<script src="classification.js?v=3.21.3"></script>
-<link rel="stylesheet" href="case-editor.css?v=3.21.3">
-<script src="case-editor.js?v=3.21.3"></script>
+<script src="classification.js?v=3.21.4"></script>
+<link rel="stylesheet" href="case-editor.css?v=3.21.4">
+<script src="case-editor.js?v=3.21.4"></script>
 </body></html>

@@ -76,7 +76,7 @@ function findCaseForAction318_(rowIndex){
 function installCaseTools318_(c){
   installNoteFavorites318_(document.getElementById('note-'+c.rowIndex));tidyIcons318_(document.getElementById('caseActionContent'));
   if(typeof installVisualCaseTools319_==='function')installVisualCaseTools319_(c);
-  if(c.status==='已結案'&&!c.flagReason&&!c.closeSyncState)mountPptResult3193_(document.getElementById('caseActionFooter'),c.caseId);
+  if(Work320.isRepairDone(c)&&!c.flagReason&&!c.closeSyncState)mountPptResult3193_(document.getElementById('caseActionFooter'),c.caseId);
   if(c.status!=='待處理'||c.closeSyncState)return;
   const label=document.createElement('label');label.className='next-case-choice';
   const input=document.createElement('input');input.type='checkbox';input.id='nextCase318';
