@@ -1952,14 +1952,14 @@
   }
 
 </style>
-<link rel="stylesheet" href="reporter.css?v=3.21.1">
-<link rel="stylesheet" href="app.css?v=3.21.1">
-<link rel="stylesheet" href="classification.css?v=3.21.1">
-<script src="classification-core.js?v=3.21.1"></script>
-<script src="reporter.js?v=3.21.1"></script>
-<script src="app.js?v=3.21.1"></script>
-<link rel="stylesheet" href="visual.css?v=3.21.1">
-<script src="visual.js?v=3.21.1"></script>
+<link rel="stylesheet" href="reporter.css?v=3.21.3">
+<link rel="stylesheet" href="app.css?v=3.21.3">
+<link rel="stylesheet" href="classification.css?v=3.21.3">
+<script src="classification-core.js?v=3.21.3"></script>
+<script src="reporter.js?v=3.21.3"></script>
+<script src="app.js?v=3.21.3"></script>
+<link rel="stylesheet" href="visual.css?v=3.21.3">
+<script src="visual.js?v=3.21.3"></script>
 </head>
 <body>
 
@@ -5617,6 +5617,7 @@ function renderCaseRows(cases, sourceKey) {
 
 function openCasePanel(c) {
   if (!c) return;
+  window.__panelCase3213 = c;
   window.__panelArchiveCase = c.rowIndex < 0 ? c : null;
   document.getElementById('panelCaseId').textContent = c.caseId;
   document.getElementById('panelTitle').textContent = effArea(c) + ' · ' + (c.normalizedLocation||normalizeLocation(c.location)||c.location||'—');
@@ -5651,6 +5652,7 @@ function openCasePanel(c) {
       ${badge}
       <div>${timeBadges}</div>
     </div>
+    ${typeof caseEditButton3213_==='function'?caseEditButton3213_():''}
     <hr class="panel-divider">
     <div class="panel-section">
       <div class="panel-label">申請單位 · 申請人</div>
@@ -6483,5 +6485,7 @@ if ('serviceWorker' in navigator) {
 </div>
 <div id="panelBackdrop" style="display:none;position:fixed;inset:0;z-index:399;" onclick="closeCasePanel()"></div>
 
-<script src="classification.js?v=3.21.1"></script>
+<script src="classification.js?v=3.21.3"></script>
+<link rel="stylesheet" href="case-editor.css?v=3.21.3">
+<script src="case-editor.js?v=3.21.3"></script>
 </body></html>
