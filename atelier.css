@@ -291,3 +291,20 @@ body {
 @media print {
   #page-dash .dash-board,#page-dash .stat-card,#page-dash .chart-wrap {background:white!important;color:#222!important;box-shadow:none!important}
 }
+
+
+/* Final contrast pass for the light dashboard surface. */
+#page-dash .dash-board{color:#344b50}
+#page-dash .dash-utility-btn:not(.report){
+  background:#fffdfa;
+  color:#405c61;
+  border-color:#e2d9cc;
+}
+#page-dash .dash-utility-btn.report{color:#fff}
+#page-dash .stat-card.tint-red .stat-num{color:#b75c3e}
+#page-dash .stat-card.tint-navy .stat-num{color:#34637a}
+#page-dash .stat-card.rate-card .stat-num{color:#a36c28}
+#page-dash .stat-card.tint-green .stat-num{color:#357a5b}
+#page-dash .dash-board .stat-card .stat-num{color:#2e464a}
+#page-dash .dash-board .stat-card .stat-label{color:#6b7b7c}
+#page-dash .dash-board button:focus-visible{outline-color:#b57a3f}
