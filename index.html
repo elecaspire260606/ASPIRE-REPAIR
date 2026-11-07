@@ -5353,7 +5353,7 @@ function renderLocEntries(entries, idOffset, multiArea, maxL) {
     return `
     <div class="loc-entry">
       <div class="loc-top" onclick="toggleLocDetail('${entryId}')" style="cursor:pointer;">
-        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1+idOffset}</span><span class="loc-name">${escapeHtml(String(e.loc))}</span>${multiArea?`<span class="loc-area-tag">${escapeHtml(String(e.area))}</span>`:''}</div>
+        <div><span style="font-size:11px;font-weight:700;color:#ddd;margin-right:6px;">#${i+1+idOffset}</span><span class="loc-name">${escapeHtml_(String(e.loc))}</span>${multiArea?`<span class="loc-area-tag">${escapeHtml_(String(e.area))}</span>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px;">
           <div class="loc-badges">${e.transferred?`<span class="lb-d">${e.transferred} 轉總務</span>`:''}${e.pending?`<span class="lb-p">${e.pending} 待處理</span>`:''}${e.done?`<span class="lb-d">${e.done} 修繕完成</span>`:''}</div>
           <span id="arrow-${entryId}" style="font-size:12px;color:#ccc;transition:transform 0.2s;">▼</span>
