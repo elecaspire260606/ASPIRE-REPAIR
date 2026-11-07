@@ -343,3 +343,153 @@ button:disabled{opacity:.6}
  .page .page-title{color:#111!important}
  #caseList .case-card,#queryList .case-card{background:#fff!important;color:#111!important}
 }
+
+
+/* V3.22.1 — iPhone readability and tap-target corrections.
+   Visual-only overrides; no element/order or interaction changes. */
+
+/* Keep action buttons readable: never squeeze CJK text into vertical columns. */
+#page-mgr .dispatch-controls .mgr-main-filter-row{
+ display:flex!important;
+ flex-wrap:wrap;
+ align-items:stretch;
+ gap:9px;
+}
+#page-mgr .dispatch-controls .mgr-main-filter-row #mgr-status-row{
+ display:flex!important;
+ flex:1 1 200px;
+ min-width:0;
+ width:auto;
+ gap:9px;
+ align-items:stretch;
+}
+#page-mgr .dispatch-controls #mgr-status-row .filter-btn{
+ display:inline-flex!important;
+ flex:1 1 0!important;
+ min-width:0!important;
+ width:auto!important;
+ min-height:46px;
+ align-items:center;
+ justify-content:center;
+ text-align:center;
+ line-height:1.4;
+ padding:9px 12px!important;
+ white-space:normal!important;
+ word-break:keep-all;
+ overflow-wrap:normal;
+ writing-mode:horizontal-tb!important;
+}
+#page-mgr .dispatch-controls .mgr-priority-row{
+ display:flex!important;
+ flex:0 0 auto;
+ min-width:0;
+ margin:0!important;
+}
+#page-mgr .dispatch-controls .mgr-priority-row .priority-filter-btn{
+ min-height:46px;
+ min-width:116px;
+ padding:9px 13px!important;
+ white-space:nowrap;
+ writing-mode:horizontal-tb!important;
+ line-height:1.35;
+}
+#page-mgr .dispatch-controls #mgr-area-row{
+ display:flex!important;
+ flex-wrap:nowrap!important;
+ gap:7px!important;
+ max-width:100%;
+ overflow-x:auto;
+ overflow-y:hidden;
+ -webkit-overflow-scrolling:touch;
+ padding-bottom:5px;
+ scrollbar-width:thin;
+}
+#page-mgr .dispatch-controls #mgr-area-row .filter-btn{
+ flex:0 0 auto!important;
+ min-width:64px!important;
+ min-height:44px;
+ white-space:nowrap;
+ writing-mode:horizontal-tb!important;
+ word-break:keep-all;
+ padding:8px 13px!important;
+}
+#page-mgr .dispatch-controls #mgrResultSummary,
+#page-mgr .dispatch-controls #mgrResultSummary span {
+ color:#c0deeb!important;
+}
+#page-mgr .dispatch-controls #mgrResultSummary b,
+#page-mgr .dispatch-controls #mgrResultSummary strong{
+ color:#effeff!important;
+}
+#page-mgr .dispatch-controls #mgrSearchInput{
+ width:100%;font-size:16px!important;
+}
+
+/* Reporter identity appears on a light "completed" summary card.
+   Explicitly use dark ink on that card, not the pale-on-dark theme color. */
+#page-form #reporterDetails.is-complete:not([open]) summary{
+ background:linear-gradient(100deg,#f6fafc,#ffffff)!important;
+ border-left:3px solid #43c9c3;
+ color:#173f53!important;
+}
+#page-form #reporterDetails.is-complete:not([open]) #reporterSummaryText,
+#page-form #reporterDetails.is-complete:not([open]) .reporter-edit{
+ color:#17435b!important;
+ opacity:1!important;
+}
+#page-form #reporterDetails.is-complete:not([open]) summary *,
+#page-form #reporterDetails.is-complete:not([open]) .reporter-edit::after {
+ text-shadow:none!important;
+}
+#page-form #reporterDetails.is-complete:not([open]) .reporter-edit::after {
+ color:#245a70!important;
+}
+/* Other light "selected" control surfaces also use a dark foreground. */
+#page-form .loc-type-btn[style*="background: white"],
+#page-form .loc-type-btn[style*="background: rgb(255, 255, 255)"]{
+ color:#173f51!important;
+}
+#page-dash .chart-wrap .empty-state{
+ color:#526d7a!important;
+}
+#page-dash #locationTable .loc-entry .loc-top > div:first-child > span:first-child{
+ color:#6c8697!important;
+}
+
+/* Keep the status/priority controls in two useful rows on narrow screens. */
+@media(max-width:600px){
+ #page-mgr .dispatch-controls .mgr-main-filter-row{
+   display:flex!important;
+   flex-wrap:wrap;
+   gap:8px;
+ }
+ #page-mgr .dispatch-controls .mgr-main-filter-row #mgr-status-row{
+   flex:1 1 100%;
+   width:100%;
+ }
+ #page-mgr .dispatch-controls #mgr-status-row .filter-btn{
+   flex:1 1 0!important;
+   min-height:48px;
+   padding:9px 12px!important;
+   font-size:13px;
+   letter-spacing:0;
+ }
+ #page-mgr .dispatch-controls .mgr-priority-row{
+   flex:1 1 100%;
+   width:100%;
+ }
+ #page-mgr .dispatch-controls .mgr-priority-row .priority-filter-btn{
+   min-height:44px;
+   min-width:0;
+   width:100%;
+ }
+ #page-mgr .dispatch-controls .mgr-toolbar-actions{
+   min-width:0;
+ }
+ #page-mgr .dispatch-controls .mgr-print-btn{
+   white-space:nowrap!important;
+ }
+ #page-form #reporterDetails.is-complete:not([open]) summary{
+   min-height:52px;
+ }
+}
