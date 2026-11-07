@@ -180,3 +180,94 @@ button:focus-visible,a:focus-visible,summary:focus-visible,[role=button]:focus-v
 #page-dash .recent-item>div>div:last-child{color:#5d6b84!important}
 #page-dash .pie-canvas-wrap text{fill:#3b4e6d}
 #page-dash .pie-canvas-wrap text:last-child{fill:#5d6b84}
+
+/* V3.23.1 — carry the approved blue-violet materials through every case card.
+   All case data, state labels, grouping and area identification remain unchanged. */
+:is(#caseList,#queryList,#queryListGm) .case-card,
+#caseList.manager-room-rows > .case-card,
+:is(#caseList,#queryList,#queryListGm) .case-card.expanded-card{
+ background:linear-gradient(135deg,#59678b,#485f80)!important;color:#f4f4ff;
+ border-top:1px solid #9baecb;border-right:1px solid #9baecb;border-bottom:1px solid #8b9fbe;
+ box-shadow:inset 0 2px #e4e9ff33,0 5px 0 #27395444,0 10px 22px #24334f33;
+}
+:is(#caseList,#queryList,#queryListGm) .case-card.area-館{border-left-color:#edcb91}
+:is(#caseList,#queryList,#queryListGm) .case-card.area-雅{border-left-color:#a8c8f1}
+:is(#caseList,#queryList,#queryListGm) .case-card.area-研{border-left-color:#a1cbbf}
+:is(#caseList,#queryList,#queryListGm) .case-card.area-智{border-left-color:#c7b9eb}
+:is(#caseList,#queryList,#queryListGm) .case-card.area-其{border-left-color:#c2cadb}
+:is(#caseList,#queryList,#queryListGm) .case-card.is-flagged{
+ background:linear-gradient(135deg,#5c5f7b,#4e5a76)!important;opacity:1;
+}
+:is(#caseList,#queryList,#queryListGm) :is(.case-place,.case-row-title,.pub-title,.case-row-desc,.pub-desc,.room-case-description){color:#f5f5ff!important}
+:is(#caseList,#queryList,#queryListGm) :is(.case-row-meta,.meta-caseid,.meta-date,.meta-people,.case-id,.pub-meta,.photo-tag,.room-case-meta){color:#dbe3f5!important}
+:is(#queryList,#queryListGm) .pub-desc{background:#3e5272;border-color:#879bbb;border-left-color:#b7c6e2}
+#caseList .case-location-type,#caseList.manager-room-rows .case-summary-tags > span,
+:is(#queryList,#queryListGm) .pub-title > span{
+ background:#3f5272!important;color:#e6ecfa!important;border:1px solid #8d9fbd;
+ box-shadow:inset 0 1px #d4ddf41a;
+}
+/* The existing full-width desktop place column and nested room rows need their own surfaces. */
+#caseList.manager-room-rows .room-group .room-group-header,
+#caseList.manager-room-rows .has-room-plaque .case-row-title{
+ background:linear-gradient(145deg,#626c92,#506484);border-right-color:#9bacc277;
+}
+#caseList.manager-room-rows .room-plaque{background:transparent;border-color:#9bacc277}
+#caseList.manager-room-rows .room-plaque-number{color:#fff0c9!important}
+#caseList.manager-room-rows :is(.room-plaque-building,.room-plaque-detail){color:#e0e7f7!important}
+#caseList.manager-room-rows .room-group .room-case-row,#caseList .room-case-row{
+ background:#4d6082;color:#f4f4ff;border-top-color:#93a4c166;
+}
+#caseList :is(.room-case-note,.room-case-hints){color:#d6eedf}
+#caseList .room-case-arrow{color:#f1d49d}
+#caseList .room-more{border-color:#95a7c366}#caseList .room-more summary{color:#e2eafa;background:#435978}
+#caseList .case-open-chevron,#caseList.manager-room-rows .has-room-plaque .case-open-chevron{
+ background:linear-gradient(140deg,#7886ae,#5f759b)!important;color:#fff0c7!important;
+ border-color:#b0bfdc!important;box-shadow:inset 0 1px #e4eaff55,0 3px 0 #2e426155;
+}
+#caseList .case-action-label{color:#fff0c7}
+/* Semantic accents: gold pending, jade repaired, lavender transferred or excluded.
+   Status text remains visible; no state is conveyed by color alone. */
+:is(#caseList,#queryList,#queryListGm) .badge{border:1px solid #a6b7d0;box-shadow:inset 0 1px #fff2;color:#edf2ff;background:#435777}
+:is(#caseList,#queryList,#queryListGm) .badge.pending,
+#caseList.manager-room-rows .room-plaque-detail .badge.pending{
+ background:linear-gradient(135deg,#f0d9ad,#d8bb87);color:#3b4560;border-color:#ffe6b8;
+}
+:is(#caseList,#queryList,#queryListGm) .badge.pending::before{background:#80643c;box-shadow:0 0 0 3px #a2824d22;animation:none}
+:is(#caseList,#queryList,#queryListGm) .badge.done{background:#345f5b;color:#e0f8e9;border-color:#9ac7b6}
+:is(#caseList,#queryList,#queryListGm) .badge.done::before{background:#b3e4c9;box-shadow:0 0 0 3px #b3e4c91a}
+:is(#caseList,#queryList,#queryListGm) .badge.transferred,
+:is(#caseList,#queryList,#queryListGm) .badge.flagged{background:#514a72;color:#eee5ff;border-color:#b9acd8}
+:is(#caseList,#queryList,#queryListGm) .badge.transferred::before,
+:is(#caseList,#queryList,#queryListGm) .badge.flagged::before{background:#d0bfeb;box-shadow:0 0 0 3px #cbbbed1a}
+:is(#caseList,#queryList,#queryListGm) .sync-badge{background:#405e83!important;color:#edf5ff!important;border-color:#b4c9e5}
+:is(#caseList,#queryList,#queryListGm) .sync-badge.failed{background:#714e5b!important;color:#ffe8e4!important;border-color:#dfb4b7}
+:is(#caseList,#queryList,#queryListGm) .flag-stamp{color:#e9ddff;border-color:#c1b1db;background:#4d486dcc}
+:is(#queryList,#queryListGm) .is-flagged span[style*="color:#aaa"]{color:#ddd5ee!important}
+:is(#caseList,#queryList,#queryListGm) :is(.case-row-note,.pub-note){background:linear-gradient(135deg,#3d6266,#3d5867);color:#e3f5eb;border-color:#8bb4ae;border-left-color:#b7d9c5;box-shadow:inset 0 1px #daf4e51a}
+#caseList .case-row-note::before,:is(#queryList,#queryListGm) .pub-note-label{color:#c5e2d2}
+#caseList .priority-strip{background:#635d66;color:#fff0c7;border-color:#d8bc90;border-left-color:#f0d49d;box-shadow:inset 0 1px #f5dfbb22}
+#caseList .priority-strip.overdue{background:#6e5365;color:#ffe5d7;border-color:#dfb6b3;border-left-color:#edb9a7}
+/* ID-level selectors intentionally supersede the older white / orange toolbar. */
+#page-mgr .dispatch-controls #mgrSearchInput{background:#405a7b!important;color:#f2f5ff!important;border:1px solid #acbed9!important;box-shadow:inset 0 2px 4px #263c5522}
+#page-mgr .dispatch-controls #mgrSearchInput::placeholder{color:#dae4f5}
+#page-mgr #mgr-status-row .filter-btn.active[data-status="待處理"]{
+ background:var(--game-gold);color:#3d4b64;border-color:#fff0c4;box-shadow:inset 0 2px #fff7,0 4px 0 #7e705e55;
+}
+#page-mgr #mgr-status-row .filter-btn.active:not([data-status="待處理"]){background:linear-gradient(135deg,#576e79,#465f70);color:#e5f7ed;border-color:#b3c9ca;box-shadow:inset 0 1px #e6f3ec44,0 3px 0 #2c425855}
+#page-mgr .dispatch-controls :is(.visual-entry319,.work-review-link){background:linear-gradient(140deg,#7b85ac,#607697);color:#fff0cf;border:1px solid #b8c3dd;box-shadow:inset 0 1px #e8ecff55,0 3px 0 #30425f55}
+#page-mgr .dispatch-controls .filter-btn:hover:not(.active){background:linear-gradient(145deg,#8297b7,#627d9e);color:#fff5dd;border-color:#cfdbec}
+@media(hover:hover) and (pointer:fine){
+ #caseList.manager-room-rows .case-collapsed:hover{background:#9daaca14}
+ #caseList.manager-room-rows .room-group .room-case-row:hover,#caseList .room-case-row:hover{background:#5b6d8c}
+}
+@media print{
+ :is(#caseList,#queryList,#queryListGm) .case-card,#caseList.manager-room-rows > .case-card,:is(#caseList,#queryList,#queryListGm) .case-card.is-flagged{background:#fff!important;color:#111!important;box-shadow:none!important}
+ :is(#caseList,#queryList,#queryListGm) :is(.case-place,.case-row-title,.pub-title,.case-row-desc,.pub-desc,.room-case-description,.case-row-meta,.meta-caseid,.meta-date,.meta-people,.case-id,.pub-meta,.photo-tag,.room-case-meta){color:#111!important;background:transparent!important}
+ #caseList.manager-room-rows :is(.room-group-header,.case-row-title,.room-case-row,.room-plaque){background:#fff!important}
+ #caseList.manager-room-rows :is(.room-plaque-number,.room-plaque-building,.room-plaque-detail){color:#111!important}
+}
+#page-mgr #mgr-area-row{scrollbar-width:thin;scrollbar-color:#a9b9d3 #465d7d}
+#page-mgr #mgr-area-row::-webkit-scrollbar{height:4px}
+#page-mgr #mgr-area-row::-webkit-scrollbar-track{background:#465d7d}
+#page-mgr #mgr-area-row::-webkit-scrollbar-thumb{background:#a9b9d3;border-radius:8px}
+#page-query #query-name-input:focus,#page-query #queryKeywordInput:focus{background:#405c7c!important;color:#f5f6ff!important;border-color:#c5edff!important}

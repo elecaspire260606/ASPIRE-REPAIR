@@ -1963,7 +1963,7 @@
 <link rel="stylesheet" href="case-editor.css?v=3.21.5">
 <link rel="stylesheet" href="atelier.css?v=3.21.5">
 <link rel="stylesheet" href="midnight.css?v=3.22.1">
-<link rel="stylesheet" href="game-ui.css?v=3.23.0">
+<link rel="stylesheet" href="game-ui.css?v=3.23.1">
 </head>
 <body>
 
@@ -2146,7 +2146,7 @@
     <div id="query-status-filter" style="display:none;margin-bottom:10px;">
       <div class="filter-row">
         <button class="filter-btn active" onclick="filterQueryStatus('待處理',this)">待處理</button>
-        <button class="filter-btn" onclick="filterQueryStatus('已結案',this)">已結案／已排除</button>
+        <button class="filter-btn" onclick="filterQueryStatus('已結案',this)">已結案</button>
       </div>
     </div>
     <div id="queryList"><div class="empty-state" style="color:#ccc;">請輸入姓名後查詢</div></div>
@@ -2160,7 +2160,7 @@
     </div>
     <div class="filter-row">
       <button class="filter-btn active" data-status="待處理" onclick="filterQuery('待處理',this)">待處理</button>
-      <button class="filter-btn" data-status="已結案" onclick="filterQuery('已結案',this)">已結案／已排除</button>
+      <button class="filter-btn" data-status="已結案" onclick="filterQuery('已結案',this)">已結案</button>
     </div>
     <div style="position:relative;margin-bottom:10px;">
       <input type="text" id="queryKeywordInput" placeholder="搜尋案件編號、地點、描述、申請人…" oninput="onQueryKeywordInput()" style="width:100%;padding:11px 38px 11px 14px;border:1.5px solid #e8e8e8;border-radius:12px;font-size:14px;font-family:inherit;box-sizing:border-box;">
@@ -2203,7 +2203,7 @@
     <div class="mgr-main-filter-row">
       <div class="filter-row" id="mgr-status-row">
         <button class="filter-btn active" data-status="待處理" onclick="filterCases(&#39;待處理&#39;,this)">待處理</button>
-        <button class="filter-btn" data-status="已結案" onclick="filterCases(&#39;已結案&#39;,this)">已結案／已排除</button>
+        <button class="filter-btn" data-status="已結案" onclick="filterCases(&#39;已結案&#39;,this)">已結案</button>
       </div>
       <div class="mgr-priority-row">
         <button type="button" id="mgrPriorityOnlyBtn" class="priority-filter-btn" onclick="toggleMgrPriorityOnly(this)">⚡ 今日優先</button>
@@ -2278,7 +2278,7 @@
   <div class="stats-grid">
     <div class="stat-card tint-red"><div class="stat-num red" id="d-pending">—</div><div class="stat-label">待處理</div></div>
     <div class="stat-card tint-navy"><div class="stat-num navy" id="d-total">—</div><div class="stat-label">總案件數</div></div>
-    <div class="stat-card rate-card"><div class="stat-num" id="d-rate">—</div><div class="stat-label">修繕結案率（不含轉總務）</div></div>
+    <div class="stat-card rate-card"><div class="stat-num" id="d-rate">—</div><div class="stat-label">修繕結案率</div></div>
     <div class="stat-card tint-green"><div class="stat-num green" id="d-done">—</div><div class="stat-label">修繕完成</div></div>
   </div>
   <div class="pie-chart-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
