@@ -5373,7 +5373,10 @@ function renderLocPage() {
   const summary=document.getElementById('locationSearchSummary');
   if(summary)summary.textContent=(locationSearchText3214_?'搜尋「'+locationSearchText3214_+'」：':'前 10 名 · 依報修次數排序｜')+'共 '+locPagerTotalEntries+' 個位置（依目前日期與區域，含封存）';
   if (!locPagerEntries.length) {
-    el.innerHTML = '<div class="empty-state" style="padding:20px 0;">'+(locationSearchText3214_?'找不到符合的位置，請調整關鍵字或篩選條件':'暫無資料')+'</div>';
+    const hasReportedRows=Number(locPagerTotalEntries)>0;
+    el.innerHTML = hasReportedRows
+      ? '<div class="empty-state" style="padding:20px 0;color:#a95b36;">位置排行資料不完整，請點此重新載入 <button type="button" class="btn-outline" onclick="loadDashboardLocationStats(0,true)" style="margin-left:8px;min-height:40px;">重新載入</button></div>'
+      : '<div class="empty-state" style="padding:20px 0;">'+(locationSearchText3214_?'找不到符合的位置，請調整關鍵字或篩選條件':'暫無資料')+'</div>';
     nav.style.display = 'none';
     return;
   }
@@ -5407,6 +5410,21 @@ function searchLocations3214_() {
 function clearLocationSearch3214_() {
   document.getElementById('locationSearch').value='';searchLocations3214_();
 }
+// Fallback when the location API has a count but omits first-page rows.
+// Request the existing Dashboard bundle without client version keys.
+async function recoverLocationFirstPageFromBundle_(p) {
+  const bundle = await callReadApi_({
+    action:'getDashboardSnapshot',
+    year:p.year,month:p.month,dateFrom:p.dateFrom,dateTo:p.dateTo,
+    includeLocationFirstPages:true
+  },45000);
+  if(!bundle?.success)return null;
+  const first = bundle.locationFirstPages?.[p.area] || bundle.locationFirstPages?.all;
+  if(!first||!Array.isArray(first.entries)||!first.entries.length)return null;
+  const total=Number(first.totalEntries)||first.entries.length;
+  return {...first,page:0,entries:first.entries.slice(0,LOC_PAGE_SIZE),
+    totalEntries:total,totalPages:Math.max(1,Math.ceil(total/LOC_PAGE_SIZE))};
+}
 async function loadDashboardLocationStats(page=0, force=false) {
   const p=dashboardQueryParams(), search=locationSearchText3214_,reqKey=dashboardLocationReqKey_(p,p.area,page,search);
   if(!force&&reqKey===locationStatsInFlightKey)return;
@@ -5426,15 +5444,22 @@ async function loadDashboardLocationStats(page=0, force=false) {
     const data=await callReadApi_({action:'getDashboardLocationStats',year:p.year,month:p.month,dateFrom:p.dateFrom,dateTo:p.dateTo,area:p.area,page,pageSize:LOC_PAGE_SIZE,search},45000);
     if(mySeq!==locationStatsSeq)return;
     if(!data.success||!data.locations)throw new Error(data.message||'位置統計載入失敗');
-    const loc=data.locations;
+    let loc=data.locations;
+    if((!Array.isArray(loc.entries)||(Number(loc.totalEntries)>0&&!loc.entries.length))
+       &&page===0&&!search) {
+      const recovered=await recoverLocationFirstPageFromBundle_(p);
+      if(mySeq!==locationStatsSeq)return;
+      if(recovered)loc=recovered;
+    }
     if(!Array.isArray(loc.entries)||(Number(loc.totalEntries)>0&&!loc.entries.length))
-      throw new Error('位置統計回傳有總數但沒有清單內容');
+      throw new Error('位置統計總數與第一頁清單不一致');
     locationStatsMemoryCache.set(reqKey,loc);
     locPagerEntries=loc.entries||[]; locPagerPage=loc.page||0; locPagerTotalPages=loc.totalPages||1; locPagerTotalEntries=loc.totalEntries||0;
     locPagerMultiArea=!!loc.multiArea; locPagerMaxL=Math.max(loc.maxTotal||1,1); window.locEntryMeta={}; renderLocPage();
   } catch(e) {
     if(mySeq!==locationStatsSeq)return;
-    if(el)el.innerHTML='<div class="empty-state" style="padding:20px 0;color:#b65c3e;cursor:pointer;" onclick="loadDashboardLocationStats(0,true)">⚠️ 位置排行榜載入失敗，點擊重試</div>';
+    console.warn('位置排行載入失敗',e?.message||String(e));
+    if(el)el.innerHTML='<div class="empty-state" style="padding:20px 0;color:#bd8065;">⚠️ 無法取得位置排行資料。<button type="button" class="btn-outline" onclick="loadDashboardLocationStats(0,true)" style="margin-left:8px;min-height:40px;">點此重試</button></div>';
     document.getElementById('locPagerNav').style.display='none';
   } finally { if(locationStatsInFlightKey===reqKey)locationStatsInFlightKey=''; }
 }
