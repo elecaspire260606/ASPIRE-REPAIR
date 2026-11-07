@@ -98,9 +98,7 @@ button:disabled{opacity:.6}
 .page input:focus,.page textarea:focus,.page select:focus,
 #locationSearch:focus{background:#102c3f;border-color:#55d8d6;box-shadow:var(--ui-ring)}
 .page input[readonly]{color:#a4bbca;background:#162c3a}
-#page-form>.card{background:transparent;border:0;box-shadow:none}
-#page-form>.card .card-header{display:none}
-#page-form>.card .card-body{padding:0}
+/* Outer reporter card header, date label and content padding remain unchanged. */
 #page-form .form-module {
  background:linear-gradient(148deg,#102b3b,#0c2232 75%);
  border:1px solid #2b5061;border-radius:18px;
