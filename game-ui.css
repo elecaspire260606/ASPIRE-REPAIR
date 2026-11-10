@@ -271,3 +271,80 @@ button:focus-visible,a:focus-visible,summary:focus-visible,[role=button]:focus-v
 #page-mgr #mgr-area-row::-webkit-scrollbar-track{background:#465d7d}
 #page-mgr #mgr-area-row::-webkit-scrollbar-thumb{background:#a9b9d3;border-radius:8px}
 #page-query #query-name-input:focus,#page-query #queryKeywordInput:focus{background:#405c7c!important;color:#f5f6ff!important;border-color:#c5edff!important}
+
+/* V3.23.2 — compact desktop dispatch rows. Mobile, print, case data and actions
+   retain their existing behavior. Long descriptions and place names can grow. */
+@media screen and (min-width:901px){
+ #page-mgr .dispatch-controls{
+  display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px 16px;
+  padding:16px;border-radius:16px;margin-bottom:16px;
+  box-shadow:inset 0 1px #e3e9ff33,0 5px 16px #25364f33;
+ }
+ #page-mgr .dispatch-controls .mgr-search-wrap{grid-column:1;grid-row:1;margin:0!important;align-self:center;min-width:0}
+ #page-mgr .dispatch-controls #mgrSearchInput{min-height:42px;padding-top:9px!important;padding-bottom:9px!important}
+ #page-mgr .dispatch-controls .mgr-toolbar-top{grid-column:2;grid-row:1;padding:0;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+ #page-mgr .dispatch-controls .mgr-result-summary{padding:0;background:transparent;border:0;box-shadow:none}
+ #page-mgr .dispatch-controls .mgr-toolbar{grid-column:1/-1;padding:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px}
+ #page-mgr .dispatch-controls .mgr-main-filter-row{margin:0;gap:8px;flex:0 1 auto;align-items:center}
+ #page-mgr .dispatch-controls .mgr-main-filter-row #mgr-status-row{flex:0 1 auto;gap:6px}
+ #page-mgr .dispatch-controls #mgr-status-row .filter-btn{flex:0 0 auto!important;min-width:86px!important;min-height:40px;padding:8px 14px!important;font-size:14px}
+ #page-mgr .dispatch-controls .mgr-priority-row .priority-filter-btn{min-height:40px;min-width:106px;padding:8px 12px!important;font-size:13px}
+ #page-mgr .dispatch-controls #mgr-area-row{margin:0;padding:0 0 3px;gap:6px!important;flex:0 1 auto}
+ #page-mgr .dispatch-controls #mgr-area-row .filter-btn{min-height:38px;min-width:54px!important;padding:7px 10px!important;font-size:13px}
+ #page-mgr .dispatch-controls :is(.visual-entry319,.work-review-link,.mgr-print-btn){min-height:38px;padding:7px 10px!important;font-size:13px;white-space:nowrap}
+ #page-mgr .dispatch-controls .work-review-link{margin:0;align-self:center}
+
+ #caseList.manager-room-rows{gap:10px}
+ #caseList.manager-room-rows > .case-card{
+  border-radius:12px;border-left-width:4px;
+  box-shadow:inset 0 1px #e4e9ff26,0 3px 10px #24334f26;
+ }
+ #caseList.manager-room-rows > .case-card:hover{transform:none;box-shadow:inset 0 1px #e4e9ff33,0 4px 14px #24334f44}
+ #caseList.manager-room-rows .has-room-plaque .case-collapsed{
+  grid-template-columns:136px minmax(0,1fr) 112px;grid-template-rows:auto;
+  column-gap:16px;row-gap:0;min-height:100px;padding:0 14px 0 0;margin:0;align-items:center;
+ }
+ #caseList.manager-room-rows .has-room-plaque .case-row-title{
+  grid-column:1;grid-row:1!important;align-self:stretch;margin:0;padding:12px 14px;
+  border-radius:0;border-right-color:#9bacc244;
+ }
+ #caseList.manager-room-rows .room-plaque{padding:0;gap:3px}
+ #caseList.manager-room-rows .room-plaque-building{font-size:12px;line-height:1.5;letter-spacing:.02em}
+ #caseList.manager-room-rows .room-plaque-number{font-size:25px;line-height:1.25;letter-spacing:.01em}
+ #caseList.manager-room-rows .room-plaque-location{font-size:18px;line-height:1.4;letter-spacing:0}
+ #caseList.manager-room-rows .room-plaque-detail{font-size:12px;line-height:1.5;gap:4px;margin:0}
+ #caseList.manager-room-rows .has-room-plaque .room-plaque-detail > .badge{display:none}
+ #caseList.manager-room-rows .has-room-plaque .case-collapsed > .case-summary-body{
+  grid-column:2;grid-row:1!important;padding:12px 0;gap:4px;justify-content:center;
+ }
+ #caseList.manager-room-rows .case-summary-body .case-row-desc{font-size:18px;line-height:1.45;font-weight:700;margin:0;-webkit-line-clamp:2}
+ #caseList.manager-room-rows .case-summary-body .case-row-meta{font-size:12px;line-height:1.6;margin:0;white-space:normal;overflow-wrap:anywhere}
+ #caseList.manager-room-rows .case-summary-tags{gap:5px}
+ #caseList.manager-room-rows .case-summary-tags > span{padding:1px 7px;font-size:12px;line-height:1.5;border-color:#8d9fbd66;box-shadow:none}
+ #caseList.manager-room-rows .case-summary-body .case-row-note{
+  font-size:13px;line-height:1.5;padding:3px 8px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ }
+ #caseList.manager-room-rows .case-summary-priority .priority-strip{margin:0;padding:3px 8px;font-size:12px;line-height:1.5}
+ #caseList.manager-room-rows .has-room-plaque .case-row-status{
+  grid-column:3;grid-row:1!important;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin:0;padding:10px 0;
+ }
+ #caseList.manager-room-rows .has-room-plaque .case-row-status > .badge{display:inline-flex;align-items:center;max-width:100%;white-space:normal;text-align:center;font-size:12px;line-height:1.5;padding:3px 8px}
+ #caseList.manager-room-rows .has-room-plaque .case-open-chevron{width:112px;min-height:40px;padding:7px 10px;gap:6px;box-shadow:inset 0 1px #e4eaff33,0 2px 0 #2e426133}
+ #caseList.manager-room-rows .case-action-label{font-size:13px;font-weight:700}
+ #caseList.manager-room-rows .flag-stamp{top:4px;right:140px;font-size:12px;padding:2px 6px;opacity:.7}
+
+ /* Keep each grouped room case directly visible in a full-width compact row. */
+ #caseList.manager-room-rows .room-group{grid-template-columns:136px minmax(0,1fr)}
+ #caseList.manager-room-rows .room-group .room-group-header{padding:14px;margin:0;justify-content:flex-start;gap:0;border-right-color:#9bacc244}
+ #caseList.manager-room-rows .room-group .room-plaque-detail{flex-direction:column;align-items:flex-start;gap:6px;margin-top:3px}
+ #caseList.manager-room-rows .room-group > .room-case-list,
+ #caseList.manager-room-rows .room-group .room-more > .room-case-list{grid-template-columns:minmax(0,1fr);gap:1px;background:#93a4c144}
+ #caseList.manager-room-rows .room-group .room-case-row{min-height:76px;padding:12px 16px;gap:16px}
+ #caseList.manager-room-rows .room-group .room-case-main{gap:4px}
+ #caseList.manager-room-rows .room-group .room-case-description{font-size:18px;line-height:1.45;font-weight:700}
+ #caseList.manager-room-rows .room-group .room-case-meta{font-size:12px;line-height:1.6}
+ #caseList.manager-room-rows .room-group .room-case-note{font-size:13px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #caseList.manager-room-rows .room-group .room-case-arrow{font-size:24px;min-width:28px;text-align:center}
+ #caseList.manager-room-rows .room-more summary{padding:9px 16px;font-size:13px}
+}
+
