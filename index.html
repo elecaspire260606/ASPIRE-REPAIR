@@ -1963,7 +1963,7 @@
 <link rel="stylesheet" href="case-editor.css?v=3.21.5">
 <link rel="stylesheet" href="atelier.css?v=3.21.5">
 <link rel="stylesheet" href="midnight.css?v=3.22.1">
-<link rel="stylesheet" href="game-ui.css?v=3.23.2">
+<link rel="stylesheet" href="game-ui.css?v=3.23.3">
 </head>
 <body>
 
@@ -2208,6 +2208,7 @@
       <div class="mgr-priority-row">
         <button type="button" id="mgrPriorityOnlyBtn" class="priority-filter-btn" onclick="toggleMgrPriorityOnly(this)">⚡ 今日優先</button>
       </div>
+      <button type="button" id="mgrHistoryBtn" class="mgr-history-btn" onclick="loadManagerHistory_()">◷ 查詢歷史案件</button>
     </div>
     <div class="filter-row" style="flex-wrap:wrap;gap:6px;margin-bottom:0;" id="mgr-area-row">
       <button class="filter-btn active" style="flex:none;padding:7px 12px;" onclick="filterMgrArea(&#39;all&#39;,this)">全部</button>
@@ -3696,7 +3697,7 @@ function renderCases() {
     // 已結案分頁顯示「沒有案件」時，容易誤會成「這個篩選條件從來沒有案件」，
     // 但實際上可能只是7天內剛好沒有，更早的已經被封存機制搬走了，加個提示避免誤解
     const hint = currentFilter==='已結案'
-      ? '查無符合條件的近期已結案案件<br><span style="font-size:12px;color:#bbb;">結案超過7天的案件會自動搬到封存，如需查詢較久以前的紀錄，請至「後台統計」或下載備份查詢</span>'
+      ? '查無符合條件的近期已結案案件<br><span style="font-size:12px;color:#bbb;">較早案件可能已封存，請點「查詢歷史案件」讀取完整紀錄</span>'
       : '目前沒有案件';
     list.innerHTML=`<div class="empty-state">${hint}</div>`;
     document.getElementById('mgrPagination').innerHTML=''; renderLoadMoreBtn('mgrLoadMoreWrap'); return;
@@ -3972,12 +3973,47 @@ document.addEventListener('keydown',event=>{
 });
 
 // 共用：在指定容器顯示「載入更早案件」按鈕(僅在後端回報還有更早的已結案案件時顯示)
+function updateManagerHistoryButton_() {
+  const btn=document.getElementById('mgrHistoryBtn'); if(!btn)return;
+  btn.disabled=managerHistoryLoading_ || lastLoadedDays==='all';
+  btn.setAttribute('aria-busy',String(managerHistoryLoading_));
+  btn.textContent=managerHistoryLoading_?'歷史案件載入中…':lastLoadedDays==='all'?'✓ 已載入歷史案件':'◷ 查詢歷史案件';
+}
+let managerHistoryLoading_=false;
+async function loadManagerHistory_() {
+  if(managerHistoryLoading_)return;
+  const previousLimit=casesClosedLimit;
+  managerHistoryLoading_=true; updateManagerHistoryButton_();
+  currentFilter='已結案'; mgrPage=1; mgrPriorityOnly=false;
+  document.getElementById('mgrPriorityOnlyBtn')?.classList.remove('active');
+  document.querySelectorAll('#mgr-status-row .filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.status==='已結案'));
+  casesClosedLimit='all';
+  try {
+    await loadCases(true,'all');
+    if(lastLoadedDays!=='all')throw new Error('歷史案件尚未載入完成，請再試一次');
+    if(currentPageId==='mgr')renderCases();
+    showToast('已載入歷史案件，可依區域及關鍵字查詢');
+  } catch(e) {
+    casesClosedLimit=previousLimit;
+    showToast(e.message||'歷史案件載入失敗，請再試一次');
+  } finally {
+    managerHistoryLoading_=false; updateManagerHistoryButton_();
+    renderLoadMoreBtn('mgrLoadMoreWrap');
+  }
+}
 function renderLoadMoreBtn(wrapId) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
-  wrap.innerHTML = casesHasMore
+  if(wrapId==='mgrLoadMoreWrap'){
+    updateManagerHistoryButton_();
+    wrap.innerHTML=lastLoadedDays==='all'
+      ? '<div class="mgr-history-hint" role="status">已載入主表與封存案件，可使用上方搜尋及區域篩選</div>'
+      : '<div class="mgr-history-hint">目前為近期案件；更早的已結案紀錄請查詢歷史案件</div><button type="button" class="mgr-history-btn" onclick="loadManagerHistory_()" '+(managerHistoryLoading_?'disabled':'')+'>'+(managerHistoryLoading_?'歷史案件載入中…':'◷ 查詢歷史案件（含封存）')+'</button>';
+    return;
+  }
+  wrap.innerHTML = casesHasMore && casesClosedLimit!=='all'
     ? `<button onclick="loadMoreHistory(this)" style="padding:9px 20px;background:#f0f0f0;color:#555;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">載入更早已結案案件（目前顯示：最新${casesClosedLimit}筆已結案 + 全部待處理）</button>`
-    : `<div style="font-size:11px;color:#bbb;">已顯示全部案件（最新${casesClosedLimit}筆已結案 + 全部待處理）</div>`;
+    : `<div style="font-size:11px;color:#bbb;">${lastLoadedDays==='all'?'已載入主表與封存案件':'已顯示目前載入的近期案件'}</div>`;
 }
 
 // 遠端縮圖若第一次載入失敗，自動重試一次；第二次仍失敗才顯示可點擊重試狀態。
@@ -6559,4 +6595,5 @@ if ('serviceWorker' in navigator) {
 <script src="case-editor.js?v=3.21.5"></script>
 <script src="game-ui.js?v=3.23.0"></script>
 </body></html>
+
 
